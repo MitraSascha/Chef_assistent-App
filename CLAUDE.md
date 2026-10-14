@@ -5,7 +5,9 @@ Client-Projekt für den **Chef-Assistenten**, einen selbstgehosteten KI-Assisten
 1. **Android-App**
 2. **Windows-11-App**
 
-Das Backend liegt **nicht** in diesem Repo. Es läuft auf einem Server im Netz des Nutzers und wird dort parallel entwickelt.
+Das Backend liegt **nicht** in diesem Repo.
+
+**Repos (seit 2026-10-14):** Projektstamm mit `android/`, Verträgen und Aufträgen → `MitraSascha/Chef_assistent-App` (**privat**, enthält Kundenadressen und Namen). `windows/` ist ein eigenes Repo → `MitraSascha/Chef_assistent-WinApp` (öffentlich) und steht im Stamm in `.gitignore`. Bis zum 2026-10-14 war die Android-App in **keinem** Repo. Nach größeren Änderungen committen und pushen. Es läuft auf einem Server im Netz des Nutzers und wird dort parallel entwickelt.
 
 ## Sprache
 
