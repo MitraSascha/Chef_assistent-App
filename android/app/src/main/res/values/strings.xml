@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chef-Assistent</string>
+
+    <!-- Anmeldung -->
+    <string name="anmeldung_titel">Anmelden</string>
+    <string name="anmeldung_hinweis">Passwort und Zwei-Faktor richtest du einmal in der Weboberfläche ein (Schloss unten links). Den Code zeigt die Authenticator-App, er gilt nur einmal.</string>
+    <string name="anmeldung_hinweis_schluessel">Zugangsschlüssel gelten nur noch über Tailscale. Wenn die Verbindung scheitert, zuerst prüfen, ob Tailscale auf dem Gerät aktiv ist.</string>
+    <string name="anmeldung_server">Server-Adresse</string>
+    <string name="anmeldung_server_internet">Internet</string>
+    <string name="anmeldung_server_tailscale">Tailscale</string>
+    <string name="anmeldung_name">Name</string>
+    <string name="anmeldung_passwort">Passwort</string>
+    <string name="anmeldung_passwort_zeigen">Passwort zeigen</string>
+    <string name="anmeldung_passwort_verbergen">Passwort verbergen</string>
+    <string name="anmeldung_code">Code</string>
+    <string name="anmeldung_code_hinweis">6 Ziffern aus der Authenticator-App</string>
+    <string name="anmeldung_anmelden">Anmelden</string>
+    <string name="anmeldung_mit_schluessel">Mit Zugangsschlüssel anmelden (nur Tailscale)</string>
+    <string name="anmeldung_mit_passwort">Mit Name und Passwort anmelden</string>
+    <string name="anmeldung_token">Zugangs-Token</string>
+    <string name="anmeldung_token_hinweis">Beginnt mit „ca_“ und wird auf dem Server erzeugt.</string>
+    <string name="anmeldung_pruefen">Verbinden</string>
+    <string name="anmeldung_laeuft">Verbinde …</string>
+
+    <!-- Geräte -->
+    <string name="geraete_titel">Angemeldete Geräte</string>
+    <string name="geraete_leer">Keine angemeldeten Geräte.</string>
+    <string name="geraete_dieses">Dieses Gerät</string>
+    <string name="geraete_ohne_name">Unbenanntes Gerät</string>
+    <string name="geraete_zuletzt">Zuletzt aktiv %1$s</string>
+    <string name="geraete_erstellt">Angemeldet seit %1$s</string>
+    <string name="geraete_ip">IP %1$s</string>
+    <string name="geraete_abmelden">Abmelden</string>
+    <string name="geraete_abmelden_titel">Gerät abmelden?</string>
+    <string name="geraete_abmelden_frage">„%1$s“ wird abgemeldet und muss sich danach neu mit Passwort und Code anmelden.</string>
+    <string name="geraete_abmelden_selbst">Du meldest dieses Gerät ab und landest wieder auf dem Anmeldebildschirm.</string>
+    <string name="geraete_schluessel">Mit einem Zugangsschlüssel gibt es keine Geräteliste. Sie erscheint nach der Anmeldung mit Name, Passwort und Code.</string>
+    <string name="geraete_nicht_verfuegbar">Der Server kennt die Geräteliste noch nicht (erst ab Version 1.10).</string>
+
+    <!-- Chat -->
+    <string name="chat_eingabe">Frage stellen</string>
+    <string name="chat_senden">Senden</string>
+    <string name="chat_denkt">Der Assistent arbeitet …</string>
+    <string name="chat_leer">Womit kann ich helfen?</string>
+    <string name="chat_neues_gespraech">Neues Gespräch</string>
+    <string name="chat_abmelden">Abmelden</string>
+
+    <!-- Gespräche -->
+    <string name="chat_gespraeche">Gespräche</string>
+    <string name="chat_keine_gespraeche">Noch keine Gespräche.</string>
+    <string name="chat_ohne_titel">Ohne Titel</string>
+    <string name="chat_gespraech_loeschen">Gespräch löschen</string>
+    <string name="loeschen_titel">Gespräch löschen?</string>
+    <string name="loeschen_frage">„%1$s“ wird auf dem Server gelöscht. Das lässt sich nicht rückgängig machen.</string>
+    <string name="loeschen_ja">Löschen</string>
+    <string name="loeschen_abbrechen">Abbrechen</string>
+
+    <!-- Sprache -->
+    <string name="sprache_aufnahme_start">Aufnahme starten</string>
+    <string name="sprache_aufnahme_stopp">Aufnahme beenden</string>
+    <string name="sprache_nimmt_auf">Aufnahme läuft …</string>
+    <string name="sprache_vorlesen">Vorlesen</string>
+    <string name="antwort_kopieren">Kopieren</string>
+    <string name="antwort_kopiert">Kopiert</string>
+    <string name="antwort_teilen">Teilen</string>
+    <string name="antwort_vollbild">Vollbild</string>
+    <string name="antwort_tabelle">Tabelle</string>
+    <string name="antwort_arbeitet">Assistent arbeitet …</string>
+    <string name="schliessen">Schließen</string>
+    <string name="sprache_stopp">Vorlesen stoppen</string>
+    <string name="diktat_titel">Diktat vor dem Senden prüfen</string>
+    <string name="diktat_an">Erkannter Text landet im Eingabefeld</string>
+    <string name="diktat_aus">Aufnahme geht sofort als Frage raus</string>
+    <string name="stimme_titel">Stimme beim Vorlesen</string>
+    <string name="stimme_openai">OpenAI-Stimme</string>
+    <string name="stimme_openai_erklaerung">Natürlicher, kostet pro Zeichen, braucht Netz</string>
+    <string name="stimme_servervorgabe">Servervorgabe</string>
+    <string name="stimme_geraet">Gerätestimme</string>
+    <string name="stimme_geraet_erklaerung">Kostenlos und offline, klingt roboterhafter</string>
+    <string name="sprache_keine_berechtigung">Ohne Mikrofon-Berechtigung ist keine Sprachaufnahme möglich.</string>
+
+    <!-- Projektkontext -->
+    <string name="kontext_setzen">Projekt anheften</string>
+    <string name="kontext_titel">Projekt anheften</string>
+    <string name="kontext_feld">Projekt oder Baustelle</string>
+    <string name="kontext_hinweis">Wird jeder Nachricht als Bezug vorangestellt – auch bei Sprache.</string>
+    <string name="kontext_zuletzt">Zuletzt benutzt</string>
+    <string name="kontext_ordner">Deine Ordner</string>
+    <string name="kontext_ordner_ziel">Fotos und Videos gehen dann automatisch in diesen Ordner.</string>
+    <string name="kontext_uebernehmen">Anheften</string>
+    <string name="kontext_loesen">Lösen</string>
+    <string name="kontext_abbrechen">Abbrechen</string>
+    <string name="kontext_angeheftet">Projekt: %1$s</string>
+
+    <!-- Freihandmodus -->
+    <string name="freihand_titel">Freihändig</string>
+    <string name="freihand_bereit">Moment …</string>
+    <string name="freihand_hoert">Ich höre zu</string>
+    <string name="freihand_sendet">Einen Moment …</string>
+    <string name="freihand_spricht">Antwort läuft</string>
+    <string name="freihand_jetzt_senden">Fertig, abschicken</string>
+    <string name="kurzbefehl_freihand_kurz">Freihändig</string>
+    <string name="kurzbefehl_freihand_lang">Freihändig sprechen</string>
+    <string name="kachel_freihand">Chef-Assistent</string>
+    <string name="freihand_pausiert">Angehalten – nichts gehört</string>
+    <string name="freihand_weiter">Weiter zuhören</string>
+    <string name="freihand_beenden">Freihändig beenden</string>
+
+    <!-- Termine -->
+
+    <!-- Verbrauch -->
+    <string name="verbrauch_titel">Verbrauch</string>
+    <string name="verbrauch_leer">Keine Verbrauchsdaten.</string>
+
+    <!-- Allgemein -->
+    <string name="zurueck">Zurück</string>
+    <string name="neu_laden">Neu laden</string>
+
+    <!-- Bestätigungen -->
+    <string name="bestaetigung_ja">Ja</string>
+    <string name="bestaetigung_nein">Nein</string>
+    <string name="bestaetigung_ausgefuehrt">Ausgeführt</string>
+    <string name="bestaetigung_abgelehnt">Abgelehnt</string>
+    <string name="bestaetigung_abgelaufen">Diese Frage ist nicht mehr offen.</string>
+
+    <!-- Dateien -->
+    <string name="datei_laedt">Datei wird geladen …</string>
+    <string name="datei_keine_app">Für diesen Dateityp ist keine App installiert.</string>
+
+    <!-- Fotos -->
+    <string name="foto_aufnehmen">Foto oder Video zur Notiz</string>
+    <string name="foto_titel">Foto ablegen</string>
+    <string name="foto_text">Bildunterschrift (optional)</string>
+    <string name="foto_ziel">An welche Notiz?</string>
+    <string name="foto_ziel_heute">Neueste von heute</string>
+    <string name="foto_ziel_hinweis">Gibt es heute noch keine, legt der Server die Notiz „Fotos“ an.</string>
+    <string name="foto_hochladen">Ablegen</string>
+    <string name="foto_verwerfen">Verwerfen</string>
+    <string name="foto_keine_kamera">Auf diesem Gerät ist keine Kamera-App verfügbar.</string>
+    <string name="foto_abgelegt">Foto abgelegt in „%1$s“</string>
+    <string name="foto_abgelegt_neu">Foto abgelegt in der neuen Notiz „%1$s“</string>
+    <string name="foto_wartet">Kein Netz – das Foto wartet und geht später raus.</string>
+    <string name="foto_hinten_an">Foto eingereiht – es geht nach den wartenden raus.</string>
+    <!-- Foto an den Assistenten (v1.5.0) -->
+    <string name="foto_titel_fragen">Foto fragen</string>
+    <string name="foto_modus_ablegen">Nur ablegen</string>
+    <string name="foto_modus_fragen">Assistent fragen</string>
+    <string name="foto_frage_text">Frage (optional)</string>
+    <string name="foto_frage_vorgabe">Bitte Typenschild oder Fehleranzeige ablesen.</string>
+    <string name="foto_frage_hinweis">Typenschild, Fehlercode, Bauteil – der Assistent sieht sich das Foto an und schlägt bei Fehlercodes in den Anleitungen nach. Das dauert bis zu einer Minute. Das Foto wird dabei auch an der Notiz abgelegt.</string>
+    <string name="foto_fragen_knopf">Fragen</string>
+    <string name="foto_frage_kein_netz">Kein Netz. Zum Fragen braucht es eine Verbindung – „Nur ablegen“ hebt das Foto auf und schickt es später.</string>
+    <string name="kamera_fragen">Foto fragen</string>
+
+    <!-- Ziel für Fotos und Videos -->
+    <string name="ziel_andere">Andere …</string>
+    <string name="ziel_titel">Wohin?</string>
+    <string name="ziel_suche">Suchen</string>
+    <string name="ziel_ordner">Ordner</string>
+    <string name="ziel_notizen">Notizen</string>
+    <string name="ziel_nichts">Nichts gefunden.</string>
+    <string name="ziel_ordner_hinweis">Ordner: Die Aufnahme kommt an die neueste Notiz darin. Gibt es keine, legt der Server eine an.</string>
+    <string name="ziel_notiz_hinweis">Die Aufnahme wird an diese Notiz angehängt.</string>
+    <plurals name="ziel_notizen_anzahl">
+        <item quantity="one">1 Notiz</item>
+        <item quantity="other">%1$d Notizen</item>
+    </plurals>
+
+    <!-- Ablage -->
+    <string name="auftraege_titel">Aufträge</string>
+    <string name="auftraege_leer">Noch keine Aufträge. Versicherungsberichte und Begehungsprotokolle startest du im Chat, z. B. „Mach für SAN-653 einen Versicherungsbericht an die AXA“ oder „Fass die Begehung Petersburger zusammen“. Sie laufen dann auf dem Server im Hintergrund weiter, auch wenn die App zu ist.</string>
+    <string name="auftrag_neu">neu</string>
+    <string name="auftrag_status_wartet">Wartet</string>
+    <string name="auftrag_status_laeuft">Läuft</string>
+    <string name="auftrag_status_fertig">Fertig</string>
+    <string name="auftrag_status_fehler">Fehlgeschlagen</string>
+    <string name="auftrag_status_abgebrochen">Abgebrochen</string>
+    <string name="auftrag_neuer_versuch">Neuer Versuch folgt: %1$s</string>
+    <string name="auftrag_pruefen">Vor dem Versand prüfen</string>
+    <string name="schublade_plantafel">GU-Plantafel</string>
+    <string name="schublade_einstellungen">Einstellungen</string>
+    <string name="chat_mehr">Weitere Optionen</string>
+    <string name="ziel_gu_projekte">GU-Projekte</string>
+    <string name="auftrag_offene_punkte">Offene Punkte</string>
+    <string name="auftrag_art_versicherung">Versicherungsbericht</string>
+    <string name="auftrag_art_begehung">Begehungsprotokoll</string>
+    <string name="auftrag_art_sonstig">Auftrag</string>
+    <string name="auftrag_abbrechen">Abbrechen</string>
+    <string name="auftrag_weiterlaufen">Weiterlaufen lassen</string>
+    <string name="auftrag_wiederholen">Neu starten</string>
+    <string name="auftrag_abbrechen_titel">Auftrag abbrechen?</string>
+    <string name="auftrag_abbrechen_frage">„%1$s“ wird angehalten. Mit „Neu starten“ geht es später weiter, bereits Ausgewertetes bleibt erhalten.</string>
+    <plurals name="aufgaben_offen_anzahl">
+        <item quantity="one">1 offene Aufgabe</item>
+        <item quantity="other">%1$d offene Aufgaben</item>
+    </plurals>
+    <plurals name="auftraege_laufen">
+        <item quantity="one">1 Auftrag läuft</item>
+        <item quantity="other">%1$d Aufträge laufen</item>
+    </plurals>
+    <plurals name="auftraege_zaehler">
+        <item quantity="one">%1$d läuft oder ist neu</item>
+        <item quantity="other">%1$d laufen oder sind neu</item>
+    </plurals>
+    <string name="ablage_titel">Ablage</string>
+    <string name="ablage_nach_oben">Nach oben</string>
+    <string name="ablage_leer">Dieser Ordner ist leer.</string>
+    <string name="ablage_im_ordner">Im Ordner zeigen</string>
+    <string name="ablage_suchen">Ablage durchsuchen</string>
+    <string name="ablage_suche_loeschen">Suche löschen</string>
+    <string name="ablage_nur_hier">Nur in diesem Ordner</string>
+    <string name="ablage_suche_abgeschnitten">Mehr als %1$d Treffer – Suche genauer fassen.</string>
+    <string name="ablage_suche_leer">Nichts gefunden. Tipp: Projektnummer, Kunde oder Straße eingeben.</string>
+    <string name="ablage_sortierung">Sortierung</string>
+    <string name="ablage_sort_name">Name A–Z</string>
+    <string name="ablage_sort_name_ab">Neueste Projekte zuerst</string>
+    <string name="ablage_sort_geaendert">Zuletzt geändert</string>
+    <string name="link_oeffnen">Öffnen</string>
+    <string name="link_ordner_oeffnen">Ordner öffnen</string>
+    <string name="link_teilen">Teilen</string>
+
+    <!-- Videos -->
+    <string name="kamera_foto">Foto aufnehmen</string>
+    <string name="kamera_video">Video aufnehmen</string>
+    <string name="kamera_galerie">Aus der Galerie</string>
+    <string name="galerie_unlesbar">Die Datei aus der Galerie konnte nicht gelesen werden.</string>
+    <string name="video_titel">Video ablegen</string>
+    <string name="video_abschreiben">Gesprochenes abschreiben</string>
+    <string name="abschreiben_auto">Automatisch</string>
+    <string name="abschreiben_immer">Immer</string>
+    <string name="abschreiben_nie">Nie</string>
+    <string name="video_verkleinert">Wird auf 720p verkleinert … %1$d %%</string>
+    <string name="video_laedt_hoch">Wird hochgeladen … %1$d %%</string>
+    <string name="video_eingereiht">Video eingereiht – es wird im Hintergrund hochgeladen.</string>
+    <string name="video_zu_lang">Das Video ist länger als 30 Minuten. Mehr nimmt der Server nicht an.</string>
+    <string name="video_zu_gross">Das Video ist auch verkleinert noch größer als 1 GB.</string>
+    <string name="medium_nicht_gespeichert">Die Aufnahme konnte nicht zwischengespeichert werden.</string>
+
+    <!-- Dokumente zur Notiz (v1.12.0) -->
+    <string name="kamera_dokument">Dokument</string>
+    <string name="dokument_titel">Dokument ablegen</string>
+    <string name="dokument_text">Beschreibung (optional)</string>
+    <string name="dokument_laedt_hoch">Wird hochgeladen … %1$d %%</string>
+    <string name="dokument_hinweis">Der Assistent liest das Dokument. Danach z. B. im Chat: „Mach mir daraus ein Angebot“.</string>
+    <string name="dokument_abgelegt">Dokument abgelegt in „%1$s“</string>
+    <string name="dokument_abgelegt_neu">Dokument abgelegt in der neuen Notiz „%1$s“</string>
+    <string name="dokument_nicht_lesbar">Das Dokument ist abgelegt, aber der Assistent kann keinen Text darin lesen. Scans besser als Foto schicken.</string>
+    <string name="dokument_wartet">Kein Netz – das Dokument wartet und geht später raus.</string>
+    <string name="dokument_hinten_an">Dokument eingereiht – es geht nach den wartenden raus.</string>
+    <string name="dokument_unlesbar">Das Dokument konnte nicht gelesen werden.</string>
+    <string name="dokument_zu_gross">Das Dokument ist größer als 50 MB. Mehr nimmt der Server nicht an.</string>
+    <string name="dokument_dialog_offen">Erst den offenen Dialog abschließen, dann das Dokument noch einmal teilen.</string>
+
+    <!-- Fehler -->
+    <string name="fehler_nochmal">Nochmal versuchen</string>
+    <string name="fehler_keine_verbindung">Keine Verbindung zum Assistenten. Ist Tailscale aktiv?</string>
+    <string name="fehler_beschaeftigt">Der Assistent bearbeitet gerade noch die vorige Anfrage.</string>
+    <string name="fehler_unbekannt">Unerwarteter Fehler.</string>
+
+    <!-- Ausgangskorb -->
+    <string name="ausgang_angestossen">Versand angestoßen.</string>
+    <string name="ausgang_text_wartet">Kein Netz. Die Nachricht wartet und geht raus, sobald wieder Verbindung besteht.</string>
+    <string name="ausgang_nicht_gespeichert">Konnte nicht zwischengespeichert werden. Der Text steht wieder im Eingabefeld.</string>
+    <string name="ausgang_aufnahme_nicht_gespeichert">Die Aufnahme konnte nicht zwischengespeichert werden.</string>
+    <string name="ausgang_sprachnachricht">🎤 Sprachnachricht</string>
+    <string name="ausgang_diktat_wartet">Kein Netz. Die Aufnahme wird abgeschrieben, sobald wieder Verbindung besteht, und erscheint dann hier zum Prüfen.</string>
+    <string name="ausgang_wartet_marke">Wartet auf Netz</string>
+    <string name="rueckmeldung_diktat">Diktat von %1$s</string>
+    <string name="rueckmeldung_nicht_gesendet">Nicht gesendet (%1$s)</string>
+    <string name="rueckmeldung_hinweis">Hinweis (%1$s)</string>
+    <string name="rueckmeldung_uebernehmen">Ins Eingabefeld</string>
+    <string name="rueckmeldung_verwerfen">Verwerfen</string>
+    <string name="rueckmeldung_ok">OK</string>
+    <string name="chat_erst_aufnahme_beenden">Erst die Aufnahme beenden.</string>
+    <plurals name="tabelle_weitere_zeilen">
+        <item quantity="one">… 1 weitere Zeile – antippen für alle</item>
+        <item quantity="other">… %1$d weitere Zeilen – antippen für alle</item>
+    </plurals>
+    <plurals name="ausgang_wartet">
+        <item quantity="one">1 Nachricht wartet – jetzt senden</item>
+        <item quantity="other">%1$d Nachrichten warten – jetzt senden</item>
+    </plurals>
+    <plurals name="medienausgang_wartet">
+        <item quantity="one">1 Datei wartet – jetzt senden</item>
+        <item quantity="other">%1$d Dateien warten – jetzt senden</item>
+    </plurals>
+    <plurals name="videos_abgelegt">
+        <item quantity="one">Video abgelegt in „%2$s“</item>
+        <item quantity="other">%1$d Videos abgelegt in „%2$s“</item>
+    </plurals>
+    <plurals name="videos_abgelegt_abschrift">
+        <item quantity="one">Video abgelegt in „%2$s“ – Gesprochenes wird abgeschrieben und erscheint in der Notiz.</item>
+        <item quantity="other">%1$d Videos abgelegt in „%2$s“ – Gesprochenes wird abgeschrieben und erscheint in der Notiz.</item>
+    </plurals>
+    <plurals name="dokumente_nachgesendet">
+        <item quantity="one">Dokument nachgesendet in „%2$s“</item>
+        <item quantity="other">%1$d Dokumente nachgesendet in „%2$s“</item>
+    </plurals>
+    <plurals name="fotos_nachgesendet">
+        <item quantity="one">Foto nachgesendet in „%2$s“</item>
+        <item quantity="other">%1$d Fotos nachgesendet in „%2$s“</item>
+    </plurals>
+
+    <!-- Aufgaben "Was ist offen?" (v1.7.0) -->
+    <string name="aufgaben_titel">Offen</string>
+    <string name="aufgaben_ich">Meine</string>
+    <string name="aufgaben_leer">Nichts offen. Aufgaben entstehen im Chat, z. B. „Notier dir, ich muss noch Pico klären, bis Freitag“.</string>
+    <string name="aufgaben_ueberfaellig">Überfällig</string>
+    <string name="aufgaben_diese_woche">Diese Woche</string>
+    <string name="aufgaben_spaeter">Später</string>
+    <string name="aufgaben_ohne_datum">Ohne Datum</string>
+    <string name="aufgaben_an_andere">An andere vergeben</string>
+    <string name="aufgaben_heute_erledigt">Heute erledigt</string>
+    <string name="aufgabe_bis">bis %1$s</string>
+    <string name="aufgabe_fuer">für %1$s</string>
+    <string name="aufgabe_von">von %1$s</string>
+    <string name="aufgabe_erledigt_von">erledigt von %1$s</string>
+    <string name="aufgabe_noch_aktuell">Noch aktuell?</string>
+    <string name="aufgabe_bleibt">Bleibt</string>
+    <string name="aufgabe_weg_damit">Weg damit</string>
+    <string name="aufgabe_neue_frist">Neue Frist</string>
+    <string name="aufgabe_frist_setzen">Übernehmen</string>
+    <string name="aufgabe_frist_entfernen">Frist entfernen</string>
+    <string name="aufgabe_streichen_titel">Aufgabe streichen?</string>
+    <string name="aufgabe_streichen_frage">„%1$s“ wird in der Notiz gestrichen und verschwindet aus der Übersicht.</string>
+</resources>

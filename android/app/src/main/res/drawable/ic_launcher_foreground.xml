@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sprechblase mit Haken: Assistent, der erst nach Bestaetigung handelt.
+     108x108 Adaptive-Icon-Flaeche, Motiv bleibt in der sicheren Mitte (ca. 26..82). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,28 L72,28 A10,10 0 0 1 82,38 L82,58 A10,10 0 0 1 72,68 L52,68 L40,79 L40,68 L36,68 A10,10 0 0 1 26,58 L26,38 A10,10 0 0 1 36,28 Z" />
+
+    <path
+        android:strokeColor="#FF1F6F5C"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M41,48 L49,56 L67,39" />
+</vector>

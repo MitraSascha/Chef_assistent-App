@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Der Dienst ist nur ueber Tailscale erreichbar; INTERNET deckt auch das VPN-Interface ab. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Fuer POST /v1/sprache: Diktat und Freihandmodus. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Grosse Videos und Dokumente laufen als Vordergrunddienst hoch: ohne den
+         beendet Android einen Hintergrundauftrag nach etwa 10 Minuten, und ein
+         1-GB-Video ueber Mobilfunk faenge immer wieder von vorn an. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <application
+        android:name=".ChefAssistentApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/datenuebertragung"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ChefAssistent">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.ChefAssistent">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Langer Druck aufs App-Symbol -> direkt in den Freihandmodus. -->
+            <intent-filter>
+                <action android:name="de.chefassistent.app.FREIHAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- Teilen -> Chef-Assistent: Dokumente fuer POST /v1/dokumente (v1.12.0).
+                 text/plain ohne Datei (Link, Mailausschnitt) landet im Eingabefeld. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="application/vnd.ms-excel.sheet.macroEnabled.12" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="message/rfc822" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/kurzbefehle" />
+        </activity>
+
+        <!-- Kachel in den Schnelleinstellungen. Muss vom Nutzer einmalig
+             hinzugefuegt werden, Android blendet sie sonst nicht ein. -->
+        <service
+            android:name=".FreihandKachel"
+            android:exported="true"
+            android:icon="@drawable/ic_freihand"
+            android:label="@string/kachel_freihand"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Vordergrunddienst von WorkManager fuer den VersandArbeiter (Typ seit Android 14 Pflicht). -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
+        <!-- Gibt heruntergeladene Dateien aus GET /v1/datei an andere Apps weiter. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.dateien"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/dateipfade" />
+        </provider>
+    </application>
+
+</manifest>

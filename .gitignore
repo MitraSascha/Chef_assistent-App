@@ -1,0 +1,20 @@
+# Eigenes Repo (MitraSascha/Chef_assistent-WinApp)
+windows/
+
+# IDE
+.idea/
+*.iml
+
+# Android (ergaenzt android/.gitignore)
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/**/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Bildschirmfotos vom Testen am Geraet
+*.png
+!android/**/res/**/*.png

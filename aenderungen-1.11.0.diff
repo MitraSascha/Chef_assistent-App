@@ -1,0 +1,107 @@
+diff --git a/docs/API.md b/docs/API.md
+index b1434dd..8423834 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -57,6 +57,9 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
+ | PUT | `/v1/bauablauf/{id}/gewerke` | Gewerk anlegen/ändern (Firma, Kontakt, Telefon, Farbe) |
+ | DELETE | `/v1/bauablauf/gewerke/{id}` | Gewerk löschen (nur ohne Einsätze) |
+ | POST | `/v1/bauablauf/{id}/pdf` | Bauzeitenplan als PDF in den Projektordner |
++| GET | `/v1/angebote` | Angebote aus dem Angebotsgenerator (neueste zuerst) |
++| GET | `/v1/angebote/{id}` | Vorschau eines Angebots: Positionen, Summen, offene Fragen, Markierungen |
++| GET | `/v1/angebote/{id}/ugl?titelzeilen=` | UGL-Datei für den CRM-Import herunterladen |
+ | GET | `/v1/bestaetigungen` | Alle offenen Ja/Nein-Fragen |
+ | POST | `/v1/bestaetigungen/{id}` | Ja/Nein beantworten |
+ | GET | `/v1/gespraeche` | Liste der Gespräche (neueste zuerst) |
+@@ -416,6 +419,58 @@ PATCH /v1/bauablauf/einsaetze/12   {"von": "2026-10-12", "folgende_mitverschiebe
+ selben Bereich) · `unbestaetigt` (beginnt in ≤ 7 Tagen, noch „geplant“) · `ueberfaellig` (vorbei, nicht „fertig“).
+ Fehler: 404 = nicht gefunden · 422 = ungültig (Datum, bis vor von, Gewerk mit Einsätzen löschen …).
+ 
++## 4e. Angebote (Angebotsgenerator) – neu in 1.11.0
++
++Angebote entstehen **im Chat**: „Erstell mir aus den Unterlagen im Ordner … ein Angebot“ (Plan, Leistungsverzeichnis,
++Kundenwünsche). Der Assistent nutzt dafür den Mitra-Angebotsgenerator auf dem Server: Standardpakete (WC, Waschtisch,
++Dusche …) mit unseren meistverbauten Großhändler-Artikeln, Heizkörperauslegung nach Fläche und Fensternische,
++Pauschalen (Monteur, Material, Demontage) aus dem Leistungsverzeichnis. Ergebnis ist eine **UGL-Datei** für den
++CRM-Import. Ändern geht ebenfalls im Chat („Gäste-WC bitte clivia statt one“, „Heizkörper Zimmer 2 doch Typ 33“) –
++dieselbe `gespraech_id` weiterverwenden, dann weiß der Assistent, um welches Angebot es geht.
++
++Die App braucht dafür nur **lesen + herunterladen**:
++1. Liste `GET /v1/angebote` → antippen → `GET /v1/angebote/{id}`.
++2. Darstellung wie ein Angebot: je Eintrag in `gruppen` eine Überschrift (`nr` + `titel`; `ebene` 1 = Bereich,
++   2 = Unterbereich eingerückt), darunter die `positionen`. **Beträge und Mengen sind Strings** mit Punkt als
++   Dezimaltrenner (`"109.91"`) – zum Rechnen in `BigDecimal` umwandeln.
++3. **Markierungen** (`markierung` an der Position, `null` = keine): `pruefen` rot · `alternative` gelb
++   (Ersatz für einen LV-Artikel, den der Großhändler nicht führt) · `info` blau (z. B. Rechenweg einer Pauschale).
++4. **„Zu prüfen“** oben oder als eigener Reiter: offene `fragen` (`erledigt=false`; `positionen_nr` = betroffene
++   Positionen → antippen springt zur Position) und `markiert` (alle markierten Positionen).
++5. Kopf: `ek_summe` = Material im Einkauf (der Aufschlag wird nach dem Import im CRM gesetzt),
++   `pauschalen_summe` = Pauschalen als Verkaufspreis.
++6. „UGL“ → `GET /v1/angebote/{id}/ugl` → Datei speichern bzw. über das Android-Teilen-Menü weitergeben
++   (Dateiname aus `Content-Disposition`). Alternativ im Chat „leg die UGL in den Projektordner …“.
++7. `vorschau` ist der Link zur Web-Vorschau (Bearbeiten am PC); nur anzeigen, wenn gesetzt.
++
++```json
++GET /v1/angebote
++[{"id": "b35a08287b405d8d", "titel": "PET44 WE 01 – Petersburger Str. 44", "positionen": 55, "geaendert": "2026-10-09T13:30:12"}]
++
++GET /v1/angebote/b35a08287b405d8d
++{"id": "b35a08287b405d8d", "titel": "PET44 WE 01 – Petersburger Str. 44", "bearbeiter": "Sascha Richter", "version": 21,
++ "geaendert": "2026-10-09T13:30:12", "ek_summe": "9195.69", "pauschalen_summe": "4468.00",
++ "vorschau": "https://angebote.mitra-sanitaer.de/a/b35a08287b405d8d",
++ "gruppen": [
++  {"nr": "1", "titel": "Arbeits- und Beschaffungskosten", "ebene": 1, "bereich": "Arbeits- und Beschaffungskosten", "unterbereich": "",
++   "positionen": [{"id": "p52", "nr": "1._.001", "art": "ANF", "menge": "1", "name": "Anfahrtskosten", "ek": "0", "lp": "0",
++                   "ek_gesamt": "0", "vk": "250.00", "vk_gesamt": "250.00", "pauschale": true, "bemerkung": "",
++                   "quelle": "pauschale/anfahrt", "genutzt": 0, "markierung": {"art": "info", "text": "Rechenweg: …"}}]},
++  {"nr": "2.3", "titel": "Waschtisch", "ebene": 2, "bereich": "Badezimmer", "unterbereich": "Waschtisch",
++   "positionen": [{"id": "p17", "nr": "2.3.004", "art": "SEVEN", "menge": "1", "name": "Einhand Waschtischbatterie Seven …",
++                   "ek": "114.5", "lp": "173.5", "ek_gesamt": "114.50", "bemerkung": "Alt. zu LV: Duravit DU C.1",
++                   "quelle": "waschtisch_up/standard:vorgabe set", "genutzt": 16,
++                   "markierung": {"art": "alternative", "text": "Alternative zu LV: Duravit DU C.1"}}]}],
++ "fragen": [{"id": "f2", "text": "Ablauf und Füße … passen sie zur Alternative?", "erledigt": false,
++             "positionen": ["p23"], "positionen_nr": ["2.4.002"], "gruppe_nr": ""}],
++ "markiert": [{"id": "p17", "nr": "2.3.004", "art_nr": "SEVEN", "name": "Einhand Waschtischbatterie Seven …",
++               "art": "alternative", "text": "Alternative zu LV: Duravit DU C.1"}],
++ "hinweise": ["Paket 'Dusche mit Duschwanne' ist ein Entwurf – Artikelauswahl von Mitra noch nicht bestätigt."]}
++```
++Pauschal-Positionen erkennt man an `"pauschale": true` – dort `vk`/`vk_gesamt` statt `ek` anzeigen.
++Fehler: 404 = Angebot gibt es nicht · 502 = Angebotsgenerator nicht erreichbar („Nochmal versuchen“) ·
++503 = auf diesem Server nicht eingerichtet (Menüpunkt ausblenden).
++
+ ## 5. Kalender direkt
+ 
+ `GET /v1/termine?von=2026-09-24` → Termine dieses Tages. `bis=2026-09-30` (einschließlich). `person=patrick` oder `alle=true` für andere Kalender.
+@@ -498,6 +553,10 @@ interface AssistentApi {
+     @GET("v1/gespraeche/{id}") suspend fun verlauf(@Path("id") id: String): List<Nachricht>
+     @GET("v1/termine") suspend fun termine(@Query("von") von: String, @Query("bis") bis: String? = null): Termine
+     @Streaming @GET("v1/datei") suspend fun datei(@Query("pfad") pfad: String): ResponseBody
++    @GET("v1/angebote") suspend fun angebote(): List<AngebotKurz>
++    @GET("v1/angebote/{id}") suspend fun angebot(@Path("id") id: String): Angebot
++    @Streaming @GET("v1/angebote/{id}/ugl")
++    suspend fun angebotUgl(@Path("id") id: String, @Query("titelzeilen") titelzeilen: Boolean = true): ResponseBody
+     @GET("v1/ordner") suspend fun ordner(@Query("pfad") pfad: String = ""): Ordner
+     @GET("v1/auftraege") suspend fun auftraege(): List<Auftrag>
+     @GET("v1/auftraege/{id}") suspend fun auftrag(@Path("id") id: String): Auftrag
+@@ -578,6 +637,22 @@ OkHttp: `readTimeout(150, SECONDS)`, Interceptor setzt `Authorization: Bearer <c
+ @POST("v1/anmelden") suspend fun anmelden(@Body a: Anmeldung): AnmeldeAntwort   // ohne Bearer
+ @POST("v1/abmelden") suspend fun abmelden(): Response<Unit>
+ ```
++```kotlin
++// Angebote (1.11.0) – Beträge/Mengen kommen als String, in BigDecimal umwandeln
++@Serializable data class AngebotKurz(val id: String, val titel: String, val positionen: Int, val geaendert: String)
++@Serializable data class Markierung(val art: String, val text: String)            // pruefen | alternative | info
++@Serializable data class AngebotPosition(val id: String, val nr: String, val art: String, val menge: String,
++    val name: String, val ek: String, val ek_gesamt: String, val lp: String = "0", val bemerkung: String = "",
++    val vk: String? = null, val vk_gesamt: String? = null, val pauschale: Boolean = false,
++    val markierung: Markierung? = null)
++@Serializable data class AngebotGruppe(val nr: String, val titel: String, val ebene: Int, val positionen: List<AngebotPosition>)
++@Serializable data class AngebotFrage(val id: String, val text: String, val erledigt: Boolean,
++    val positionen: List<String> = emptyList(), val positionen_nr: List<String> = emptyList(), val gruppe_nr: String = "")
++@Serializable data class Angebot(val id: String, val titel: String, val version: Int, val geaendert: String,
++    val ek_summe: String, val pauschalen_summe: String = "0", val vorschau: String? = null,
++    val gruppen: List<AngebotGruppe>, val fragen: List<AngebotFrage> = emptyList(), val hinweise: List<String> = emptyList())
++```
++
+ Alternativ Klassen generieren: `openapi-generator-cli generate -i openapi.json -g kotlin -o client --additional-properties=library=jvm-retrofit2,serializationLibrary=kotlinx_serialization`.
+ 
+ ## Verbindlichkeit

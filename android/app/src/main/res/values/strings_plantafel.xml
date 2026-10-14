@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GU-Plantafel (/v1/bauablauf, seit v1.9.0) -->
+    <string name="gu_titel">GU-Projekte</string>
+    <string name="gu_untertitel">Plantafeln der GU-Baustellen</string>
+    <string name="gu_leer">Noch keine GU-Projekte. Lege hier eins an oder sag im Chat z. B. „Leg ein GU-Projekt Grünberger Str. 10 an“.</string>
+    <string name="gu_neu">Neues GU-Projekt</string>
+    <string name="gu_neu_name">Name, z. B. Grünberger Str. 10</string>
+    <string name="gu_anlegen">Anlegen</string>
+    <string name="gu_abbrechen">Abbrechen</string>
+    <string name="gu_nichts_geplant">Noch nichts geplant</string>
+    <plurals name="gu_einsaetze_anzahl">
+        <item quantity="one">%d Einsatz</item>
+        <item quantity="other">%d Einsätze</item>
+    </plurals>
+
+    <string name="gu_pdf">Bauzeitenplan als PDF</string>
+    <string name="gu_ordner">Projektordner</string>
+    <string name="gu_neu_laden">Neu laden</string>
+    <string name="gu_tafel_leer">Noch keine Einsätze. Tippe auf „Einsatz“ oder sag im Chat z. B. „Trockenbauer bei Grünberger vom 12. bis 16.10., danach eine Woche Fliese“.</string>
+    <string name="gu_warnungen">Hinweise</string>
+    <string name="gu_gewerke">Gewerke</string>
+    <string name="gu_heute">Heute</string>
+    <string name="gu_legende_geplant">geplant</string>
+    <string name="gu_legende_bestaetigt">bestätigt</string>
+    <string name="gu_legende_fertig">fertig</string>
+
+    <string name="gu_status_geplant">Geplant</string>
+    <string name="gu_status_bestaetigt">Bestätigt</string>
+    <string name="gu_status_fertig">Fertig</string>
+    <string name="gu_status_abgesagt">Abgesagt</string>
+
+    <string name="gu_einsatz">Einsatz</string>
+    <string name="gu_einsatz_neu">Einsatz hinzufügen</string>
+    <string name="gu_einsatz_bearbeiten">Einsatz bearbeiten</string>
+    <string name="gu_gewerk">Gewerk</string>
+    <string name="gu_firma">Firma</string>
+    <string name="gu_kontakt">Ansprechpartner</string>
+    <string name="gu_telefon">Telefon</string>
+    <string name="gu_anrufen">%1$s anrufen</string>
+    <string name="gu_farbe">Farbe</string>
+    <string name="gu_was">Was</string>
+    <string name="gu_bereich">Bereich</string>
+    <string name="gu_von">Von</string>
+    <string name="gu_bis">Bis</string>
+    <string name="gu_status">Status</string>
+    <string name="gu_nach">Beginnt nach: %1$s</string>
+    <string name="gu_speichern">Speichern</string>
+    <string name="gu_datum_waehlen">Übernehmen</string>
+    <string name="gu_loeschen">Löschen</string>
+    <string name="gu_einsatz_loeschen_titel">Einsatz löschen?</string>
+    <string name="gu_einsatz_loeschen_frage">„%1$s“ wird von der Plantafel entfernt. Das lässt sich nicht rückgängig machen.</string>
+    <string name="gu_mitverschieben_titel">Nachfolgende mitverschieben?</string>
+    <string name="gu_mitverschieben_frage">%1$d Einsatz/Einsätze beginnen erst nach diesem. Sollen sie um dieselben Tage mitwandern?</string>
+    <string name="gu_mitverschieben_ja">Mitverschieben</string>
+    <string name="gu_mitverschieben_nein">Nur diesen</string>
+
+    <string name="gu_gewerk_bearbeiten">Gewerk bearbeiten</string>
+    <string name="gu_gewerk_loeschen_titel">Gewerk löschen?</string>
+    <string name="gu_gewerk_loeschen_frage">„%1$s“ wird von der Plantafel entfernt.</string>
+    <string name="gu_gewerk_hat_einsaetze">Löschen geht nur ohne Einsätze.</string>
+</resources>

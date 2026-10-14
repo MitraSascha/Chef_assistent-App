@@ -1,0 +1,6869 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Chef-Assistent",
+    "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
+    "version": "1.18.0"
+  },
+  "paths": {
+    "/v1/gesund": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Gesund",
+        "operationId": "gesund_v1_gesund_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ich": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Ich",
+        "operationId": "ich_v1_ich_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ich"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/anmelden": {
+      "post": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Anmelden",
+        "operationId": "anmelden_v1_anmelden_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Anmeldung"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnmeldeAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/abmelden": {
+      "post": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Abmelden",
+        "operationId": "abmelden_v1_abmelden_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/sicherheit": {
+      "get": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Sicherheit Stand",
+        "operationId": "sicherheit_stand_v1_sicherheit_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sicherheit"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/sicherheit/passwort": {
+      "post": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Passwort Aendern",
+        "operationId": "passwort_aendern_v1_sicherheit_passwort_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswortAendern"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/sicherheit/zwei-faktor": {
+      "post": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Zwei Faktor Start",
+        "operationId": "zwei_faktor_start_v1_sicherheit_zwei_faktor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZweiFaktorStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZweiFaktorEinrichtung"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/sicherheit/zwei-faktor/bestaetigen": {
+      "post": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Zwei Faktor Bestaetigen",
+        "operationId": "zwei_faktor_bestaetigen_v1_sicherheit_zwei_faktor_bestaetigen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeEingabe"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/geraete": {
+      "get": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Geraete",
+        "operationId": "geraete_v1_geraete_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Geraet"
+                  },
+                  "type": "array",
+                  "title": "Response Geraete V1 Geraete Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/geraete/{gid}": {
+      "delete": {
+        "tags": [
+          "Anmeldung"
+        ],
+        "summary": "Geraet Entfernen",
+        "operationId": "geraet_entfernen_v1_geraete__gid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "gid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Gid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Chat",
+        "description": "Nachricht senden. Dauert je nach Aufgabe Sekunden bis viele Minuten (Angebote) – in der App KEIN Lese-Timeout\nsetzen. Reißt die Verbindung trotzdem ab: Der Assistent arbeitet weiter; Ergebnis mit GET /v1/chat/{anfrage_id}\nabholen (oder dieselbe anfrage_id erneut senden – wird nicht doppelt ausgeführt).\nMit `bilder` sieht der Assistent die Fotos (Typenschild ablesen, Fehleranzeige deuten …);\nein Foto vorher mit POST /v1/fotos hochladen und dessen `foto`-Pfad hier mitgeben.\nEin ungültiger Bildpfad ergibt 404 (nicht gefunden) bzw. 422 (kein Foto).",
+        "operationId": "chat_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatAnfrage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/chat/{anfrage_id}": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Chat Stand",
+        "description": "Stand einer Chat-Anfrage (neu in 1.17.0). Für den Fall, dass die Verbindung während POST /v1/chat abreißt:\nDer Assistent arbeitet trotzdem weiter. Solange status=laeuft, alle paar Sekunden erneut fragen.",
+        "operationId": "chat_stand_v1_chat__anfrage_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anfrage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Anfrage Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sprache": {
+      "post": {
+        "tags": [
+          "Sprache"
+        ],
+        "summary": "Sprache",
+        "description": "Sprachaufnahme in Text umwandeln und optional gleich beantworten.",
+        "operationId": "sprache_v1_sprache_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_sprache_v1_sprache_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpracheAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/vorlesen": {
+      "post": {
+        "tags": [
+          "Sprache"
+        ],
+        "summary": "Vorlesen",
+        "description": "Text als MP3 (Alternative zur Sprachausgabe des Handys).",
+        "operationId": "vorlesen_v1_vorlesen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VorlesenAnfrage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "MP3",
+            "content": {
+              "audio/mpeg": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/fotos": {
+      "post": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Foto",
+        "description": "Foto zu einer Notiz ablegen. Es wird verkleinert (lange Seite 2560 px), gedreht und ohne Metadaten\n(kein GPS) als JPEG gespeichert: `Notizen/<Name>/<Notizname>/<Datum Uhrzeit>.jpg`. Die Notiz bekommt\neinen Nachtrag „## Foto <Zeit>“ mit Bildverweis und Unterschrift. Ein Foto pro Anfrage.",
+        "operationId": "foto_v1_fotos_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_foto_v1_fotos_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FotoAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/dokumente": {
+      "post": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Dokument",
+        "description": "Dokument (Leistungsverzeichnis, Plan, Angebot, Excel-Liste …) zu einer Notiz ablegen, z.B. als Grundlage\nfür ein Angebot. Gespeichert unverändert unter dem Originalnamen neben der Notiz\n(`Notizen/<Name>/<Notizname>/<Dateiname>`); die Notiz bekommt „## Dokument <Zeit>“ mit Link.",
+        "operationId": "dokument_v1_dokumente_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_dokument_v1_dokumente_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DokumentAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/videos": {
+      "post": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Video",
+        "description": "Video zu einer Notiz ablegen: Bild und Ton werden unverändert übernommen, Metadaten (GPS) entfernt,\ngespeichert als `Notizen/<Name>/<Notizname>/<Datum Uhrzeit>.mp4`. Die Notiz bekommt „## Video <Zeit>“.\nGesprochenes wird im Hintergrund abgeschrieben und ersetzt dort den Platzhalter (Sekunden bis Minuten).",
+        "operationId": "video_v1_videos_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_video_v1_videos_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/angebote": {
+      "get": {
+        "tags": [
+          "Angebote"
+        ],
+        "summary": "Angebote Liste",
+        "description": "Angebote aus dem Angebotsgenerator, neueste zuerst: `id`, `titel`, `positionen`, `geaendert`.\nErstellt und geändert werden sie im Chat („erstell mir aus den Unterlagen … ein Angebot“).",
+        "operationId": "angebote_liste_v1_angebote_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/angebote/{aid}": {
+      "get": {
+        "tags": [
+          "Angebote"
+        ],
+        "summary": "Angebot Ansicht",
+        "description": "Vorschau eines Angebots: `gruppen` (Bereiche mit `positionen`), `ek_summe` (Material),\n`pauschalen_summe` (VK), `fragen`, `markiert`, `hinweise`, `vorschau` (Web-Link). Aufbau siehe docs/API.md 4e.",
+        "operationId": "angebot_ansicht_v1_angebote__aid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/angebote/{aid}/antworten": {
+      "post": {
+        "tags": [
+          "Angebote"
+        ],
+        "summary": "Angebot Antworten",
+        "description": "Eine Entscheidung beantworten (`punkte[].id` aus GET /v1/angebote/{id}). `antwort` = eine der `optionen`,\neigener Text oder `\"PASST\"` (so lassen). Antwort: das aktualisierte Angebot (wie GET). Eingearbeitet wird die\nAntwort vom Assistenten beim nächsten „mach weiter“ im Chat – bis dahin steht sie in `beantwortet`.",
+        "operationId": "angebot_antworten_v1_angebote__aid__antworten_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AngebotAntwort"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/angebote/{aid}/ugl": {
+      "get": {
+        "tags": [
+          "Angebote"
+        ],
+        "summary": "Angebot Ugl",
+        "description": "UGL-Datei für den CRM-Import (ASCII, feste Satzlängen). `titelzeilen=false` = ohne Platzhalterzeilen.",
+        "operationId": "angebot_ugl_v1_angebote__aid__ugl_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aid"
+            }
+          },
+          {
+            "name": "titelzeilen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Titelzeilen"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UGL-Datei",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auftraege": {
+      "get": {
+        "tags": [
+          "Aufträge"
+        ],
+        "summary": "Auftraege",
+        "description": "Eigene Hintergrundaufträge (Versicherungsberichte, Begehungsprotokolle), neueste zuerst. Gestartet werden sie im Chat.\nSolange einer `wartet`/`laeuft`: alle 15–30 s abfragen (nur wenn die Ansicht offen ist).",
+        "operationId": "auftraege_v1_auftraege_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Auftrag"
+                  },
+                  "type": "array",
+                  "title": "Response Auftraege V1 Auftraege Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/auftraege/{aid}": {
+      "get": {
+        "tags": [
+          "Aufträge"
+        ],
+        "summary": "Auftrag",
+        "operationId": "auftrag_v1_auftraege__aid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Auftrag"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auftraege/{aid}/abbrechen": {
+      "post": {
+        "tags": [
+          "Aufträge"
+        ],
+        "summary": "Auftrag Abbrechen",
+        "operationId": "auftrag_abbrechen_v1_auftraege__aid__abbrechen_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Auftrag"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auftraege/{aid}/wiederholen": {
+      "post": {
+        "tags": [
+          "Aufträge"
+        ],
+        "summary": "Auftrag Wiederholen",
+        "description": "Fehlgeschlagenen oder abgebrochenen Auftrag neu starten (bereits Ausgewertetes wird wiederverwendet).",
+        "operationId": "auftrag_wiederholen_v1_auftraege__aid__wiederholen_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Auftrag"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/aufgaben": {
+      "get": {
+        "tags": [
+          "Aufgaben"
+        ],
+        "summary": "Aufgaben Uebersicht",
+        "description": "„Was ist offen?“ – Aufgaben (Häkchen-Zeilen) aus den Notizen aller, für eine Person gruppiert.\nAngelegt werden Aufgaben im Chat („notier dir, ich muss …“).",
+        "operationId": "aufgaben_uebersicht_v1_aufgaben_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "person",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Name/Anzeigename; weglassen = ich selbst",
+              "title": "Person"
+            },
+            "description": "Name/Anzeigename; weglassen = ich selbst"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AufgabenUebersicht"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/aufgaben/{aid}": {
+      "post": {
+        "tags": [
+          "Aufgaben"
+        ],
+        "summary": "Aufgabe Aendern",
+        "description": "Abhaken, Haken zurücknehmen, streichen, „noch aktuell“ bestätigen oder Frist ändern. Jeder darf jede\nAufgabe ändern; in der Notiz steht dann „erledigt <Datum> von <Name>“. Danach die Übersicht neu laden –\ndie ID kann sich ändern.",
+        "operationId": "aufgabe_aendern_v1_aufgaben__aid__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AufgabeAenderung"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AufgabeAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/bauablauf": {
+      "get": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Projekte",
+        "description": "Alle GU-Projekte (= Ordner unter GU-Projekte/, neue Ordner erscheinen automatisch).",
+        "operationId": "gu_projekte_v1_bauablauf_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuProjekte"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Projekt Neu",
+        "operationId": "gu_projekt_neu_v1_bauablauf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuProjektNeu"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuProjekt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/bauablauf/alle": {
+      "get": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Alle",
+        "description": "Gesamtansicht: alle Einsätze aller GU-Projekte (z.B. Zeilen = Projekte).",
+        "operationId": "gu_alle_v1_bauablauf_alle_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuAlle"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/bauablauf/{pid}": {
+      "get": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Plan",
+        "description": "Plantafel eines Projekts: Gewerke (Zeilen), Einsätze (Balken), Warnungen.",
+        "operationId": "gu_plan_v1_bauablauf__pid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuPlan"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bauablauf/{pid}/einsaetze": {
+      "post": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Einsatz Neu",
+        "operationId": "gu_einsatz_neu_v1_bauablauf__pid__einsaetze_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EinsatzNeu"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinsatzAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/bauablauf/einsaetze/{eid}": {
+      "patch": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Einsatz Aendern",
+        "description": "Ziehen/Länge ändern auf der Tafel = neues von/bis. Nur mitgeschickte Felder ändern sich.",
+        "operationId": "gu_einsatz_aendern_v1_bauablauf_einsaetze__eid__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EinsatzAenderung"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinsatzAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Einsatz Loeschen",
+        "operationId": "gu_einsatz_loeschen_v1_bauablauf_einsaetze__eid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Gu Einsatz Loeschen V1 Bauablauf Einsaetze  Eid  Delete"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bauablauf/{pid}/gewerke": {
+      "put": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Gewerk",
+        "description": "Gewerk anlegen (wenn neu) oder Firma/Kontakt/Telefon/Farbe/Namen ändern.",
+        "operationId": "gu_gewerk_v1_bauablauf__pid__gewerke_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GewerkSetzen"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GewerkAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/bauablauf/gewerke/{gid}": {
+      "delete": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Gewerk Loeschen",
+        "operationId": "gu_gewerk_loeschen_v1_bauablauf_gewerke__gid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "gid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Gid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Gu Gewerk Loeschen V1 Bauablauf Gewerke  Gid  Delete"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/bauablauf/{pid}/pdf": {
+      "post": {
+        "tags": [
+          "GU-Plantafel"
+        ],
+        "summary": "Gu Pdf",
+        "description": "Bauzeitenplan als PDF in den Projektordner (zum Verschicken). Öffnen über GET /v1/datei.",
+        "operationId": "gu_pdf_v1_bauablauf__pid__pdf_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PfadAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/bestaetigungen": {
+      "get": {
+        "tags": [
+          "Bestätigungen"
+        ],
+        "summary": "Offene",
+        "operationId": "offene_v1_bestaetigungen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OffeneBestaetigung"
+                  },
+                  "type": "array",
+                  "title": "Response Offene V1 Bestaetigungen Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/bestaetigungen/{bid}": {
+      "post": {
+        "tags": [
+          "Bestätigungen"
+        ],
+        "summary": "Entscheiden",
+        "description": "Ja/Nein auf eine vorgeschlagene Aktion (Verschieben, Löschen, Überschreiben, Termin ändern).",
+        "operationId": "entscheiden_v1_bestaetigungen__bid__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Entscheidung"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntscheidungAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gespraeche": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Gespraeche",
+        "operationId": "gespraeche_v1_gespraeche_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GespraechKurz"
+                  },
+                  "type": "array",
+                  "title": "Response Gespraeche V1 Gespraeche Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/gespraeche/{gid}": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Verlauf",
+        "operationId": "verlauf_v1_gespraeche__gid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "gid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Gid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Nachricht"
+                  },
+                  "title": "Response Verlauf V1 Gespraeche  Gid  Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Gespraech Loeschen",
+        "operationId": "gespraech_loeschen_v1_gespraeche__gid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "gid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Gid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/termine": {
+      "get": {
+        "tags": [
+          "Kalender"
+        ],
+        "summary": "Termine",
+        "operationId": "termine_v1_termine_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "von",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "YYYY-MM-DD oder YYYY-MM-DDTHH:MM",
+              "title": "Von"
+            },
+            "description": "YYYY-MM-DD oder YYYY-MM-DDTHH:MM"
+          },
+          {
+            "name": "bis",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Standard: von + 1 Tag; Datum = einschließlich",
+              "title": "Bis"
+            },
+            "description": "Standard: von + 1 Tag; Datum = einschließlich"
+          },
+          {
+            "name": "person",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Person"
+            }
+          },
+          {
+            "name": "alle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Alle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Termine"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/personen": {
+      "get": {
+        "tags": [
+          "Kalender"
+        ],
+        "summary": "Personen",
+        "description": "Personen für den Kalenderfilter: alle HERO-Mitarbeiter mit Terminen (App-Nutzer zuerst).",
+        "operationId": "personen_v1_personen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Personen"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/kalender": {
+      "get": {
+        "tags": [
+          "Kalender"
+        ],
+        "summary": "Kalender Ansicht",
+        "description": "Kalender: HERO-Termine (aus dem HERO-Spiegel, alle 5 Min. aktuell) und eigene Termine des Assistenten\nder gewählten Personen, nach Beginn sortiert. HERO-Termine lassen sich verschieben, wenn hero_schreiben true ist.",
+        "operationId": "kalender_ansicht_v1_kalender_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "von",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "YYYY-MM-DD",
+              "title": "Von"
+            },
+            "description": "YYYY-MM-DD"
+          },
+          {
+            "name": "bis",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD einschließlich, Standard = von; max. 62 Tage",
+              "title": "Bis"
+            },
+            "description": "YYYY-MM-DD einschließlich, Standard = von; max. 62 Tage"
+          },
+          {
+            "name": "personen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Kommagetrennt: 'ich', 'hero:<id>' (aus /v1/personen) oder 'alle'",
+              "default": "ich",
+              "title": "Personen"
+            },
+            "description": "Kommagetrennt: 'ich', 'hero:<id>' (aus /v1/personen) oder 'alle'"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KalenderAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/kalender/kategorien": {
+      "get": {
+        "tags": [
+          "Kalender"
+        ],
+        "summary": "Kalender Kategorien",
+        "description": "HERO-Terminkategorien (Umsetzung, Kundendienst, Notdienst, Büro …) für „Neuer HERO-Termin“.",
+        "operationId": "kalender_kategorien_v1_kalender_kategorien_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TerminKategorie"
+                  },
+                  "type": "array",
+                  "title": "Response Kalender Kategorien V1 Kalender Kategorien Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/kalender/hero": {
+      "post": {
+        "tags": [
+          "Kalender"
+        ],
+        "summary": "Hero Termin Anlegen",
+        "description": "Termin direkt in HERO anlegen (erscheint in HERO-Plantafel und Monteur-App). Erst mit nur_pruefen=true\nprüfen, Bestätigungsdialog mit 'beschreibung' und Überschneidungen zeigen, dann ohne nur_pruefen senden.",
+        "operationId": "hero_termin_anlegen_v1_kalender_hero_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "nur_pruefen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "true = nichts anlegen, nur prüfen und Überschneidungen liefern",
+              "default": false,
+              "title": "Nur Pruefen"
+            },
+            "description": "true = nichts anlegen, nur prüfen und Überschneidungen liefern"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeroTerminNeu"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeroTerminErgebnis"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/kalender/hero/{hero_id}": {
+      "patch": {
+        "tags": [
+          "Kalender"
+        ],
+        "summary": "Hero Termin Verschieben",
+        "description": "HERO-Termin zeitlich verschieben (Titel, Personen, Kategorie bleiben). Ablauf wie beim Anlegen.",
+        "operationId": "hero_termin_verschieben_v1_kalender_hero__hero_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hero_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Hero Id"
+            }
+          },
+          {
+            "name": "nur_pruefen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "true = nichts ändern, nur prüfen",
+              "default": false,
+              "title": "Nur Pruefen"
+            },
+            "description": "true = nichts ändern, nur prüfen"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeroTerminVerschieben"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeroTerminErgebnis"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/datei": {
+      "get": {
+        "tags": [
+          "Dateien"
+        ],
+        "summary": "Datei",
+        "description": "Datei herunterladen, z.B. um ein erstelltes Dokument am Handy zu öffnen.",
+        "operationId": "datei_v1_datei_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pfad",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Pfad relativ zur Ablage (aus 'dateien')",
+              "title": "Pfad"
+            },
+            "description": "Pfad relativ zur Ablage (aus 'dateien')"
+          },
+          {
+            "name": "anzeigen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "true = im Browser anzeigen (inline) statt herunterladen",
+              "default": false,
+              "title": "Anzeigen"
+            },
+            "description": "true = im Browser anzeigen (inline) statt herunterladen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ordner": {
+      "get": {
+        "tags": [
+          "Dateien"
+        ],
+        "summary": "Ordner",
+        "description": "Ordnerinhalt für die Ordneransicht in der App. Gesperrte und ausgeblendete Bereiche (Geschäftsführung,\naltes Ordnergerüst 'Projekte') und versteckte Dateien erscheinen nicht.",
+        "operationId": "ordner_v1_ordner_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pfad",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Ordner relativ zur Ablage; leer = oberste Ebene. Ist es eine Datei, kommt ihr Ordner (die Datei mit 'pfad' darin markieren).",
+              "default": "",
+              "title": "Pfad"
+            },
+            "description": "Ordner relativ zur Ablage; leer = oberste Ebene. Ist es eine Datei, kommt ihr Ordner (die Datei mit 'pfad' darin markieren)."
+          },
+          {
+            "name": "sortierung",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "name",
+                "name_ab",
+                "geaendert"
+              ],
+              "type": "string",
+              "description": "name = A→Z, Zahlen als Zahlen, HERO-Projekte nach Nummer aufsteigend · name_ab = umgekehrt (neueste Projekte zuerst) · geaendert = zuletzt geändert zuerst. Ordner immer vor Dateien.",
+              "default": "name",
+              "title": "Sortierung"
+            },
+            "description": "name = A→Z, Zahlen als Zahlen, HERO-Projekte nach Nummer aufsteigend · name_ab = umgekehrt (neueste Projekte zuerst) · geaendert = zuletzt geändert zuerst. Ordner immer vor Dateien."
+          },
+          {
+            "name": "ab",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Ab diesem Eintrag (Seitenweise laden)",
+              "default": 0,
+              "title": "Ab"
+            },
+            "description": "Ab diesem Eintrag (Seitenweise laden)"
+          },
+          {
+            "name": "anzahl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Höchstens so viele Einträge (Seite)",
+              "default": 1000,
+              "title": "Anzahl"
+            },
+            "description": "Höchstens so viele Einträge (Seite)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ordner"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/suche": {
+      "get": {
+        "tags": [
+          "Dateien"
+        ],
+        "summary": "Suche",
+        "description": "Ordner und Dateien in der ganzen Ablage finden – nach Namen, bei HERO-Projekten auch nach Kunde, Baustelle\nund Projekttitel. Antwort in wenigen Millisekunden; die App kann bei jeder Eingabe suchen (300 ms entprellen).",
+        "operationId": "suche_v1_suche_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Suchwörter, z.B. 'SAN-1270', '1270', 'Grimmstr 7', 'Dreißig Rechnung'",
+              "title": "Q"
+            },
+            "description": "Suchwörter, z.B. 'SAN-1270', '1270', 'Grimmstr 7', 'Dreißig Rechnung'"
+          },
+          {
+            "name": "ordner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Nur in diesem Ordner (mit Unterordnern) suchen; leer = ganze Ablage",
+              "default": "",
+              "title": "Ordner"
+            },
+            "description": "Nur in diesem Ordner (mit Unterordnern) suchen; leer = ganze Ablage"
+          },
+          {
+            "name": "typ",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "alle",
+                "ordner",
+                "datei"
+              ],
+              "type": "string",
+              "default": "alle",
+              "title": "Typ"
+            }
+          },
+          {
+            "name": "max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Höchstens so viele Treffer",
+              "default": 50,
+              "title": "Max"
+            },
+            "description": "Höchstens so viele Treffer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuchErgebnis"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/notizen": {
+      "get": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Notizen",
+        "description": "Eigene Notizen und Ordner – zur Auswahl, wohin Fotos und Videos gehen (Feld 'notiz').",
+        "operationId": "notizen_v1_notizen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notizen"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/freigabe": {
+      "get": {
+        "tags": [
+          "Dateien"
+        ],
+        "summary": "Freigabe",
+        "description": "Wo die Ablage in Windows liegt – für die Windows-Hülle (Explorer öffnen).",
+        "operationId": "freigabe_v1_freigabe_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Freigabe"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/verbrauch": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Verbrauch",
+        "description": "Token-Verbrauch je Monat und Person (Kosten im OpenAI-Dashboard).",
+        "operationId": "verbrauch_v1_verbrauch_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AngebotAntwort": {
+        "properties": {
+          "punkt": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Punkt",
+            "description": "id aus punkte[] (z. B. 'f3', 'm:p17', 'ek:p21', 'h:<Text>')"
+          },
+          "antwort": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Antwort",
+            "description": "Eine der optionen, eigener Text oder 'PASST'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "punkt",
+          "antwort"
+        ],
+        "title": "AngebotAntwort"
+      },
+      "AnmeldeAntwort": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "Sitzungs-Token cs_… – als Bearer verwenden, sicher speichern"
+          },
+          "geraet_id": {
+            "type": "integer",
+            "title": "Geraet Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename"
+          },
+          "gueltig_tage": {
+            "type": "integer",
+            "title": "Gueltig Tage",
+            "description": "Verfällt nach so vielen Tagen OHNE Nutzung"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "geraet_id",
+          "name",
+          "anzeigename",
+          "gueltig_tage"
+        ],
+        "title": "AnmeldeAntwort"
+      },
+      "Anmeldung": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Name"
+          },
+          "passwort": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Passwort"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 12,
+            "title": "Code",
+            "description": "6-stelliger Code aus der Authenticator-App"
+          },
+          "geraet": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Geraet",
+            "description": "Bezeichnung für die Geräteliste, z. B. „Galaxy S25 – App“",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "passwort",
+          "code"
+        ],
+        "title": "Anmeldung"
+      },
+      "Aufgabe": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Für POST /v1/aufgaben/{id}. Ändert sich, wenn jemand den Text ändert."
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "offen",
+              "erledigt",
+              "gestrichen"
+            ],
+            "title": "Status"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis",
+            "description": "Frist YYYY-MM-DD"
+          },
+          "fuer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fuer",
+            "description": "Anzeigename, wenn die Aufgabe an jemanden vergeben ist"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von",
+            "description": "Wessen Notiz (Anzeigename)"
+          },
+          "notiz": {
+            "type": "string",
+            "title": "Notiz",
+            "description": "Pfad der Notiz (GET /v1/datei bzw. /v1/ordner)"
+          },
+          "seit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seit",
+            "description": "Nur offen: seit wann (YYYY-MM-DD)"
+          },
+          "erledigt_am": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erledigt Am"
+          },
+          "erledigt_von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erledigt Von"
+          },
+          "nachfragen": {
+            "type": "boolean",
+            "title": "Nachfragen",
+            "description": "true = liegt lange bzw. über der Frist – „noch aktuell?“ anzeigen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "status",
+          "von",
+          "notiz",
+          "nachfragen"
+        ],
+        "title": "Aufgabe"
+      },
+      "AufgabeAenderung": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "offen",
+                  "erledigt",
+                  "gestrichen"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "erledigt = abhaken, gestrichen = „weg damit“, offen = Haken zurücknehmen"
+          },
+          "noch_aktuell": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Noch Aktuell",
+            "description": "true = bleibt offen, 14 Tage nicht mehr nachfragen"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis",
+            "description": "Neue Frist YYYY-MM-DD, \"\" = Frist entfernen"
+          }
+        },
+        "type": "object",
+        "title": "AufgabeAenderung"
+      },
+      "AufgabeAntwort": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "aufgabe": {
+            "$ref": "#/components/schemas/Aufgabe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "aufgabe"
+        ],
+        "title": "AufgabeAntwort"
+      },
+      "AufgabenUebersicht": {
+        "properties": {
+          "person": {
+            "type": "string",
+            "title": "Person"
+          },
+          "stand": {
+            "type": "string",
+            "title": "Stand",
+            "description": "Heute, YYYY-MM-DD"
+          },
+          "offen": {
+            "type": "integer",
+            "title": "Offen",
+            "description": "Anzahl eigener offener Aufgaben (die vier Fristgruppen) – z.B. als Zähler"
+          },
+          "ueberfaellig": {
+            "items": {
+              "$ref": "#/components/schemas/Aufgabe"
+            },
+            "type": "array",
+            "title": "Ueberfaellig"
+          },
+          "diese_woche": {
+            "items": {
+              "$ref": "#/components/schemas/Aufgabe"
+            },
+            "type": "array",
+            "title": "Diese Woche",
+            "description": "Frist heute bis in 6 Tagen"
+          },
+          "spaeter": {
+            "items": {
+              "$ref": "#/components/schemas/Aufgabe"
+            },
+            "type": "array",
+            "title": "Spaeter"
+          },
+          "ohne_datum": {
+            "items": {
+              "$ref": "#/components/schemas/Aufgabe"
+            },
+            "type": "array",
+            "title": "Ohne Datum"
+          },
+          "an_andere": {
+            "items": {
+              "$ref": "#/components/schemas/Aufgabe"
+            },
+            "type": "array",
+            "title": "An Andere",
+            "description": "Von dieser Person an andere vergeben, noch offen"
+          },
+          "heute_erledigt": {
+            "items": {
+              "$ref": "#/components/schemas/Aufgabe"
+            },
+            "type": "array",
+            "title": "Heute Erledigt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person",
+          "stand",
+          "offen",
+          "ueberfaellig",
+          "diese_woche",
+          "spaeter",
+          "ohne_datum",
+          "an_andere",
+          "heute_erledigt"
+        ],
+        "title": "AufgabenUebersicht"
+      },
+      "Auftrag": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "versicherungsbericht",
+              "begehungsprotokoll"
+            ],
+            "title": "Art"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "wartet",
+              "laeuft",
+              "fertig",
+              "fehler",
+              "abgebrochen"
+            ],
+            "title": "Status"
+          },
+          "schritt": {
+            "type": "string",
+            "title": "Schritt",
+            "description": "Was gerade passiert, z.B. „Unterlagen auswerten (12/30)“ – direkt anzeigen"
+          },
+          "fortschritt": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Fortschritt",
+            "description": "Prozent (grob)"
+          },
+          "erstellt": {
+            "type": "string",
+            "title": "Erstellt"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert"
+          },
+          "dateien": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dateien",
+            "description": "Nur bei fertig. Versicherungsbericht: Bericht-PDF, Bericht mit Anlagen, Arbeitsnotizen; Begehungsprotokoll: PDF, offene Punkte (.md) – GET /v1/datei"
+          },
+          "zusammenfassung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zusammenfassung",
+            "description": "Nur bei fertig: 2–3 Sätze"
+          },
+          "offene_punkte": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Offene Punkte",
+            "description": "Vor dem Versand zu prüfen (nur bei fertig)"
+          },
+          "fehler": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fehler",
+            "description": "Letzter Fehler (bei wartet = wird automatisch erneut versucht)"
+          },
+          "gespraech_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gespraech Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "art",
+          "titel",
+          "status",
+          "schritt",
+          "fortschritt",
+          "erstellt",
+          "geaendert"
+        ],
+        "title": "Auftrag"
+      },
+      "Ausgefuehrt": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "beschreibung": {
+            "type": "string",
+            "title": "Beschreibung"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "beschreibung"
+        ],
+        "title": "Ausgefuehrt"
+      },
+      "Bestaetigung": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "beschreibung": {
+            "type": "string",
+            "title": "Beschreibung",
+            "description": "Klartext für den Ja/Nein-Dialog"
+          },
+          "werkzeug": {
+            "type": "string",
+            "title": "Werkzeug"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "beschreibung",
+          "werkzeug"
+        ],
+        "title": "Bestaetigung"
+      },
+      "Body_dokument_v1_dokumente_post": {
+        "properties": {
+          "dokument": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Dokument",
+            "description": "Ein Dokument: PDF, Word (.docx), Excel (.xlsx/.xlsm), Text/CSV oder E-Mail (.eml), max. 50 MB"
+          },
+          "notiz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notiz",
+            "description": "Wie bei /v1/fotos"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Text",
+            "description": "Optionale Beschreibung",
+            "default": ""
+          },
+          "gespraech_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gespraech Id",
+            "description": "Wie bei /v1/fotos – der Assistent erfährt davon und kann das Dokument lesen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dokument"
+        ],
+        "title": "Body_dokument_v1_dokumente_post"
+      },
+      "Body_foto_v1_fotos_post": {
+        "properties": {
+          "foto": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Foto",
+            "description": "Ein Foto: JPEG, PNG oder WebP (kein HEIC)"
+          },
+          "notiz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notiz",
+            "description": "Pfad einer EIGENEN Notiz (.md) ODER eines eigenen Ordners (aus /v1/notizen, 'dateien' oder 'notiz'). Ordner = neueste Notiz darin, sonst neue. Weglassen = neueste eigene Notiz von heute, sonst neue Notiz „Fotos“."
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Text",
+            "description": "Optionale Bildunterschrift",
+            "default": ""
+          },
+          "gespraech_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gespraech Id",
+            "description": "Gespräch, in dem das Foto gemacht wurde – der Assistent erfährt dann davon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "foto"
+        ],
+        "title": "Body_foto_v1_fotos_post"
+      },
+      "Body_sprache_v1_sprache_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio",
+            "description": "Aufnahme: m4a/aac, mp3, wav, webm, ogg"
+          },
+          "gespraech_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gespraech Id"
+          },
+          "antworten": {
+            "type": "boolean",
+            "title": "Antworten",
+            "description": "true = erkannten Text direkt an den Chat geben",
+            "default": true
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id",
+            "description": "Wie bei POST /v1/chat (neu in 1.17.0)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio"
+        ],
+        "title": "Body_sprache_v1_sprache_post"
+      },
+      "Body_video_v1_videos_post": {
+        "properties": {
+          "video": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Video",
+            "description": "Ein Video: MP4 (H.264/HEVC) oder MOV, max. 1 GB, max. 30 Minuten"
+          },
+          "notiz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notiz",
+            "description": "Wie bei /v1/fotos"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Text",
+            "description": "Optionale Beschreibung",
+            "default": ""
+          },
+          "abschreiben": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "immer",
+              "nie"
+            ],
+            "title": "Abschreiben",
+            "description": "auto = nur wenn der Server Sprache erkennt (kostenlose Prüfung), immer = immer abschreiben, nie = nur ablegen",
+            "default": "auto"
+          },
+          "gespraech_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gespraech Id",
+            "description": "Wie bei /v1/fotos; die Abschrift kommt dann auch als Hinweis ins Gespräch"
+          }
+        },
+        "type": "object",
+        "required": [
+          "video"
+        ],
+        "title": "Body_video_v1_videos_post"
+      },
+      "ChatAnfrage": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Nachricht des Nutzers"
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id",
+            "description": "Von der App vergebene eindeutige ID dieser Nachricht (z. B. UUID, 8–64 Zeichen A–Z a–z 0–9 _ -). Damit lässt sich das Ergebnis nach einem Verbindungsabbruch mit GET /v1/chat/{anfrage_id} abholen, und eine Wiederholung mit derselben ID wird NIE doppelt ausgeführt (neu in 1.17.0). Weglassen = Server vergibt eine (steht in der Antwort)."
+          },
+          "gespraech_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gespraech Id",
+            "description": "Weglassen = neues Gespräch"
+          },
+          "bilder": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Bilder",
+            "description": "Optional: bis zu 4 Fotos, die der Assistent zu dieser Nachricht ansehen soll (z.B. Typenschild, Fehleranzeige). Pfade aus POST /v1/fotos (`foto`) oder andere Bilder der Ablage (JPEG/PNG/WebP)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ChatAnfrage"
+      },
+      "ChatAntwort": {
+        "properties": {
+          "gespraech_id": {
+            "type": "string",
+            "title": "Gespraech Id"
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id",
+            "description": "ID dieser Anfrage (neu in 1.17.0)"
+          },
+          "antwort": {
+            "type": "string",
+            "title": "Antwort",
+            "description": "Antworttext (Markdown: Absätze, Listen, Tabellen; Codeblöcke ```diagramm = Diagrammdaten als JSON, siehe API.md 1a – neu in 1.14.0)"
+          },
+          "dateien": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dateien",
+            "description": "Pfade, die die App als antippbare Links zeigen kann (GET /v1/datei)"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/DateiLink"
+            },
+            "type": "array",
+            "title": "Links",
+            "description": "Dieselben Pfade wie 'dateien', aber mit Typ, Name und Ordner (nur noch vorhandene) – dafür Knöpfe zeigen (neu in 1.13.0)"
+          },
+          "bestaetigungen": {
+            "items": {
+              "$ref": "#/components/schemas/Bestaetigung"
+            },
+            "type": "array",
+            "title": "Bestaetigungen",
+            "description": "Offene Ja/Nein-Fragen aus diesem Zug"
+          },
+          "ausgefuehrt": {
+            "items": {
+              "$ref": "#/components/schemas/Ausgefuehrt"
+            },
+            "type": "array",
+            "title": "Ausgefuehrt",
+            "description": "Per Sprache/Text bestätigte Aktionen"
+          },
+          "quellen": {
+            "items": {
+              "$ref": "#/components/schemas/Quelle"
+            },
+            "type": "array",
+            "title": "Quellen",
+            "description": "Web-Quellen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gespraech_id",
+          "antwort"
+        ],
+        "title": "ChatAntwort"
+      },
+      "ChatStatus": {
+        "properties": {
+          "anfrage_id": {
+            "type": "string",
+            "title": "Anfrage Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "laeuft",
+              "fertig",
+              "fehler"
+            ],
+            "title": "Status",
+            "description": "laeuft = Assistent arbeitet noch"
+          },
+          "gespraech_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gespraech Id"
+          },
+          "antwort": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatAntwort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nur bei status=fertig – dieselbe Antwort wie bei POST /v1/chat"
+          },
+          "fehler": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fehler",
+            "description": "Nur bei status=fehler"
+          }
+        },
+        "type": "object",
+        "required": [
+          "anfrage_id",
+          "status"
+        ],
+        "title": "ChatStatus"
+      },
+      "CodeEingabe": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 12,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "CodeEingabe"
+      },
+      "DateiLink": {
+        "properties": {
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "Datei → GET /v1/datei?pfad=…, Ordner → GET /v1/ordner?pfad=…"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "typ": {
+            "type": "string",
+            "enum": [
+              "ordner",
+              "datei"
+            ],
+            "title": "Typ"
+          },
+          "ordner": {
+            "type": "string",
+            "title": "Ordner",
+            "description": "Übergeordneter Ordner – Knopf „Im Ordner zeigen“: GET /v1/ordner?pfad=<pfad> (bei einer Datei kommt ihr Ordner, die Datei markieren)"
+          },
+          "groesse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groesse"
+          },
+          "projekt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt",
+            "description": "HERO-Projekt, in dem es liegt, z.B. 'SAN-1270 · Angelov · Pacelliallee, 14195 Berlin' – als Untertitel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pfad",
+          "name",
+          "typ",
+          "ordner"
+        ],
+        "title": "DateiLink"
+      },
+      "DokumentAntwort": {
+        "properties": {
+          "dokument": {
+            "type": "string",
+            "title": "Dokument",
+            "description": "Pfad des gespeicherten Dokuments (GET /v1/datei)"
+          },
+          "notiz": {
+            "type": "string",
+            "title": "Notiz",
+            "description": "Pfad der Notiz, an die das Dokument gehängt wurde"
+          },
+          "notiz_neu": {
+            "type": "boolean",
+            "title": "Notiz Neu",
+            "description": "true = es gab heute noch keine Notiz, „Fotos“ wurde neu angelegt"
+          },
+          "lesbar": {
+            "type": "boolean",
+            "title": "Lesbar",
+            "description": "false = abgelegt, aber der Assistent kann keinen Text darin lesen (z.B. Scan oder Passwort) – 'hinweis' anzeigen"
+          },
+          "hinweis": {
+            "type": "string",
+            "title": "Hinweis",
+            "description": "Klartext, wenn lesbar=false",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "dokument",
+          "notiz",
+          "notiz_neu",
+          "lesbar"
+        ],
+        "title": "DokumentAntwort"
+      },
+      "Einsatz": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "gewerk": {
+            "type": "string",
+            "title": "Gewerk"
+          },
+          "gewerk_id": {
+            "type": "integer",
+            "title": "Gewerk Id"
+          },
+          "farbe": {
+            "type": "string",
+            "title": "Farbe"
+          },
+          "firma": {
+            "type": "string",
+            "title": "Firma"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von",
+            "description": "YYYY-MM-DD"
+          },
+          "bis": {
+            "type": "string",
+            "title": "Bis",
+            "description": "YYYY-MM-DD, EINSCHLIESSLICH (Kalender-Bibliotheken wollen meist bis+1 Tag)"
+          },
+          "was": {
+            "type": "string",
+            "title": "Was"
+          },
+          "bereich": {
+            "type": "string",
+            "title": "Bereich"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "geplant",
+              "bestaetigt",
+              "fertig",
+              "abgesagt"
+            ],
+            "title": "Status"
+          },
+          "nach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nach",
+            "description": "Beginnt erst nach diesem Einsatz (Abhängigkeit)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "gewerk",
+          "gewerk_id",
+          "farbe",
+          "firma",
+          "von",
+          "bis",
+          "was",
+          "bereich",
+          "status"
+        ],
+        "title": "Einsatz"
+      },
+      "EinsatzAenderung": {
+        "properties": {
+          "gewerk": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gewerk"
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "was": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Was"
+          },
+          "bereich": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bereich"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "geplant",
+                  "bestaetigt",
+                  "fertig",
+                  "abgesagt"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "nach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nach",
+            "description": "0 = keine Abhängigkeit mehr"
+          },
+          "folgende_mitverschieben": {
+            "type": "boolean",
+            "title": "Folgende Mitverschieben",
+            "description": "Einsätze, die nach diesem kommen, um dieselben Tage mitschieben",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "EinsatzAenderung"
+      },
+      "EinsatzAntwort": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "einsatz": {
+            "$ref": "#/components/schemas/Einsatz"
+          },
+          "warnungen": {
+            "items": {
+              "$ref": "#/components/schemas/GuWarnung"
+            },
+            "type": "array",
+            "title": "Warnungen"
+          },
+          "mitverschoben": {
+            "items": {
+              "$ref": "#/components/schemas/Einsatz"
+            },
+            "type": "array",
+            "title": "Mitverschoben"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "einsatz",
+          "warnungen"
+        ],
+        "title": "EinsatzAntwort"
+      },
+      "EinsatzMitProjekt": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "gewerk": {
+            "type": "string",
+            "title": "Gewerk"
+          },
+          "gewerk_id": {
+            "type": "integer",
+            "title": "Gewerk Id"
+          },
+          "farbe": {
+            "type": "string",
+            "title": "Farbe"
+          },
+          "firma": {
+            "type": "string",
+            "title": "Firma"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von",
+            "description": "YYYY-MM-DD"
+          },
+          "bis": {
+            "type": "string",
+            "title": "Bis",
+            "description": "YYYY-MM-DD, EINSCHLIESSLICH (Kalender-Bibliotheken wollen meist bis+1 Tag)"
+          },
+          "was": {
+            "type": "string",
+            "title": "Was"
+          },
+          "bereich": {
+            "type": "string",
+            "title": "Bereich"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "geplant",
+              "bestaetigt",
+              "fertig",
+              "abgesagt"
+            ],
+            "title": "Status"
+          },
+          "nach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nach",
+            "description": "Beginnt erst nach diesem Einsatz (Abhängigkeit)"
+          },
+          "projekt_id": {
+            "type": "integer",
+            "title": "Projekt Id"
+          },
+          "projekt": {
+            "type": "string",
+            "title": "Projekt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "gewerk",
+          "gewerk_id",
+          "farbe",
+          "firma",
+          "von",
+          "bis",
+          "was",
+          "bereich",
+          "status",
+          "projekt_id",
+          "projekt"
+        ],
+        "title": "EinsatzMitProjekt"
+      },
+      "EinsatzNeu": {
+        "properties": {
+          "gewerk": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Gewerk",
+            "description": "Name; unbekanntes Gewerk wird angelegt"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "was": {
+            "type": "string",
+            "title": "Was",
+            "default": ""
+          },
+          "bereich": {
+            "type": "string",
+            "title": "Bereich",
+            "default": ""
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "geplant",
+              "bestaetigt",
+              "fertig",
+              "abgesagt"
+            ],
+            "title": "Status",
+            "default": "geplant"
+          },
+          "nach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nach"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gewerk",
+          "von"
+        ],
+        "title": "EinsatzNeu"
+      },
+      "Entscheidung": {
+        "properties": {
+          "annehmen": {
+            "type": "boolean",
+            "title": "Annehmen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "annehmen"
+        ],
+        "title": "Entscheidung"
+      },
+      "EntscheidungAntwort": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ausgefuehrt",
+              "abgelehnt",
+              "fehlgeschlagen"
+            ],
+            "title": "Status"
+          },
+          "beschreibung": {
+            "type": "string",
+            "title": "Beschreibung"
+          },
+          "fehler": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fehler"
+          },
+          "dateien": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dateien"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "beschreibung"
+        ],
+        "title": "EntscheidungAntwort"
+      },
+      "Fehler": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "Fehler"
+      },
+      "FotoAntwort": {
+        "properties": {
+          "foto": {
+            "type": "string",
+            "title": "Foto",
+            "description": "Pfad des gespeicherten Fotos (GET /v1/datei)"
+          },
+          "notiz": {
+            "type": "string",
+            "title": "Notiz",
+            "description": "Pfad der Notiz, an die das Foto gehängt wurde"
+          },
+          "notiz_neu": {
+            "type": "boolean",
+            "title": "Notiz Neu",
+            "description": "true = es gab heute noch keine Notiz, „Fotos“ wurde neu angelegt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "foto",
+          "notiz",
+          "notiz_neu"
+        ],
+        "title": "FotoAntwort"
+      },
+      "Freigabe": {
+        "properties": {
+          "wurzeln": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wurzeln",
+            "description": "Netzwerkpfade der Ablage in Windows (Samba), in dieser Reihenfolge probieren, z.B. \\\\192.168.178.155\\Firma"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wurzeln"
+        ],
+        "title": "Freigabe"
+      },
+      "Geraet": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "bezeichnung": {
+            "type": "string",
+            "title": "Bezeichnung"
+          },
+          "ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip"
+          },
+          "erstellt": {
+            "type": "string",
+            "title": "Erstellt"
+          },
+          "zuletzt": {
+            "type": "string",
+            "title": "Zuletzt"
+          },
+          "dieses": {
+            "type": "boolean",
+            "title": "Dieses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "bezeichnung",
+          "ip",
+          "erstellt",
+          "zuletzt",
+          "dieses"
+        ],
+        "title": "Geraet"
+      },
+      "GespraechKurz": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "titel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titel"
+          },
+          "erstellt": {
+            "type": "string",
+            "title": "Erstellt"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert"
+          },
+          "laeuft": {
+            "type": "boolean",
+            "title": "Laeuft",
+            "description": "true = der Assistent arbeitet gerade an einer Nachricht (neu in 1.17.0)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "titel",
+          "erstellt",
+          "geaendert"
+        ],
+        "title": "GespraechKurz"
+      },
+      "Gewerk": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "firma": {
+            "type": "string",
+            "title": "Firma"
+          },
+          "kontakt": {
+            "type": "string",
+            "title": "Kontakt"
+          },
+          "telefon": {
+            "type": "string",
+            "title": "Telefon"
+          },
+          "farbe": {
+            "type": "string",
+            "title": "Farbe",
+            "description": "#rrggbb – Balkenfarbe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "firma",
+          "kontakt",
+          "telefon",
+          "farbe"
+        ],
+        "title": "Gewerk"
+      },
+      "GewerkAntwort": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "gewerk": {
+            "$ref": "#/components/schemas/Gewerk"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "gewerk"
+        ],
+        "title": "GewerkAntwort"
+      },
+      "GewerkSetzen": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "firma": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firma"
+          },
+          "kontakt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kontakt"
+          },
+          "telefon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefon"
+          },
+          "farbe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Farbe",
+            "description": "#rrggbb"
+          },
+          "neuer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neuer Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "GewerkSetzen"
+      },
+      "GuAlle": {
+        "properties": {
+          "projekte": {
+            "items": {
+              "$ref": "#/components/schemas/GuProjekt"
+            },
+            "type": "array",
+            "title": "Projekte"
+          },
+          "einsaetze": {
+            "items": {
+              "$ref": "#/components/schemas/EinsatzMitProjekt"
+            },
+            "type": "array",
+            "title": "Einsaetze"
+          }
+        },
+        "type": "object",
+        "required": [
+          "projekte",
+          "einsaetze"
+        ],
+        "title": "GuAlle"
+      },
+      "GuPlan": {
+        "properties": {
+          "projekt": {
+            "$ref": "#/components/schemas/GuProjekt"
+          },
+          "gewerke": {
+            "items": {
+              "$ref": "#/components/schemas/Gewerk"
+            },
+            "type": "array",
+            "title": "Gewerke"
+          },
+          "einsaetze": {
+            "items": {
+              "$ref": "#/components/schemas/Einsatz"
+            },
+            "type": "array",
+            "title": "Einsaetze"
+          },
+          "warnungen": {
+            "items": {
+              "$ref": "#/components/schemas/GuWarnung"
+            },
+            "type": "array",
+            "title": "Warnungen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "projekt",
+          "gewerke",
+          "einsaetze",
+          "warnungen"
+        ],
+        "title": "GuPlan"
+      },
+      "GuProjekt": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "ordner": {
+            "type": "string",
+            "title": "Ordner",
+            "description": "Pfad in der Ablage, z.B. 'GU-Projekte/Grünberger Str. 10' – auch als 'notiz' bei /v1/fotos und /v1/videos verwendbar"
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von",
+            "description": "Erster geplanter Tag (YYYY-MM-DD), null = noch nichts geplant"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "einsaetze": {
+            "type": "integer",
+            "title": "Einsaetze"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "ordner",
+          "einsaetze"
+        ],
+        "title": "GuProjekt"
+      },
+      "GuProjektNeu": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "GuProjektNeu"
+      },
+      "GuProjekte": {
+        "properties": {
+          "projekte": {
+            "items": {
+              "$ref": "#/components/schemas/GuProjekt"
+            },
+            "type": "array",
+            "title": "Projekte"
+          }
+        },
+        "type": "object",
+        "required": [
+          "projekte"
+        ],
+        "title": "GuProjekte"
+      },
+      "GuWarnung": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "reihenfolge",
+              "ueberschneidung",
+              "unbestaetigt",
+              "ueberfaellig"
+            ],
+            "title": "Art"
+          },
+          "einsaetze": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Einsaetze"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "einsaetze",
+          "text"
+        ],
+        "title": "GuWarnung"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HeroTerminErgebnis": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "geprueft",
+              "angelegt",
+              "verschoben"
+            ],
+            "title": "Status"
+          },
+          "beschreibung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beschreibung",
+            "description": "Bei 'geprueft': Satz für den Bestätigungsdialog"
+          },
+          "termin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KalenderTermin"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Der neue bzw. verschobene Termin (nicht bei 'geprueft')"
+          },
+          "ueberschneidungen": {
+            "items": {
+              "$ref": "#/components/schemas/Ueberschneidung"
+            },
+            "type": "array",
+            "title": "Ueberschneidungen",
+            "description": "Termine derselben Personen in dieser Zeit – Hinweis, kein Hindernis"
+          },
+          "hinweis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hinweis",
+            "description": "z. B. HERO gerade nicht lesbar, Überschneidungen aus dem Spiegel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "ueberschneidungen"
+        ],
+        "title": "HeroTerminErgebnis"
+      },
+      "HeroTerminNeu": {
+        "properties": {
+          "personen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Personen",
+            "description": "Wessen Kalender: 'ich' oder 'hero:<id>' (aus /v1/personen)"
+          },
+          "titel": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Titel"
+          },
+          "beginn": {
+            "type": "string",
+            "title": "Beginn",
+            "description": "Ortszeit YYYY-MM-DDTHH:MM; ganztägig YYYY-MM-DD"
+          },
+          "ende": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ende",
+            "description": "Ortszeit; leer = 1 Stunde. Ganztägig: letzter Tag (einschließlich)"
+          },
+          "ganztag": {
+            "type": "boolean",
+            "title": "Ganztag",
+            "description": "true = 00:00 des ersten bis 23:59 des letzten Tages",
+            "default": false
+          },
+          "kategorie_id": {
+            "type": "integer",
+            "title": "Kategorie Id",
+            "description": "Aus GET /v1/kalender/kategorien – HERO verlangt eine Kategorie"
+          },
+          "projekt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt",
+            "description": "HERO-Projektnummer, z. B. 'SAN-1270' (optional)"
+          },
+          "notiz": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notiz",
+            "description": "Beschreibung (Kunde, Telefon, Etage …)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "personen",
+          "titel",
+          "beginn",
+          "kategorie_id"
+        ],
+        "title": "HeroTerminNeu"
+      },
+      "HeroTerminVerschieben": {
+        "properties": {
+          "beginn": {
+            "type": "string",
+            "title": "Beginn",
+            "description": "Neuer Beginn, Ortszeit YYYY-MM-DDTHH:MM; ganztägig YYYY-MM-DD"
+          },
+          "ende": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ende",
+            "description": "Neues Ende; leer = Dauer bleibt"
+          },
+          "ganztag": {
+            "type": "boolean",
+            "title": "Ganztag",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "beginn"
+        ],
+        "title": "HeroTerminVerschieben"
+      },
+      "Ich": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename"
+          },
+          "modell": {
+            "type": "string",
+            "title": "Modell"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "anzeigename",
+          "modell",
+          "version"
+        ],
+        "title": "Ich"
+      },
+      "KalenderAntwort": {
+        "properties": {
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "title": "Bis"
+          },
+          "personen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Personen"
+          },
+          "spiegel": {
+            "type": "boolean",
+            "title": "Spiegel",
+            "description": "false = HERO-Spiegel fehlt auf diesem Server (nur eigene Termine)"
+          },
+          "hero_schreiben": {
+            "type": "boolean",
+            "title": "Hero Schreiben",
+            "description": "true = HERO-Termine anlegen/verschieben möglich (neu in 1.18.0)",
+            "default": false
+          },
+          "termine": {
+            "items": {
+              "$ref": "#/components/schemas/KalenderTermin"
+            },
+            "type": "array",
+            "title": "Termine"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von",
+          "bis",
+          "personen",
+          "spiegel",
+          "termine"
+        ],
+        "title": "KalenderAntwort"
+      },
+      "KalenderPerson": {
+        "properties": {
+          "hero_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "app_benutzer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Benutzer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "KalenderPerson"
+      },
+      "KalenderProjekt": {
+        "properties": {
+          "nr": {
+            "type": "string",
+            "title": "Nr"
+          },
+          "kunde": {
+            "type": "string",
+            "title": "Kunde"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "adresse": {
+            "type": "string",
+            "title": "Adresse"
+          },
+          "pfad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pfad",
+            "description": "Ordner im HERO-Archiv → GET /v1/ordner?pfad=…"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nr",
+          "kunde",
+          "titel",
+          "adresse"
+        ],
+        "title": "KalenderProjekt"
+      },
+      "KalenderTermin": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "'hero:<id>' oder 'eigen:<id>'"
+          },
+          "quelle": {
+            "type": "string",
+            "enum": [
+              "hero",
+              "eigen"
+            ],
+            "title": "Quelle"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "beginn": {
+            "type": "string",
+            "title": "Beginn",
+            "description": "Ortszeit ISO (YYYY-MM-DDTHH:MM+02:00); ganztägig nur YYYY-MM-DD"
+          },
+          "ende": {
+            "type": "string",
+            "title": "Ende"
+          },
+          "ganztag": {
+            "type": "boolean",
+            "title": "Ganztag"
+          },
+          "kategorie": {
+            "type": "string",
+            "title": "Kategorie",
+            "description": "HERO-Kategorie (Umsetzung, Kundendienst, Büro …) bzw. 'Eigener Termin'"
+          },
+          "farbe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Farbe",
+            "description": "Farbe der HERO-Kategorie (#RRGGBB) – nur als kleiner Streifen"
+          },
+          "projekt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KalenderProjekt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "personen": {
+            "items": {
+              "$ref": "#/components/schemas/KalenderPerson"
+            },
+            "type": "array",
+            "title": "Personen"
+          },
+          "ort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ort"
+          },
+          "notiz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notiz"
+          },
+          "nur_lesen": {
+            "type": "boolean",
+            "title": "Nur Lesen",
+            "description": "HERO-Termin: true = nur lesbar (Server ohne HERO-Zugang), false = verschiebbar (PATCH /v1/kalender/hero/{id}). Eigener Termin: false"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "quelle",
+          "titel",
+          "beginn",
+          "ende",
+          "ganztag",
+          "kategorie",
+          "personen",
+          "nur_lesen"
+        ],
+        "title": "KalenderTermin"
+      },
+      "Nachricht": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "nutzer",
+              "assistent",
+              "hinweis"
+            ],
+            "title": "Rolle"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "zeit": {
+            "type": "string",
+            "title": "Zeit"
+          },
+          "dateien": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dateien"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/DateiLink"
+            },
+            "type": "array",
+            "title": "Links",
+            "description": "Wie bei ChatAntwort (neu in 1.13.0)"
+          },
+          "bestaetigungen": {
+            "items": {
+              "$ref": "#/components/schemas/Bestaetigung"
+            },
+            "type": "array",
+            "title": "Bestaetigungen"
+          },
+          "quellen": {
+            "items": {
+              "$ref": "#/components/schemas/Quelle"
+            },
+            "type": "array",
+            "title": "Quellen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "rolle",
+          "text",
+          "zeit"
+        ],
+        "title": "Nachricht"
+      },
+      "NotizKurz": {
+        "properties": {
+          "titel": {
+            "type": "string",
+            "title": "Titel",
+            "description": "Dateiname ohne .md, z.B. '2026-09-24 Objektbegehung Hotel'"
+          },
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "Als 'notiz' bei /v1/fotos bzw. /v1/videos verwendbar"
+          },
+          "ordner": {
+            "type": "string",
+            "title": "Ordner",
+            "description": "Unterordner relativ zum eigenen Notizordner, '' = direkt darin; bei GU-Projekten der volle Pfad (beginnt mit 'GU-Projekte/')"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titel",
+          "pfad",
+          "ordner",
+          "geaendert"
+        ],
+        "title": "NotizKurz"
+      },
+      "NotizOrdner": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "Als 'notiz' bei /v1/fotos bzw. /v1/videos verwendbar"
+          },
+          "notizen": {
+            "type": "integer",
+            "title": "Notizen",
+            "description": "Anzahl Notizen (.md) direkt darin"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "pfad",
+          "notizen",
+          "geaendert"
+        ],
+        "title": "NotizOrdner"
+      },
+      "Notizen": {
+        "properties": {
+          "wurzel": {
+            "type": "string",
+            "title": "Wurzel",
+            "description": "Eigener Notizordner, z.B. 'Notizen/Sascha'"
+          },
+          "ordner": {
+            "items": {
+              "$ref": "#/components/schemas/NotizOrdner"
+            },
+            "type": "array",
+            "title": "Ordner",
+            "description": "Eigene Unterordner und GU-Projektordner (pfad beginnt mit 'GU-Projekte/'), zuletzt geändert zuerst (max. 300)"
+          },
+          "notizen": {
+            "items": {
+              "$ref": "#/components/schemas/NotizKurz"
+            },
+            "type": "array",
+            "title": "Notizen",
+            "description": "Eigene Notizen, zuletzt geändert zuerst (max. 500)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wurzel",
+          "ordner",
+          "notizen"
+        ],
+        "title": "Notizen"
+      },
+      "OffeneBestaetigung": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "gespraech_id": {
+            "type": "string",
+            "title": "Gespraech Id"
+          },
+          "werkzeug": {
+            "type": "string",
+            "title": "Werkzeug"
+          },
+          "beschreibung": {
+            "type": "string",
+            "title": "Beschreibung"
+          },
+          "erstellt": {
+            "type": "string",
+            "title": "Erstellt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "gespraech_id",
+          "werkzeug",
+          "beschreibung",
+          "erstellt"
+        ],
+        "title": "OffeneBestaetigung"
+      },
+      "Ordner": {
+        "properties": {
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "Dieser Ordner relativ zur Ablage, '' = oberste Ebene"
+          },
+          "eltern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eltern",
+            "description": "Übergeordneter Ordner, null = schon ganz oben"
+          },
+          "eintraege": {
+            "items": {
+              "$ref": "#/components/schemas/OrdnerEintrag"
+            },
+            "type": "array",
+            "title": "Eintraege",
+            "description": "Erst Ordner, dann Dateien, sortiert nach 'sortierung'"
+          },
+          "abgeschnitten": {
+            "type": "boolean",
+            "title": "Abgeschnitten",
+            "description": "true = es gibt nach dieser Seite weitere Einträge (mit ab=ab+anzahl nachladen)",
+            "default": false
+          },
+          "gesamt": {
+            "type": "integer",
+            "title": "Gesamt",
+            "description": "Einträge im Ordner insgesamt (neu in 1.13.0)",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "pfad",
+          "eintraege"
+        ],
+        "title": "Ordner"
+      },
+      "OrdnerEintrag": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "Pfad relativ zur Ablage – für /v1/ordner bzw. /v1/datei"
+          },
+          "typ": {
+            "type": "string",
+            "enum": [
+              "ordner",
+              "datei"
+            ],
+            "title": "Typ"
+          },
+          "groesse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groesse",
+            "description": "Nur Dateien, lesbar formatiert (z.B. '1.2 MB')"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert",
+            "description": "TT.MM.JJJJ HH:MM (Ortszeit)"
+          },
+          "projekt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjektAngaben"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nur bei HERO-Projektordnern: Kunde, Baustelle, Status – als Untertitel anzeigen (neu in 1.13.0)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "pfad",
+          "typ",
+          "geaendert"
+        ],
+        "title": "OrdnerEintrag"
+      },
+      "PasswortAendern": {
+        "properties": {
+          "neu": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Neu"
+          },
+          "alt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt",
+            "description": "Pflicht, wenn schon ein Passwort gesetzt ist"
+          }
+        },
+        "type": "object",
+        "required": [
+          "neu"
+        ],
+        "title": "PasswortAendern"
+      },
+      "Person": {
+        "properties": {
+          "schluessel": {
+            "type": "string",
+            "title": "Schluessel",
+            "description": "Für den Filter: 'hero:<id>'"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "hero_id": {
+            "type": "integer",
+            "title": "Hero Id"
+          },
+          "app_benutzer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Benutzer",
+            "description": "Hat einen App-Zugang (z. B. 'patrick')"
+          },
+          "ich": {
+            "type": "boolean",
+            "title": "Ich",
+            "description": "Das ist der angemeldete Nutzer"
+          },
+          "termine": {
+            "type": "integer",
+            "title": "Termine",
+            "description": "Termine im letzten/nächsten Jahr – grob, für die Sortierung"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schluessel",
+          "name",
+          "hero_id",
+          "ich",
+          "termine"
+        ],
+        "title": "Person"
+      },
+      "Personen": {
+        "properties": {
+          "ich": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ich",
+            "description": "Schlüssel des angemeldeten Nutzers (null = keine HERO-Zuordnung)"
+          },
+          "personen": {
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            },
+            "type": "array",
+            "title": "Personen",
+            "description": "ich zuerst, dann andere App-Nutzer, dann Monteure nach Termin-Anzahl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "personen"
+        ],
+        "title": "Personen"
+      },
+      "PfadAntwort": {
+        "properties": {
+          "pfad": {
+            "type": "string",
+            "title": "Pfad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pfad"
+        ],
+        "title": "PfadAntwort"
+      },
+      "ProjektAngaben": {
+        "properties": {
+          "nr": {
+            "type": "string",
+            "title": "Nr",
+            "description": "HERO-Projektnummer, z.B. 'SAN-1270'"
+          },
+          "kunde": {
+            "type": "string",
+            "title": "Kunde"
+          },
+          "bauvorhaben": {
+            "type": "string",
+            "title": "Bauvorhaben",
+            "description": "Adresse der Baustelle"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel",
+            "description": "Projekttitel aus HERO (kann leer sein)"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "HERO-Status, z.B. 'In Umsetzung'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nr",
+          "kunde",
+          "bauvorhaben",
+          "titel",
+          "status"
+        ],
+        "title": "ProjektAngaben"
+      },
+      "Quelle": {
+        "properties": {
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titel",
+          "url"
+        ],
+        "title": "Quelle"
+      },
+      "Sicherheit": {
+        "properties": {
+          "passwort_gesetzt": {
+            "type": "boolean",
+            "title": "Passwort Gesetzt"
+          },
+          "zwei_faktor_aktiv": {
+            "type": "boolean",
+            "title": "Zwei Faktor Aktiv"
+          },
+          "internet_bereit": {
+            "type": "boolean",
+            "title": "Internet Bereit",
+            "description": "Passwort + Zwei-Faktor eingerichtet → Anmeldung von unterwegs möglich"
+          },
+          "extern": {
+            "type": "boolean",
+            "title": "Extern",
+            "description": "Diese Anfrage kam aus dem Internet"
+          }
+        },
+        "type": "object",
+        "required": [
+          "passwort_gesetzt",
+          "zwei_faktor_aktiv",
+          "internet_bereit",
+          "extern"
+        ],
+        "title": "Sicherheit"
+      },
+      "SpracheAntwort": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Erkannter Text"
+          },
+          "chat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatAntwort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nur bei antworten=true"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "SpracheAntwort"
+      },
+      "SuchErgebnis": {
+        "properties": {
+          "treffer": {
+            "items": {
+              "$ref": "#/components/schemas/SuchTreffer"
+            },
+            "type": "array",
+            "title": "Treffer",
+            "description": "Beste zuerst"
+          },
+          "anzahl": {
+            "type": "integer",
+            "title": "Anzahl",
+            "description": "Treffer insgesamt"
+          },
+          "abgeschnitten": {
+            "type": "boolean",
+            "title": "Abgeschnitten",
+            "description": "true = mehr als 'max' Treffer → Hinweis „Suche genauer fassen“"
+          },
+          "stand": {
+            "type": "string",
+            "title": "Stand",
+            "description": "Stand des Suchindex (wird jede Minute erneuert, nach Änderungen sofort)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "treffer",
+          "anzahl",
+          "abgeschnitten",
+          "stand"
+        ],
+        "title": "SuchErgebnis"
+      },
+      "SuchTreffer": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "Ordner → /v1/ordner?pfad=…, Datei → /v1/datei?pfad=…"
+          },
+          "typ": {
+            "type": "string",
+            "enum": [
+              "ordner",
+              "datei"
+            ],
+            "title": "Typ"
+          },
+          "ordner": {
+            "type": "string",
+            "title": "Ordner",
+            "description": "Übergeordneter Ordner (für 'Im Ordner zeigen')"
+          },
+          "groesse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groesse"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert",
+            "description": "TT.MM.JJJJ HH:MM (Ortszeit)"
+          },
+          "projekt": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt",
+            "description": "Liegt der Treffer in einem HERO-Projekt: nr, kunde, bauvorhaben, titel, status und pfad des Projektordners – als Untertitel zeigen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "pfad",
+          "typ",
+          "ordner",
+          "geaendert"
+        ],
+        "title": "SuchTreffer"
+      },
+      "Termin": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "person": {
+            "type": "string",
+            "title": "Person"
+          },
+          "wochentag": {
+            "type": "string",
+            "title": "Wochentag"
+          },
+          "beginn": {
+            "type": "string",
+            "title": "Beginn"
+          },
+          "ende": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ende"
+          },
+          "ganztag": {
+            "type": "boolean",
+            "title": "Ganztag"
+          },
+          "ort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ort"
+          },
+          "notiz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notiz"
+          },
+          "eingetragen_von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eingetragen Von"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "titel",
+          "person",
+          "wochentag",
+          "beginn",
+          "ende",
+          "ganztag"
+        ],
+        "title": "Termin"
+      },
+      "TerminKategorie": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "farbe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Farbe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TerminKategorie"
+      },
+      "Termine": {
+        "properties": {
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "title": "Bis"
+          },
+          "termine": {
+            "items": {
+              "$ref": "#/components/schemas/Termin"
+            },
+            "type": "array",
+            "title": "Termine"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von",
+          "bis",
+          "termine"
+        ],
+        "title": "Termine"
+      },
+      "Ueberschneidung": {
+        "properties": {
+          "hero_id": {
+            "type": "integer",
+            "title": "Hero Id"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "beginn": {
+            "type": "string",
+            "title": "Beginn",
+            "description": "Ortszeit YYYY-MM-DDTHH:MM"
+          },
+          "ende": {
+            "type": "string",
+            "title": "Ende"
+          },
+          "wer": {
+            "type": "string",
+            "title": "Wer",
+            "description": "Betroffene der gewählten Personen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hero_id",
+          "titel",
+          "beginn",
+          "ende",
+          "wer"
+        ],
+        "title": "Ueberschneidung"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VideoAntwort": {
+        "properties": {
+          "video": {
+            "type": "string",
+            "title": "Video",
+            "description": "Pfad des gespeicherten Videos (GET /v1/datei)"
+          },
+          "notiz": {
+            "type": "string",
+            "title": "Notiz",
+            "description": "Pfad der Notiz, an die das Video gehängt wurde"
+          },
+          "notiz_neu": {
+            "type": "boolean",
+            "title": "Notiz Neu",
+            "description": "true = es gab heute noch keine Notiz, „Fotos“ wurde neu angelegt"
+          },
+          "dauer_s": {
+            "type": "number",
+            "title": "Dauer S",
+            "description": "Länge in Sekunden"
+          },
+          "abschrift": {
+            "type": "string",
+            "enum": [
+              "laeuft",
+              "aus"
+            ],
+            "title": "Abschrift",
+            "description": "laeuft = Gesprochenes wird im Hintergrund geprüft/abgeschrieben und erscheint danach in der Notiz"
+          }
+        },
+        "type": "object",
+        "required": [
+          "video",
+          "notiz",
+          "notiz_neu",
+          "dauer_s",
+          "abschrift"
+        ],
+        "title": "VideoAntwort"
+      },
+      "VorlesenAnfrage": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "stimme": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "alloy",
+                  "ash",
+                  "ballad",
+                  "coral",
+                  "echo",
+                  "fable",
+                  "nova",
+                  "onyx",
+                  "sage",
+                  "shimmer",
+                  "verse"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stimme",
+            "description": "OpenAI-Stimme; weglassen = Server-Standard (STIMME)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "VorlesenAnfrage"
+      },
+      "ZweiFaktorEinrichtung": {
+        "properties": {
+          "geheim": {
+            "type": "string",
+            "title": "Geheim",
+            "description": "Zum Abtippen, falls der QR-Code nicht geht"
+          },
+          "uri": {
+            "type": "string",
+            "title": "Uri"
+          },
+          "qr_svg": {
+            "type": "string",
+            "title": "Qr Svg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "geheim",
+          "uri",
+          "qr_svg"
+        ],
+        "title": "ZweiFaktorEinrichtung"
+      },
+      "ZweiFaktorStart": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 12
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code",
+            "description": "Nur beim Neu-Einrichten: aktueller Code"
+          }
+        },
+        "type": "object",
+        "title": "ZweiFaktorStart"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

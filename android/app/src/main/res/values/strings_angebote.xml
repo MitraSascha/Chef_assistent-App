@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Angebote aus dem Angebotsgenerator (/v1/angebote, seit v1.11.0) -->
+    <string name="angebote_titel">Angebote</string>
+    <string name="angebote_untertitel">Aus dem Angebotsgenerator</string>
+    <string name="angebote_neu_laden">Neu laden</string>
+    <string name="angebote_nochmal">Nochmal versuchen</string>
+    <string name="angebote_ohne_titel">Angebot ohne Titel</string>
+    <string name="angebote_leer">Noch keine Angebote. Angebote entstehen im Chat, z. B. „Erstell mir aus den Unterlagen im Ordner Petersburger Str. 44 ein Angebot“. Ändern geht dort ebenfalls: „Gäste-WC bitte clivia statt one“.</string>
+    <plurals name="angebote_positionen">
+        <item quantity="one">%d Position</item>
+        <item quantity="other">%d Positionen</item>
+    </plurals>
+    <string name="angebot_version">Version %d</string>
+    <string name="angebot_ek_summe">Material (EK)</string>
+    <string name="angebot_pauschalen_summe">Pauschalen (VK)</string>
+    <string name="angebot_ek">EK</string>
+    <string name="angebot_vk">VK</string>
+    <string name="angebot_je">je %1$s · %2$s</string>
+    <string name="angebot_mehr">Weitere Aktionen</string>
+    <string name="angebot_ugl">UGL für HERO teilen</string>
+    <string name="angebot_ugl_teilen">UGL-Datei weitergeben</string>
+    <string name="angebot_web">Web-Vorschau öffnen</string>
+    <string name="angebot_rechenweg">Rechenweg</string>
+
+    <!-- Entscheidungen (punkte, seit v1.15.0) -->
+    <string name="angebot_entscheidungen">Entscheidungen</string>
+    <string name="punkt_frage">Frage</string>
+    <string name="punkt_pruefen">Bitte prüfen</string>
+    <string name="punkt_alternative">Alternative</string>
+    <string name="punkt_hinweis">Hinweis</string>
+    <string name="punkt_eigene_antwort">Eigene Antwort …</string>
+    <string name="punkt_senden">Antwort senden</string>
+    <string name="punkt_passt">Passt so</string>
+    <string name="punkt_ausblenden">Ausblenden</string>
+    <plurals name="punkte_weitere">
+        <item quantity="one">%d weitere anzeigen</item>
+        <item quantity="other">%d weitere anzeigen</item>
+    </plurals>
+    <plurals name="punkte_beantwortet">
+        <item quantity="one">%d beantwortet – wird bei „mach weiter“ eingearbeitet</item>
+        <item quantity="other">%d beantwortet – werden bei „mach weiter“ eingearbeitet</item>
+    </plurals>
+    <string name="punkt_einarbeiten">Antworten einarbeiten</string>
+    <!-- Geht als Nachricht an den Assistenten, %s = Titel des Angebots. Wortlaut aus dem Auftrag zu 1.15.0. -->
+    <string name="punkt_einarbeiten_text">mach weiter, arbeite meine Antworten im Angebot %s ein</string>
+</resources>

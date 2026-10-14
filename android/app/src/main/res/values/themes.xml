@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nur das Fenster-Grundgeruest. Die eigentlichen Farben setzt Compose
+         in ui/theme/Theme.kt - hier steht bewusst kein Farbschema doppelt. -->
+    <style name="Theme.ChefAssistent" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>

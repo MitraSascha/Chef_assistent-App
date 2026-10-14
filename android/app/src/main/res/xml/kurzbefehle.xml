@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Langer Druck aufs App-Symbol auf dem Startbildschirm. Der schnellste Weg in
+  den Freihandmodus, ohne erst die App zu oeffnen.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="freihand"
+        android:enabled="true"
+        android:icon="@drawable/ic_freihand"
+        android:shortcutShortLabel="@string/kurzbefehl_freihand_kurz"
+        android:shortcutLongLabel="@string/kurzbefehl_freihand_lang">
+        <intent
+            android:action="de.chefassistent.app.FREIHAND"
+            android:targetPackage="de.chefassistent.app"
+            android:targetClass="de.chefassistent.app.MainActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>

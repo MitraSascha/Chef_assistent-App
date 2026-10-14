@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Heruntergeladene Dateien aus GET /v1/datei liegen im Cache und werden
+         nur per Intent-Freigabe an die oeffnende App weitergereicht. -->
+    <cache-path name="dateien" path="dateien/" />
+    <!-- Ziel fuer die Kamera-App beim Fotografieren (POST /v1/fotos). -->
+    <cache-path name="fotos" path="fotos/" />
+    <!-- Ziel fuer die Kamera-App beim Filmen (POST /v1/videos). -->
+    <cache-path name="videos" path="videos/" />
+</paths>

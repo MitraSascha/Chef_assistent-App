@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Kalender mit HERO-Terminen (/v1/kalender, seit v1.16.0) -->
+    <string name="kalender_titel">Kalender</string>
+    <string name="kalender_heute">Heute</string>
+    <string name="kalender_zurueck">Zurück</string>
+    <string name="kalender_vor">Weiter</string>
+    <string name="kalender_tag">Tag</string>
+    <string name="kalender_woche">Woche</string>
+    <string name="kalender_ich">Ich</string>
+    <string name="kalender_monteure">Monteure</string>
+    <string name="kalender_alle">Alle</string>
+    <string name="kalender_tag_heute">%s · heute</string>
+    <string name="kalender_keine_termine">Keine Termine</string>
+    <string name="kalender_ganztaegig">ganztägig</string>
+    <string name="kalender_ohne_spiegel">HERO-Termine nicht verfügbar, nur eigene.</string>
+    <string name="kalender_aus_hero">Aus HERO – ändern nur in HERO</string>
+    <string name="kalender_eigen">Eigener Termin – ändern im Chat</string>
+    <string name="kalender_projektordner">Projektordner</string>
+    <string name="kalender_keine_karten_app">Keine Karten-App gefunden</string>
+
+    <!-- HERO-Termine anlegen und verschieben (/v1/kalender/hero, seit v1.18.0) -->
+    <string name="kalender_hero_neu">HERO-Termin</string>
+    <string name="kalender_verschieben">Verschieben</string>
+    <string name="hero_titel_neu">Neuer HERO-Termin</string>
+    <string name="hero_titel_verschieben">HERO-Termin verschieben</string>
+    <string name="hero_bisher">bisher %s</string>
+    <string name="hero_fuer">Für</string>
+    <string name="hero_titel">Titel</string>
+    <string name="hero_kategorie_waehlen">Kategorie wählen</string>
+    <string name="hero_ganztaegig">Ganztägig</string>
+    <string name="hero_datum">Datum</string>
+    <string name="hero_bis_datum">Bis Datum</string>
+    <string name="hero_von">Von</string>
+    <string name="hero_bis">Bis</string>
+    <string name="hero_projekt">Projekt (optional)</string>
+    <string name="hero_projekt_beispiel">z. B. SAN-1270</string>
+    <string name="hero_notiz">Notiz (optional): Kunde, Telefon, Etage …</string>
+    <string name="hero_pruefen">Prüfen</string>
+    <string name="hero_eintragen">In HERO eintragen</string>
+    <string name="hero_verschieben_knopf">In HERO verschieben</string>
+    <string name="hero_keine_ueberschneidungen">Keine Überschneidungen</string>
+    <string name="hero_ueberschneidungen">Überschneidungen</string>
+    <string name="hero_eingetragen">In HERO eingetragen</string>
+    <string name="hero_verschoben">In HERO verschoben</string>
+    <string name="hero_abbrechen">Abbrechen</string>
+    <string name="hero_ok">OK</string>
+    <string name="hero_luecke_personen">Mindestens eine Person wählen.</string>
+    <string name="hero_luecke_titel">Titel fehlt.</string>
+    <string name="hero_luecke_kategorie">Bitte eine Kategorie wählen.</string>
+    <string name="hero_luecke_ende">Das Ende liegt vor dem Beginn.</string>
+    <string name="hero_luecke_zu_lang">Ganztägig höchstens 14 Tage.</string>
+</resources>

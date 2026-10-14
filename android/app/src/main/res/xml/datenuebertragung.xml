@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nichts mitnehmen, weder in die Cloud-Sicherung noch beim Umzug auf ein neues
+  Geraet (Smart Switch). allowBackup="false" allein verhindert ab Android 12 den
+  Umzug nicht. Token, Einstellungen und die Koerbe sind mit einem Schluessel aus
+  dem Keystore verschluesselt, und der zieht nicht mit um - auf dem neuen Geraet
+  waeren die Dateien unlesbar.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>
