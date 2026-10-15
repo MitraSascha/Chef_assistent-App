@@ -56,9 +56,30 @@ interface AssistentApi {
     @POST("v1/chat")
     suspend fun chat(@Body anfrage: ChatAnfrage): ChatAntwort
 
-    /** Seit v1.17.0: Stand einer Anfrage, deren Antwort nicht ankam (API.md 1b). */
+    /**
+     * Seit v1.17.0: Stand einer Anfrage, deren Antwort nicht ankam (API.md 1b).
+     * Seit v1.20.0 mit `seit` fuer den Fortschritt (API.md 1d): nur Ereignisse ab dieser Nummer.
+     */
     @GET("v1/chat/{anfrage_id}")
-    suspend fun chatStatus(@Path("anfrage_id") anfrageId: String): ChatStatus
+    suspend fun chatStatus(
+        @Path("anfrage_id") anfrageId: String,
+        @Query("seit") seit: Int? = null,
+    ): ChatStatus
+
+    /** Seit v1.20.0: Stopp. Wirkt am naechsten Schritt, 409 = schon fertig. */
+    @POST("v1/chat/{anfrage_id}/abbrechen")
+    suspend fun chatAbbrechen(@Path("anfrage_id") anfrageId: String): ChatStatus
+
+    /** Seit v1.20.0: Nachtrag waehrend einer laufenden Antwort. 409 = schon fertig. */
+    @POST("v1/chat/{anfrage_id}/zwischenruf")
+    suspend fun zwischenruf(
+        @Path("anfrage_id") anfrageId: String,
+        @Body zwischenruf: Zwischenruf,
+    ): ZwischenrufAntwort
+
+    /** Seit v1.20.0: waehlbare Modelle und Denkstufen. Ein alter Server meldet 404. */
+    @GET("v1/modelle")
+    suspend fun modelle(): ModellAuswahl
 
     @Multipart
     @POST("v1/sprache")
@@ -68,6 +89,9 @@ interface AssistentApi {
         @Part("antworten") antworten: RequestBody? = null,
         /** Seit v1.17.0, siehe [ChatAnfrage.anfrage_id]. */
         @Part("anfrage_id") anfrageId: RequestBody? = null,
+        /** Seit v1.20.0, siehe [ChatAnfrage.modell]. */
+        @Part("modell") modell: RequestBody? = null,
+        @Part("denkaufwand") denkaufwand: RequestBody? = null,
     ): SpracheAntwort
 
     /** Ein Foto pro Anfrage. JPEG, PNG oder WebP - HEIC ergibt 415. */
@@ -202,6 +226,10 @@ interface AssistentApi {
 
     @GET("v1/gespraeche/{gid}")
     suspend fun verlauf(@Path("gid") gid: String): List<Nachricht>
+
+    /** Seit v1.20.0: Modell und Denkaufwand des Gespraechs speichern. */
+    @PATCH("v1/gespraeche/{gid}")
+    suspend fun gespraechEinstellen(@Path("gid") gid: String, @Body wahl: ModellWahl): GespraechKurz
 
     @DELETE("v1/gespraeche/{gid}")
     suspend fun gespraechLoeschen(@Path("gid") gid: String): Response<Unit>

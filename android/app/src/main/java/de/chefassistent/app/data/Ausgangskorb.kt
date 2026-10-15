@@ -43,7 +43,17 @@ data class AusgangAuftrag(
     val text: String? = null,
     val anfrage_id: String? = null,
     val bilder: List<String> = emptyList(),
+    /**
+     * Seit v1.20.0: Modell und Denkaufwand von damals (API.md 1c). Gehen beim
+     * Nachsenden unveraendert mit. `null` = Einstellung des Gespraechs bleibt.
+     */
+    val modell: String? = null,
+    val denkaufwand: String? = null,
 ) {
+    /** Die Wahl von damals fuer Chat und Sprache, `null`, wenn keine gesetzt war. */
+    val wahl: ModellWahl?
+        get() = if (modell == null && denkaufwand == null) null else ModellWahl(modell, denkaufwand)
+
     /** Was an `POST /v1/chat` geht. */
     val chatText: String
         get() = listOfNotNull(vorspann?.takeIf { it.isNotBlank() }, text).joinToString("\n\n")

@@ -14,12 +14,15 @@ import de.chefassistent.app.R
 import de.chefassistent.app.data.ApiFehler
 import de.chefassistent.app.data.AssistentRepository
 import de.chefassistent.app.data.AudioAufnahme
+import de.chefassistent.app.data.Fortschritt
+import de.chefassistent.app.data.istModellFehler
 import de.chefassistent.app.ChefAssistentApp
 import de.chefassistent.app.data.AusgangAuftrag
 import de.chefassistent.app.data.Auftrag
 import de.chefassistent.app.data.Ausgangskorb
 import de.chefassistent.app.data.Rueckmeldung
 import de.chefassistent.app.data.ChatAntwort
+import de.chefassistent.app.data.ChatStatus
 import de.chefassistent.app.data.DateiLink
 import de.chefassistent.app.data.EntscheidungAntwort
 import androidx.media3.common.util.UnstableApi
@@ -31,6 +34,9 @@ import de.chefassistent.app.data.MedienAuftrag
 import de.chefassistent.app.data.Medienkorb
 import de.chefassistent.app.data.VideoAufbereitung
 import de.chefassistent.app.data.GespraechKurz
+import de.chefassistent.app.data.MODELL_AUTO
+import de.chefassistent.app.data.ModellAuswahl
+import de.chefassistent.app.data.ModellWahl
 import de.chefassistent.app.data.Nachricht
 import de.chefassistent.app.data.Notizen
 import de.chefassistent.app.data.HeroMappe
@@ -51,6 +57,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,6 +83,8 @@ data class NutzerEintrag(
     val dateien: List<String> = emptyList(),
     /** Name im [Ausgangskorb], solange die Nachricht auf Netz wartet. */
     val wartet: String? = null,
+    /** Seit v1.20.0: waehrend einer laufenden Antwort geschickt, mit Marke "Zwischenruf". */
+    val zwischenruf: Boolean = false,
 ) : ChatEintrag
 
 data class AssistentEintrag(
@@ -82,6 +94,12 @@ data class AssistentEintrag(
     /** Seit v1.13.0. Ist die Liste da, zeigt die Blase Karten statt der Chips aus [dateien]. */
     val links: List<DateiLink> = emptyList(),
     val quellen: List<Quelle> = emptyList(),
+    /** Seit v1.20.0: womit die Antwort erzeugt wurde, `null` bei alten Nachrichten. */
+    val modell: String? = null,
+    val denkaufwandName: String? = null,
+    val modellGewechselt: Boolean = false,
+    /** Seit v1.20.0: Verlauf der Bearbeitung fuer "Verlauf: N Werkzeuge", `null` bei alten Nachrichten. */
+    val fortschritt: Fortschritt? = null,
 ) : ChatEintrag
 
 /**
@@ -153,6 +171,8 @@ data class ChatZustand(
     val gespraechId: String? = null,
     /** Im Gespraech laeuft eine Anfrage. Laut Vertrag darf nur eine gleichzeitig laufen. */
     val laeuft: Boolean = false,
+    /** Seit v1.20.0: laufende Chat-/Sprachanfrage mit Antwort, fuer Fortschritt, Stopp und Zwischenruf. */
+    val laufend: LaufendeAnfrage? = null,
     val nimmtAuf: Boolean = false,
     /** Schluessel des Eintrags, der gerade vorgelesen wird. */
     val liestVor: String? = null,
@@ -227,12 +247,27 @@ data class ChatZustand(
     val faden: String? = null,
     /** Was der Versand im Hintergrund zurueckgemeldet hat: Diktate, Abgelehntes, Hinweise. */
     val rueckmeldungen: List<Rueckmeldung> = emptyList(),
+    /** Seit v1.20.0: Auswahl aus `GET /v1/modelle`. `null` = alter Server oder nicht geladen, Felder ausblenden. */
+    val modelle: ModellAuswahl? = null,
+    /** Modell dieses Gespraechs, [MODELL_AUTO] oder ein `wert` aus [modelle]. */
+    val modell: String = MODELL_AUTO,
+    /** Denkaufwand dieses Gespraechs, [MODELL_AUTO] oder ein `denkstufen[].wert`. */
+    val denkaufwand: String = MODELL_AUTO,
     val fehler: String? = null,
     val abgemeldet: Boolean = false,
 ) {
     val kannSenden: Boolean get() = !laeuft && !nimmtAuf && entwurf.isNotBlank()
-    val kannAufnehmen: Boolean get() = !laeuft
+    // Waehrend einer Antwort darf aufgenommen werden: das wird ein Zwischenruf.
+    // `nimmtAuf`, damit eine laufende Aufnahme immer zu beenden bleibt.
+    val kannAufnehmen: Boolean get() = nimmtAuf || !laeuft || laufend?.kannEingreifen == true
     val kannFotografieren: Boolean get() = !laeuft && !nimmtAuf && medium == null
+
+    /**
+     * Was mit jeder Nachricht mitgeht (Auftrag 1.20 A4), "auto" ausdruecklich.
+     * Ohne geladene Auswahl `null`: dann bleibt die Einstellung des Gespraechs,
+     * statt sie unbemerkt auf "auto" zu setzen.
+     */
+    val wahl: ModellWahl? get() = if (modelle == null) null else ModellWahl(modell, denkaufwand)
 
     /**
      * Notizen, an die eine Aufnahme gehen kann: die der letzten und alle
@@ -290,13 +325,18 @@ class ChatViewModel(
     /** Laufendes Vorlesen vom Server, damit "Stopp" auch das Laden abbricht. */
     private var vorlesenJob: Job? = null
 
+    /** Der Chat ist zu sehen: nur dann wird der Fortschritt jede Sekunde abgefragt. */
+    private val chatSichtbar = MutableStateFlow(false)
+
     init {
+        fortschrittVerfolgen()
         zieleLaden()
         offeneBestaetigungenLaden()
         gespraecheLaden()
         notizenZaehlen()
         versandBeobachten()
         angebotePruefen()
+        modelleLaden()
         wartendesAnstossen()
         wiederherstellen()
         viewModelScope.launch { _zustand.collect(::sichern) }
@@ -311,6 +351,8 @@ class ChatViewModel(
         gespeichert[S_ENTWURF] = z.entwurf
         gespeichert[S_GESPRAECH] = z.gespraechId
         gespeichert[S_FADEN] = z.faden
+        gespeichert[S_MODELL] = z.modell
+        gespeichert[S_DENKAUFWAND] = z.denkaufwand
         val m = z.medium
         gespeichert[S_MEDIUM] = m?.datei?.path
         gespeichert[S_MEDIUM_VIDEO] = m?.istVideo
@@ -325,7 +367,12 @@ class ChatViewModel(
         val entwurf = gespeichert.get<String>(S_ENTWURF).orEmpty()
         val gespraech = gespeichert.get<String>(S_GESPRAECH)
         val faden = gespeichert.get<String>(S_FADEN)
-        val medium = gespeichert.get<String>(S_MEDIUM)?.let(::File)?.takeIf { it.exists() }?.let { datei ->
+        // Modellwahl eines neuen Gespraechs kennt nur die App. Bei einem bestehenden
+        // ueberschreibt sie gleich das Nachladen mit dem Stand des Servers.
+        val modell = gespeichert.get<String>(S_MODELL) ?: MODELL_AUTO
+        val denkaufwand = gespeichert.get<String>(S_DENKAUFWAND) ?: MODELL_AUTO
+        _zustand.update { it.copy(modell = modell, denkaufwand = denkaufwand) }
+        val medium =gespeichert.get<String>(S_MEDIUM)?.let(::File)?.takeIf { it.exists() }?.let { datei ->
             MedienEntwurf(
                 datei = datei,
                 istVideo = gespeichert.get<Boolean>(S_MEDIUM_VIDEO) == true,
@@ -371,6 +418,89 @@ class ChatViewModel(
             }
             _zustand.update { it.copy(angeboteEingerichtet = eingerichtet) }
         }
+    }
+
+    // --- Modellwahl (seit v1.20.0, Auftrag 1.20 Teil A) ------------------------
+
+    /**
+     * `GET /v1/modelle`. `null` (alter Server, 404) blendet die Auswahl aus. Ein
+     * Netzfehler laesst den bisherigen Stand stehen, beim naechsten neuen Gespraech
+     * wird es erneut versucht.
+     */
+    fun modelleLaden() {
+        viewModelScope.launch {
+            try {
+                val auswahl = repository.modelle()
+                _zustand.update { it.copy(modelle = auswahl) }
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) behandleFehler(fehler)
+            }
+        }
+    }
+
+    /** Zaehlt jede Aenderung, damit ein spaet scheiterndes PATCH keine neuere Wahl zuruecksetzt. */
+    private var einstellNummer = 0
+
+    fun modellWaehlen(wert: String) = einstellen(ModellWahl(modell = wert))
+
+    fun denkaufwandWaehlen(wert: String) = einstellen(ModellWahl(denkaufwand = wert))
+
+    /**
+     * Neues Gespraech: nur merken, die Wahl geht mit der ersten Nachricht raus.
+     * Bestehendes: sofort `PATCH /v1/gespraeche/{id}`. Scheitert das, kommt die
+     * alte Auswahl zurueck und `detail` wird gezeigt. 404 heisst: das Gespraech
+     * gibt es nicht mehr - dann wie nach dem Loeschen ein leerer Chat.
+     */
+    private fun einstellen(wahl: ModellWahl) {
+        val vorher = _zustand.value
+        if (vorher.laeuft) return
+        val nummer = ++einstellNummer
+        _zustand.update {
+            it.copy(
+                modell = wahl.modell ?: it.modell,
+                denkaufwand = wahl.denkaufwand ?: it.denkaufwand,
+                fehler = null,
+            )
+        }
+        val gid = vorher.gespraechId ?: return
+        val meine = sitzung
+        viewModelScope.launch {
+            try {
+                val eintrag = repository.gespraechEinstellen(gid, wahl)
+                _zustand.update { z ->
+                    val liste = z.gespraeche.map { if (it.id == gid) eintrag else it }
+                    if (meine == sitzung && nummer == einstellNummer && z.gespraechId == gid) {
+                        z.copy(gespraeche = liste, modell = eintrag.modell, denkaufwand = eintrag.denkaufwand)
+                    } else {
+                        z.copy(gespraeche = liste)
+                    }
+                }
+            } catch (fehler: ApiFehler.NichtGefunden) {
+                _zustand.update { z ->
+                    val neu = z.copy(gespraeche = z.gespraeche.filterNot { it.id == gid }, fehler = fehler.anzeigetext)
+                    // Die Wahl selbst bleibt stehen und geht mit der naechsten Nachricht
+                    // ins dann neue Gespraech.
+                    if (z.gespraechId == gid) neu.copy(gespraechId = null, faden = null, eintraege = emptyList()) else neu
+                }
+            } catch (fehler: ApiFehler) {
+                if (meine == sitzung && nummer == einstellNummer) {
+                    _zustand.update { it.copy(modell = vorher.modell, denkaufwand = vorher.denkaufwand) }
+                }
+                behandleFehler(fehler)
+            }
+        }
+    }
+
+    /**
+     * 422 auf eine Modellwahl bei Chat oder Sprache: die Liste hat sich auf dem
+     * Server geaendert. Neu laden und auf "Automatisch" zurueck. Die Nachricht
+     * selbst behandelt der Aufrufer (sie geht nicht verloren).
+     */
+    private fun modellZuruecksetzen(fehler: ApiFehler, wahl: ModellWahl?, meine: Int): Boolean {
+        if (fehler !is ApiFehler.Ungueltig || !istModellFehler(fehler.anzeigetext, wahl)) return false
+        if (meine == sitzung) _zustand.update { it.copy(modell = MODELL_AUTO, denkaufwand = MODELL_AUTO) }
+        modelleLaden()
+        return true
     }
 
     // --- Projektkontext ------------------------------------------------------
@@ -708,12 +838,15 @@ class ChatViewModel(
                 auftraegeOffen = it.auftraegeOffen,
                 aufgabenOffen = it.aufgabenOffen,
                 angeboteEingerichtet = it.angeboteEingerichtet,
+                // Die Auswahl bleibt, die Wahl selbst steht wieder auf "Automatisch".
+                modelle = it.modelle,
                 // Getipptes bleibt stehen, und abgelegte Dokumente soll der
                 // Assistent mit der naechsten Nachricht trotzdem erfahren.
                 entwurf = it.entwurf,
                 ungemeldeteDokumente = it.ungemeldeteDokumente,
             )
         }
+        if (_zustand.value.modelle == null) modelleLaden()
     }
 
     /** Menuepunkt "Abmelden": beendet auch die Sitzung auf dem Server (seit v1.10.0). */
@@ -814,6 +947,8 @@ class ChatViewModel(
         /** Kennung beim Server (API.md 1b) - dieselbe fuer jeden Versuch, auch aus dem Korb. */
         val anfrageId: String = AssistentRepository.neueAnfrageId(),
         val bilder: List<String> = emptyList(),
+        /** Modellwahl beim Absenden (seit v1.20.0), geht auch aus dem Korb so raus. */
+        val wahl: ModellWahl? = null,
     ) {
         fun mitVorspann(text: String) = listOfNotNull(vorspann, text).joinToString("\n\n")
     }
@@ -821,7 +956,7 @@ class ChatViewModel(
     private fun ziel(vorspann: String?): Ziel {
         val z = _zustand.value
         val faden = if (z.gespraechId == null) z.faden ?: UUID.randomUUID().toString() else null
-        return Ziel(z.gespraechId, faden, vorspann)
+        return Ziel(z.gespraechId, faden, vorspann, wahl = z.wahl)
     }
 
     /**
@@ -857,7 +992,9 @@ class ChatViewModel(
                     textEinreihen(schluessel, text, ziel, meine)
                     return@launch
                 }
-                val antwort = repository.chatSicher(ziel.mitVorspann(text), ziel.gespraechId, ziel.anfrageId)
+                val antwort = mitFortschritt(ziel.anfrageId, meine) {
+                    repository.chatSicher(ziel.mitVorspann(text), ziel.gespraechId, ziel.anfrageId, wahl = ziel.wahl)
+                }
                 if (meine == sitzung) verarbeiteAntwort(antwort)
                 gespraecheLaden()
             } catch (abbruch: CancellationException) {
@@ -872,6 +1009,8 @@ class ChatViewModel(
                     if (fehler is ApiFehler.NichtAngemeldet) behandleFehler(fehler)
                 } else {
                     zurueckInsFeld(schluessel, text, meine)
+                    // 422 auf die Modellwahl: Liste neu, "Automatisch", Text bleibt im Feld.
+                    modellZuruecksetzen(fehler, ziel.wahl, meine)
                     behandleFehler(fehler)
                     // 409: im Gespraech laeuft noch etwas (anderes Geraet). Den
                     // Stand holen, statt nur zu melden.
@@ -899,6 +1038,8 @@ class ChatViewModel(
                     text = text,
                     anfrage_id = ziel.anfrageId,
                     bilder = ziel.bilder,
+                    modell = ziel.wahl?.modell,
+                    denkaufwand = ziel.wahl?.denkaufwand,
                 )
             )
         }
@@ -1213,7 +1354,9 @@ class ChatViewModel(
             }
 
             try {
-                val antwort = repository.chatSicher(ziel.mitVorspann(frage), ziel.gespraechId, ziel.anfrageId, ziel.bilder)
+                val antwort = mitFortschritt(ziel.anfrageId, meine) {
+                    repository.chatSicher(ziel.mitVorspann(frage), ziel.gespraechId, ziel.anfrageId, ziel.bilder, ziel.wahl)
+                }
                 if (meine == sitzung) verarbeiteAntwort(antwort)
                 gespraecheLaden()
             } catch (abbruch: CancellationException) {
@@ -1224,6 +1367,9 @@ class ChatViewModel(
                 // Korb (mit dem Foto in `bilder`), sonst bleibt sie als Meldung stehen.
                 if (fehler is ApiFehler.KeineVerbindung || fehler is ApiFehler.NichtAngemeldet) {
                     textEinreihen(schluessel, frage, ziel, meine)
+                } else if (modellZuruecksetzen(fehler, ziel.wahl, meine)) {
+                    // Das Foto liegt schon in der Notiz, die Frage kommt zum erneuten Senden ins Feld.
+                    zurueckInsFeld(schluessel, frage, meine)
                 }
                 if (fehler !is ApiFehler.KeineVerbindung) behandleFehler(fehler)
             } finally {
@@ -1604,6 +1750,12 @@ class ChatViewModel(
             return
         }
 
+        // Waehrend einer laufenden Antwort wird gesprochenes zum Zwischenruf.
+        _zustand.value.laufend?.takeIf { it.kannEingreifen }?.let { laufend ->
+            zwischenrufAusAufnahme(datei, laufend.anfrageId, unterbrochen)
+            return
+        }
+
         val pruefen = _zustand.value.diktatPruefen || unterbrochen
         val hatKontext = _zustand.value.kontext != null
 
@@ -1637,7 +1789,9 @@ class ChatViewModel(
                 } else {
                     // Mit Kennung: bricht die Verbindung ab, wird das Ergebnis
                     // abgeholt statt die Aufnahme ein zweites Mal auszufuehren.
-                    repository.spracheSicher(datei, ziel.gespraechId, ziel.anfrageId)
+                    mitFortschritt(ziel.anfrageId, meine) {
+                        repository.spracheSicher(datei, ziel.gespraechId, ziel.anfrageId, ziel.wahl)
+                    }
                 }
 
                 if (!pruefen && hatKontext) {
@@ -1649,7 +1803,9 @@ class ChatViewModel(
                             it.copy(eintraege = it.eintraege + NutzerEintrag(schluessel, antwort.text))
                         }
                     }
-                    val chat = repository.chatSicher(ziel.mitVorspann(antwort.text), ziel.gespraechId, ziel.anfrageId)
+                    val chat = mitFortschritt(ziel.anfrageId, meine) {
+                        repository.chatSicher(ziel.mitVorspann(antwort.text), ziel.gespraechId, ziel.anfrageId, wahl = ziel.wahl)
+                    }
                     if (meine == sitzung) verarbeiteAntwort(chat)
                     gespraecheLaden()
                 } else if (pruefen) {
@@ -1694,10 +1850,14 @@ class ChatViewModel(
             } catch (fehler: ApiFehler) {
                 val text = erkannt
                 val einreihen = fehler is ApiFehler.KeineVerbindung || fehler is ApiFehler.NichtAngemeldet
+                val modellFehler = modellZuruecksetzen(fehler, ziel.wahl, meine)
                 when {
                     // Erkannt, aber der Chat kam nicht durch: ab hier ist es Text.
                     text != null && einreihen -> textEinreihen(schluessel, text, ziel, meine)
                     text != null -> zurueckInsFeld(schluessel, text, meine)
+                    // 422 auf die Modellwahl: nichts ausgefuehrt. Das Gesagte kommt
+                    // abgeschrieben ins Eingabefeld, statt verworfen zu werden.
+                    modellFehler -> diktatRetten(datei, ziel, meine, schluessel)
                     // Der Gedanke soll nicht verlorengehen, nur weil im Keller kein
                     // Netz ist oder der Server kurz weg. Die Aufnahme wandert
                     // verschluesselt in den Korb - im Pruefmodus nur zum Abschreiben.
@@ -1711,6 +1871,23 @@ class ChatViewModel(
                 datei.delete()
                 if (meine == sitzung) _zustand.update { it.copy(laeuft = false) }
             }
+        }
+    }
+
+    /**
+     * Seit v1.20.0: Sprache wurde wegen der Modellwahl abgelehnt (422). Nur
+     * abschreiben (`antworten=false`, ohne Wahl) und den Text ins Eingabefeld,
+     * damit der Nutzer ihn erneut senden kann. Ohne Netz geht die Aufnahme als
+     * Diktat in den Korb.
+     */
+    private suspend fun diktatRetten(datei: File, ziel: Ziel, meine: Int, schluessel: String) {
+        try {
+            val erkannt = repository.sprache(aufnahme = datei, gespraechId = ziel.gespraechId, antworten = false).text
+            _zustand.update { alt ->
+                alt.copy(entwurf = listOf(alt.entwurf.trim(), erkannt).filter { it.isNotBlank() }.joinToString(" "))
+            }
+        } catch (_: ApiFehler) {
+            spracheEinreihen(datei, ziel, antworten = false, meine = meine, schluessel = schluessel)
         }
     }
 
@@ -1730,6 +1907,9 @@ class ChatViewModel(
                     antworten = antworten,
                     vorspann = ziel.vorspann.takeIf { antworten },
                     anfrage_id = ziel.anfrageId.takeIf { antworten },
+                    // Nur-Abschreiben braucht keine Modellwahl.
+                    modell = ziel.wahl?.modell.takeIf { antworten },
+                    denkaufwand = ziel.wahl?.denkaufwand.takeIf { antworten },
                 ),
             )
         }
@@ -1889,7 +2069,8 @@ class ChatViewModel(
         }
         sprechenBeenden()
         val meine = ++sitzung
-        _zustand.update { it.copy(laeuft = true, fehler = null) }
+        // Eine noch laufende Antwort gehoert zum vorigen Gespraech: kein Stopp, kein Fortschritt hier.
+        _zustand.update { it.copy(laeuft = true, laufend = null, fehler = null) }
 
         viewModelScope.launch {
             try {
@@ -1903,6 +2084,8 @@ class ChatViewModel(
                     verlaufLaeuft.await() to offeneLaeuft.await()
                 }
                 val offeneIds = offene.map { it.id }.toSet()
+                // Modellwahl des Gespraechs (seit v1.20.0) steht nur in der Liste.
+                val einstellung = gespraechEinstellung(id)
                 // Was in diesem Gespraech noch auf Netz wartet, kennt der Server
                 // nicht - es haengt sich als "wartet" hinten an.
                 val wartend = withContext(Dispatchers.IO) {
@@ -1913,7 +2096,7 @@ class ChatViewModel(
                     buildList {
                         when (nachricht.rolle) {
                             Nachricht.ROLLE_NUTZER -> add(
-                                NutzerEintrag(naechsterSchluessel("nutzer"), nachricht.text, nachricht.dateien)
+                                NutzerEintrag(naechsterSchluessel("nutzer"), nachricht.text, nachricht.dateien, zwischenruf = nachricht.zwischenruf)
                             )
 
                             Nachricht.ROLLE_HINWEIS -> add(
@@ -1931,6 +2114,10 @@ class ChatViewModel(
                                     dateien = nachricht.dateien,
                                     links = nachricht.links,
                                     quellen = nachricht.quellen,
+                                    modell = nachricht.modell,
+                                    denkaufwandName = nachricht.denkaufwand_name ?: nachricht.denkaufwand,
+                                    modellGewechselt = nachricht.modell_gewechselt,
+                                    fortschritt = nachricht.fortschritt,
                                 )
                             )
                         }
@@ -1966,13 +2153,35 @@ class ChatViewModel(
                 }
 
                 if (meine != sitzung) return@launch
-                _zustand.update { it.copy(gespraechId = id, faden = null, eintraege = eintraege + wartendeEintraege) }
+                _zustand.update {
+                    it.copy(
+                        gespraechId = id,
+                        faden = null,
+                        eintraege = eintraege + wartendeEintraege,
+                        modell = einstellung?.modell ?: MODELL_AUTO,
+                        denkaufwand = einstellung?.denkaufwand ?: MODELL_AUTO,
+                    )
+                }
             } catch (fehler: ApiFehler) {
                 if (meine == sitzung) behandleFehler(fehler)
             } finally {
                 if (meine == sitzung) _zustand.update { it.copy(laeuft = false) }
             }
         }
+    }
+
+    /**
+     * Modell und Denkaufwand eines Gespraechs aus `GET /v1/gespraeche`. Frisch
+     * geholt, weil die Wahl auch auf einem anderen Geraet oder in der
+     * Weboberflaeche geaendert sein kann. Ohne Netz der zuletzt bekannte Stand.
+     */
+    private suspend fun gespraechEinstellung(id: String): GespraechKurz? = try {
+        val liste = repository.gespraeche()
+        _zustand.update { it.copy(gespraeche = liste) }
+        liste.firstOrNull { it.id == id }
+    } catch (fehler: ApiFehler) {
+        if (fehler is ApiFehler.NichtAngemeldet) throw fehler
+        _zustand.value.gespraeche.firstOrNull { it.id == id }
     }
 
     fun gespraechLoeschen(id: String) {
@@ -2017,6 +2226,179 @@ class ChatViewModel(
         null
     }
 
+    // --- Fortschritt, Stopp, Zwischenruf (seit v1.20.0, API.md 1d) -------------
+
+    /** Vom Bildschirm bei Resume/Pause. Im Hintergrund reicht das Abholen aus [AssistentRepository.chatSicher]. */
+    fun fortschrittBeobachten(ja: Boolean) {
+        chatSichtbar.value = ja
+    }
+
+    /** Fragt ab, solange eine Anfrage laeuft und der Chat zu sehen ist. Endet von selbst mit der Antwort. */
+    private fun fortschrittVerfolgen() {
+        viewModelScope.launch {
+            combine(
+                _zustand.map { it.laufend?.anfrageId }.distinctUntilChanged(),
+                chatSichtbar,
+            ) { id, sichtbar -> id.takeIf { sichtbar } }
+                .distinctUntilChanged()
+                .collectLatest { id -> if (id != null) fortschrittAbfragen(id) }
+        }
+    }
+
+    /**
+     * Jede Sekunde `GET /v1/chat/{id}?seit=<naechster>`. Fehler bleiben still:
+     * die Anzeige ist Beiwerk, ueber Erfolg und Funkloch entscheidet der wartende
+     * Chat-Aufruf. Das gilt auch fuer 401 - der wartende Aufruf meldet es selbst
+     * und reiht die Nachricht dabei ein, ein Ruecksprung von hier aus kaeme ihm zuvor.
+     */
+    private suspend fun fortschrittAbfragen(anfrageId: String) {
+        var nichtDa = 0
+        var ohneFortschritt = 0
+        while (true) {
+            val seit = _zustand.value.laufend?.takeIf { it.anfrageId == anfrageId }?.fortschritt?.naechster ?: 0
+            val stand = try {
+                repository.chatStatus(anfrageId, seit)
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) return
+                delay(FORTSCHRITT_TAKT_MS)
+                continue
+            }
+            val fortschritt = stand?.fortschritt
+            when {
+                fortschritt != null -> _zustand.update { z ->
+                    val l = z.laufend
+                    if (l?.anfrageId != anfrageId) z
+                    else z.copy(laufend = l.copy(fortschritt = ereignisseZusammenfuehren(l.fortschritt, fortschritt)))
+                }
+                // 404: noch nicht angekommen (Upload, Erkennung). Ein Server vor
+                // 1.17.0 meldet das immer - dann nach einer Minute aufgeben.
+                stand == null -> if (++nichtDa >= FORTSCHRITT_404_MAX) return
+                // Server vor 1.20.0 kennt keinen Fortschritt: bisherige Anzeige.
+                ++ohneFortschritt >= FORTSCHRITT_OHNE_MAX -> return
+            }
+            if (stand != null && stand.status != ChatStatus.STATUS_LAEUFT) return
+            delay(FORTSCHRITT_TAKT_MS)
+        }
+    }
+
+    /** Fuehrt [block] (den wartenden Chat-Aufruf) aus und haelt solange [ChatZustand.laufend]. */
+    private suspend fun <T> mitFortschritt(anfrageId: String, meine: Int, block: suspend () -> T): T {
+        if (meine == sitzung) {
+            _zustand.update { it.copy(laufend = LaufendeAnfrage(anfrageId, System.currentTimeMillis())) }
+        }
+        try {
+            return block()
+        } finally {
+            _zustand.update { z -> if (z.laufend?.anfrageId == anfrageId) z.copy(laufend = null) else z }
+        }
+    }
+
+    private fun laufendAendern(anfrageId: String, aenderung: (LaufendeAnfrage) -> LaufendeAnfrage) =
+        _zustand.update { z ->
+            val l = z.laufend
+            if (l?.anfrageId == anfrageId) z.copy(laufend = aenderung(l)) else z
+        }
+
+    /**
+     * "Stopp": wirkt erst am naechsten Schritt, die Antwort ("⏹ Abgebrochen …")
+     * kommt danach normal ueber den wartenden Aufruf. Kein Bestaetigungsdialog.
+     */
+    fun stoppen() {
+        val laufend = _zustand.value.laufend ?: return
+        if (!laufend.kannEingreifen) return
+        laufendAendern(laufend.anfrageId) { it.copy(stoppt = true) }
+        viewModelScope.launch {
+            try {
+                // false: 409 (schon fertig, die Antwort kommt gleich) oder 404 (noch
+                // nicht angekommen). Dann den Knopf wieder freigeben.
+                if (!repository.chatAbbrechen(laufend.anfrageId)) {
+                    laufendAendern(laufend.anfrageId) { it.copy(stoppt = false) }
+                }
+            } catch (fehler: ApiFehler) {
+                laufendAendern(laufend.anfrageId) { it.copy(stoppt = false) }
+                behandleFehler(fehler)
+            }
+        }
+    }
+
+    /** Text aus dem Eingabefeld als Zwischenruf an die laufende Antwort. */
+    fun zwischenrufSenden() {
+        val z = _zustand.value
+        val laufend = z.laufend ?: return
+        if (z.sendeKnopf != SendeKnopf.ZWISCHENRUF || !z.sendeKnopfAktiv) return
+        val text = z.entwurf.trim()
+        viewModelScope.launch { zwischenrufSchicken(laufend.anfrageId, text, ausFeld = true) }
+    }
+
+    /**
+     * Bei 200 steht der Text sofort als Blase mit Marke vor der laufenden Antwort.
+     * Bei 409 war die Antwort schon fertig: der Text bleibt im Feld (bzw. kommt
+     * dorthin), damit er als neue Nachricht rausgehen kann.
+     */
+    private suspend fun zwischenrufSchicken(anfrageId: String, text: String, ausFeld: Boolean) {
+        val meine = sitzung
+        laufendAendern(anfrageId) { it.copy(sendetZwischenruf = true) }
+        try {
+            repository.zwischenruf(anfrageId, text)
+            if (meine == sitzung) {
+                _zustand.update { z ->
+                    z.copy(
+                        eintraege = z.eintraege + NutzerEintrag(naechsterSchluessel("nutzer"), text, zwischenruf = true),
+                        entwurf = if (ausFeld && z.entwurf.trim() == text) "" else z.entwurf,
+                    )
+                }
+            }
+        } catch (fehler: ApiFehler) {
+            if (!ausFeld) insFeld(text)
+            if (fehler is ApiFehler.Beschaeftigt) {
+                _zustand.update { it.copy(fehler = ZWISCHENRUF_ZU_SPAET) }
+            } else {
+                behandleFehler(fehler)
+            }
+        } finally {
+            laufendAendern(anfrageId) { it.copy(sendetZwischenruf = false) }
+        }
+    }
+
+    /**
+     * Sprachnachricht waehrend einer laufenden Antwort: erst nur erkennen
+     * (`antworten=false`), dann als Zwischenruf. Ist die Diktat-Pruefung an (oder
+     * wurde die Aufnahme unterbrochen), landet der Text stattdessen im Feld, und
+     * der Knopf daneben heisst "Zwischenruf" - wie bei jeder anderen Nachricht soll
+     * nichts Falschverstandenes ungeprueft beim Assistenten ankommen. Ist die
+     * Antwort inzwischen fertig, ebenfalls ins Feld.
+     */
+    private fun zwischenrufAusAufnahme(datei: File, anfrageId: String, unterbrochen: Boolean) {
+        val pruefen = _zustand.value.diktatPruefen || unterbrochen
+        val gespraech = _zustand.value.gespraechId
+        viewModelScope.launch {
+            try {
+                val erkannt = repository.sprache(aufnahme = datei, gespraechId = gespraech, antworten = false).text.trim()
+                if (erkannt.isEmpty()) return@launch
+                if (pruefen || _zustand.value.laufend?.kannEingreifen != true || _zustand.value.laufend?.anfrageId != anfrageId) {
+                    insFeld(erkannt)
+                } else {
+                    zwischenrufSchicken(anfrageId, erkannt, ausFeld = false)
+                }
+            } catch (fehler: ApiFehler) {
+                // Nicht verlieren: ohne Netz geht die Aufnahme zum Abschreiben in
+                // den Korb und kommt als Diktat zurueck.
+                if (fehler.istVoruebergehend) {
+                    spracheEinreihen(datei, ziel(null), antworten = false, meine = sitzung, schluessel = naechsterSchluessel("nutzer"))
+                }
+                if (fehler !is ApiFehler.KeineVerbindung) behandleFehler(fehler)
+            } finally {
+                datei.delete()
+            }
+        }
+    }
+
+    /** Haengt Text an einen schon getippten Entwurf an, statt ihn zu ersetzen. */
+    private fun insFeld(text: String) = _zustand.update { alt ->
+        val vorhanden = alt.entwurf.trim()
+        alt.copy(entwurf = if (vorhanden.isEmpty()) text else "$vorhanden $text")
+    }
+
     // --- Gemeinsames ---------------------------------------------------------
 
     private fun verarbeiteAntwort(antwort: ChatAntwort) {
@@ -2056,6 +2438,10 @@ class ChatViewModel(
                         dateien = antwort.dateien,
                         links = antwort.links,
                         quellen = antwort.quellen,
+                        modell = antwort.modell,
+                        denkaufwandName = antwort.denkaufwand_name ?: antwort.denkaufwand,
+                        modellGewechselt = antwort.modell_gewechselt,
+                        fortschritt = antwort.fortschritt,
                     )
                 )
                 // Ausgefuehrtes ohne zugehoerige Frage in der Liste (z.B. aus einer
@@ -2108,6 +2494,8 @@ class ChatViewModel(
         private const val S_ENTWURF = "entwurf"
         private const val S_GESPRAECH = "gespraech"
         private const val S_FADEN = "faden"
+        private const val S_MODELL = "modell"
+        private const val S_DENKAUFWAND = "denkaufwand"
         private const val S_MEDIUM = "medium"
         private const val S_MEDIUM_VIDEO = "medium_video"
         private const val S_MEDIUM_DOKUMENT = "medium_dokument"
@@ -2121,6 +2509,15 @@ class ChatViewModel(
 
         /** `API.md`: 15-30 s. Im Chat das obere Ende, die Auftragsansicht fragt oefter. */
         private const val AUFTRAG_ABFRAGE_MS = 30_000L
+
+        /** API.md 1d: etwa jede Sekunde. */
+        private const val FORTSCHRITT_TAKT_MS = 1_000L
+
+        /** So viele 404 in Folge (etwa eine Minute), dann ist es ein Server ohne Abholen. */
+        private const val FORTSCHRITT_404_MAX = 60
+
+        /** So viele Antworten ohne `fortschritt`, dann ist es ein Server vor 1.20.0. */
+        private const val FORTSCHRITT_OHNE_MAX = 3
 
         fun factory(repository: AssistentRepository, context: Context) = viewModelFactory {
             initializer {

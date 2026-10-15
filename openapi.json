@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.19.0"
+    "version": "1.20.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -497,7 +497,7 @@
           "Chat"
         ],
         "summary": "Chat",
-        "description": "Nachricht senden. Dauert je nach Aufgabe Sekunden bis viele Minuten (Angebote) – in der App KEIN Lese-Timeout\nsetzen. Reißt die Verbindung trotzdem ab: Der Assistent arbeitet weiter; Ergebnis mit GET /v1/chat/{anfrage_id}\nabholen (oder dieselbe anfrage_id erneut senden – wird nicht doppelt ausgeführt).\nMit `bilder` sieht der Assistent die Fotos (Typenschild ablesen, Fehleranzeige deuten …);\nein Foto vorher mit POST /v1/fotos hochladen und dessen `foto`-Pfad hier mitgeben.\nEin ungültiger Bildpfad ergibt 404 (nicht gefunden) bzw. 422 (kein Foto).",
+        "description": "Nachricht senden. Dauert je nach Aufgabe Sekunden bis viele Minuten (Angebote) – in der App KEIN Lese-Timeout\nsetzen. Reißt die Verbindung trotzdem ab: Der Assistent arbeitet weiter; Ergebnis mit GET /v1/chat/{anfrage_id}\nabholen (oder dieselbe anfrage_id erneut senden – wird nicht doppelt ausgeführt).\nMit `bilder` sieht der Assistent die Fotos (Typenschild ablesen, Fehleranzeige deuten …);\nein Foto vorher mit POST /v1/fotos hochladen und dessen `foto`-Pfad hier mitgeben.\nEin ungültiger Bildpfad ergibt 404 (nicht gefunden) bzw. 422 (kein Foto).\nMit `modell`/`denkaufwand` (neu in 1.20.0) lässt sich die Wahl des Gesprächs gleich mit setzen (z. B. beim\nersten Senden eines neuen Gesprächs); ungültige Werte ergeben 422.",
         "operationId": "chat_v1_chat_post",
         "requestBody": {
           "content": {
@@ -550,8 +550,8 @@
               }
             }
           },
-          "502": {
-            "description": "Bad Gateway",
+          "422": {
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -560,12 +560,12 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "502": {
+            "description": "Bad Gateway",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Fehler"
                 }
               }
             }
@@ -584,8 +584,89 @@
           "Chat"
         ],
         "summary": "Chat Stand",
-        "description": "Stand einer Chat-Anfrage (neu in 1.17.0). Für den Fall, dass die Verbindung während POST /v1/chat abreißt:\nDer Assistent arbeitet trotzdem weiter. Solange status=laeuft, alle paar Sekunden erneut fragen.",
+        "description": "Stand einer Chat-Anfrage (neu in 1.17.0). Für den Fall, dass die Verbindung während POST /v1/chat abreißt:\nDer Assistent arbeitet trotzdem weiter. Solange status=laeuft, alle paar Sekunden erneut fragen.\nSeit 1.20.0 mit `fortschritt` (Schritte, Werkzeuge, Denken): während POST /v1/chat läuft etwa jede Sekunde\nmit `seit` abfragen, um anzuzeigen, was der Assistent gerade tut.",
         "operationId": "chat_stand_v1_chat__anfrage_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anfrage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Anfrage Id"
+            }
+          },
+          {
+            "name": "seit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Nur Ereignisse ab dieser Nummer (fortschritt.naechster der letzten Abfrage) – neu in 1.20.0",
+              "default": 0,
+              "title": "Seit"
+            },
+            "description": "Nur Ereignisse ab dieser Nummer (fortschritt.naechster der letzten Abfrage) – neu in 1.20.0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/{anfrage_id}/abbrechen": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Chat Abbrechen",
+        "description": "Laufende Anfrage stoppen (neu in 1.20.0). Wirkt am nächsten Schritt: ein gerade laufender Modellaufruf\nläuft zu Ende, sein Ergebnis wird verworfen; ein laufendes Werkzeug wird fertig. Schon Ausgeführtes wird NICHT\nrückgängig gemacht. Danach liefert POST /v1/chat bzw. GET /v1/chat/{id} die Antwort „⏹ Abgebrochen …“\n(status=abgebrochen).",
+        "operationId": "chat_abbrechen_v1_chat__anfrage_id__abbrechen_post",
         "security": [
           {
             "HTTPBearer": []
@@ -632,6 +713,104 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/{anfrage_id}/zwischenruf": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Chat Zwischenruf",
+        "description": "Während der Assistent arbeitet etwas ergänzen („nimm lieber die Rechnung von 2025“) – neu in 1.20.0. Kommt\nbeim nächsten Schritt als zusätzliche Nutzernachricht an und steht im Gesprächsverlauf. Ist die Anfrage schon\nfertig: 409 – dann als normale neue Nachricht schicken.",
+        "operationId": "chat_zwischenruf_v1_chat__anfrage_id__zwischenruf_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anfrage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Anfrage Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Zwischenruf"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZwischenrufAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "description": "Validation Error",
@@ -2598,6 +2777,82 @@
       }
     },
     "/v1/gespraeche/{gid}": {
+      "patch": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Gespraech Einstellen",
+        "description": "Modell und Denkaufwand dieses Gesprächs wählen (neu in 1.20.0). 'auto' = Automatisch (Standard). Gilt ab der\nnächsten Nachricht – eine gerade laufende arbeitet mit der alten Einstellung zu Ende.",
+        "operationId": "gespraech_einstellen_v1_gespraeche__gid__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "gid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Gid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModellWahl"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GespraechKurz"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
       "get": {
         "tags": [
           "Chat"
@@ -2714,6 +2969,43 @@
             }
           }
         }
+      }
+    },
+    "/v1/modelle": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Modelle",
+        "description": "Was im Chat wählbar ist (neu in 1.20.0): Modelle und Denkstufen, jeweils zusätzlich 'auto'.",
+        "operationId": "modelle_v1_modelle_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModellAuswahl"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/termine": {
@@ -4387,6 +4679,30 @@
             ],
             "title": "Anfrage Id",
             "description": "Wie bei POST /v1/chat (neu in 1.17.0)"
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell",
+            "description": "Wie bei POST /v1/chat (neu in 1.20.0)"
+          },
+          "denkaufwand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand",
+            "description": "Wie bei POST /v1/chat (neu in 1.20.0)"
           }
         },
         "type": "object",
@@ -4494,6 +4810,30 @@
             "maxItems": 4,
             "title": "Bilder",
             "description": "Optional: bis zu 4 Fotos, die der Assistent zu dieser Nachricht ansehen soll (z.B. Typenschild, Fehleranzeige). Pfade aus POST /v1/fotos (`foto`) oder andere Bilder der Ablage (JPEG/PNG/WebP)."
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell",
+            "description": "Optional: Modell für dieses Gespräch festlegen – 'auto' oder ein Wert aus GET /v1/modelle. Wird für das Gespräch gespeichert (wie PATCH /v1/gespraeche/{id}) und gilt schon für diese Nachricht. Weglassen = Einstellung des Gesprächs bleibt (neues Gespräch: auto). Neu in 1.20.0"
+          },
+          "denkaufwand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand",
+            "description": "Optional: Denkaufwand – 'auto' oder ein Wert aus GET /v1/modelle (denkstufen[].wert). Wie 'modell'. Neu in 1.20.0"
           }
         },
         "type": "object",
@@ -4564,6 +4904,65 @@
             "type": "array",
             "title": "Quellen",
             "description": "Web-Quellen"
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell",
+            "description": "Modell, das diese Antwort tatsächlich erzeugt hat (bei Wechsel im Zug: das zuletzt verwendete). Neu in 1.20.0"
+          },
+          "denkaufwand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand",
+            "description": "Tatsächlich verwendeter Denkaufwand, z. B. 'low' (neu in 1.20.0)"
+          },
+          "denkaufwand_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand Name",
+            "description": "Anzeigename dazu, z. B. 'niedrig' (neu in 1.20.0)"
+          },
+          "modell_gewechselt": {
+            "type": "boolean",
+            "title": "Modell Gewechselt",
+            "description": "true = im Zug automatisch auf das Arbeitsmodell bzw. einen höheren Denkaufwand gewechselt (neu in 1.20.0)",
+            "default": false
+          },
+          "fortschritt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fortschritt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Verlauf der Bearbeitung (Schritte, Werkzeuge, Denken) – unter der Antwort eingeklappt „Verlauf: 7 Werkzeuge, 1:12 min“ (neu in 1.20.0, bei älteren Nachrichten null)"
+          },
+          "abgebrochen": {
+            "type": "boolean",
+            "title": "Abgebrochen",
+            "description": "true = vom Nutzer abgebrochen (neu in 1.20.0)",
+            "default": false
           }
         },
         "type": "object",
@@ -4584,10 +4983,11 @@
             "enum": [
               "laeuft",
               "fertig",
-              "fehler"
+              "fehler",
+              "abgebrochen"
             ],
             "title": "Status",
-            "description": "laeuft = Assistent arbeitet noch"
+            "description": "laeuft = Assistent arbeitet noch · abgebrochen = vom Nutzer gestoppt (neu in 1.20.0, antwort ist dann gesetzt)"
           },
           "gespraech_id": {
             "anyOf": [
@@ -4609,7 +5009,7 @@
                 "type": "null"
               }
             ],
-            "description": "Nur bei status=fertig – dieselbe Antwort wie bei POST /v1/chat"
+            "description": "Bei status=fertig/abgebrochen – dieselbe Antwort wie bei POST /v1/chat"
           },
           "fehler": {
             "anyOf": [
@@ -4622,6 +5022,17 @@
             ],
             "title": "Fehler",
             "description": "Nur bei status=fehler"
+          },
+          "fortschritt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fortschritt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ereignisse ab ?seit=, Zähler, aktuelle Tätigkeit (neu in 1.20.0)"
           }
         },
         "type": "object",
@@ -4701,6 +5112,26 @@
           "ordner"
         ],
         "title": "DateiLink"
+      },
+      "Denkstufe": {
+        "properties": {
+          "wert": {
+            "type": "string",
+            "title": "Wert",
+            "description": "Wert für die API, z. B. 'medium'"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Anzeigename, z. B. 'mittel'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert",
+          "name"
+        ],
+        "title": "Denkstufe"
       },
       "DokumentAntwort": {
         "properties": {
@@ -5151,6 +5582,128 @@
         ],
         "title": "EntscheidungAntwort"
       },
+      "Ereignis": {
+        "properties": {
+          "nr": {
+            "type": "integer",
+            "title": "Nr",
+            "description": "Laufende Nummer je Anfrage (0, 1, 2 …) – für ?seit="
+          },
+          "zeit": {
+            "type": "string",
+            "title": "Zeit"
+          },
+          "sekunde": {
+            "type": "number",
+            "title": "Sekunde",
+            "description": "Sekunden seit Beginn der Anfrage"
+          },
+          "art": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "schritt",
+                  "werkzeug",
+                  "werkzeug_fertig",
+                  "wechsel",
+                  "denken",
+                  "zwischenruf",
+                  "abbruch",
+                  "abgebrochen",
+                  "fehler",
+                  "fertig"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Art",
+            "description": "schritt = Modellaufruf beginnt (Modell/Denkaufwand) · werkzeug = Werkzeug startet (text = was es tut) · werkzeug_fertig (ok, dauer_ms) · wechsel = Modellwechsel · denken = Denk-Zusammenfassung des Modells (eingeklappt zeigen, ist NICHT Teil der Antwort) · zwischenruf · abbruch = Abbrechen angefordert · abgebrochen · fehler · fertig. Unbekannte Arten wie 'schritt' als einfache Zeile zeigen."
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Deutsch, zum Anzeigen, z. B. „Sucht Projekt „Altkaulsdorf““"
+          },
+          "werkzeug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Werkzeug"
+          },
+          "ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ok"
+          },
+          "dauer_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dauer Ms"
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell"
+          },
+          "denkaufwand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand"
+          },
+          "schritt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schritt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nr",
+          "zeit",
+          "sekunde",
+          "art",
+          "text"
+        ],
+        "title": "Ereignis"
+      },
       "Fehler": {
         "properties": {
           "detail": {
@@ -5163,6 +5716,67 @@
           "detail"
         ],
         "title": "Fehler"
+      },
+      "Fortschritt": {
+        "properties": {
+          "ereignisse": {
+            "items": {
+              "$ref": "#/components/schemas/Ereignis"
+            },
+            "type": "array",
+            "title": "Ereignisse",
+            "description": "Ab ?seit= (sonst alle)"
+          },
+          "naechster": {
+            "type": "integer",
+            "title": "Naechster",
+            "description": "Beim nächsten Abfragen als ?seit= mitgeben",
+            "default": 0
+          },
+          "schritte": {
+            "type": "integer",
+            "title": "Schritte",
+            "description": "Modellaufrufe bisher",
+            "default": 0
+          },
+          "werkzeuge": {
+            "type": "integer",
+            "title": "Werkzeuge",
+            "description": "Werkzeugaufrufe bisher (inkl. Websuche)",
+            "default": 0
+          },
+          "aktuell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aktuell",
+            "description": "Was gerade passiert (nur solange status=laeuft)"
+          },
+          "dauer_s": {
+            "type": "number",
+            "title": "Dauer S",
+            "description": "Laufzeit bzw. Gesamtdauer in Sekunden",
+            "default": 0
+          },
+          "gestartet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gestartet"
+          }
+        },
+        "type": "object",
+        "title": "Fortschritt"
       },
       "FotoAntwort": {
         "properties": {
@@ -5282,6 +5896,18 @@
             "title": "Laeuft",
             "description": "true = der Assistent arbeitet gerade an einer Nachricht (neu in 1.17.0)",
             "default": false
+          },
+          "modell": {
+            "type": "string",
+            "title": "Modell",
+            "description": "Im Chat gewähltes Modell: 'auto' oder ein Wert aus GET /v1/modelle (neu in 1.20.0)",
+            "default": "auto"
+          },
+          "denkaufwand": {
+            "type": "string",
+            "title": "Denkaufwand",
+            "description": "Im Chat gewählter Denkaufwand: 'auto' oder ein Wert aus GET /v1/modelle (neu in 1.20.0)",
+            "default": "auto"
           }
         },
         "type": "object",
@@ -6137,6 +6763,132 @@
         ],
         "title": "KalenderTermin"
       },
+      "ModellAuswahl": {
+        "properties": {
+          "modelle": {
+            "items": {
+              "$ref": "#/components/schemas/ModellEintrag"
+            },
+            "type": "array",
+            "title": "Modelle",
+            "description": "Wählbare Modelle (zusätzlich immer 'auto' = Automatisch)"
+          },
+          "denkstufen": {
+            "items": {
+              "$ref": "#/components/schemas/Denkstufe"
+            },
+            "type": "array",
+            "title": "Denkstufen",
+            "description": "Wählbare Denkstufen (zusätzlich immer 'auto')"
+          },
+          "automatisch": {
+            "type": "string",
+            "title": "Automatisch",
+            "description": "Was „Automatisch“ bedeutet – als Hilfetext anzeigen"
+          },
+          "standard_modell": {
+            "type": "string",
+            "title": "Standard Modell",
+            "description": "Automatisch: Modell zu Beginn jeder Nachricht"
+          },
+          "arbeits_modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arbeits Modell",
+            "description": "Automatisch: Modell ab einer großen Aufgabe (leer = kein Wechsel)"
+          },
+          "standard_denkaufwand": {
+            "$ref": "#/components/schemas/Denkstufe"
+          },
+          "arbeits_denkaufwand": {
+            "$ref": "#/components/schemas/Denkstufe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modelle",
+          "denkstufen",
+          "automatisch",
+          "standard_modell",
+          "standard_denkaufwand",
+          "arbeits_denkaufwand"
+        ],
+        "title": "ModellAuswahl"
+      },
+      "ModellEintrag": {
+        "properties": {
+          "wert": {
+            "type": "string",
+            "title": "Wert",
+            "description": "Modell-ID für die API, z. B. 'gpt-5.6-sol'"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Anzeigename (derzeit = wert)"
+          },
+          "teuer": {
+            "type": "boolean",
+            "title": "Teuer",
+            "description": "true = deutlich teurer pro Anfrage: abgesetzt und in Warnfarbe zeigen, beim Auswählen bestätigen lassen; die Automatik nimmt es nie",
+            "default": false
+          },
+          "hinweis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hinweis",
+            "description": "Kurzer Hinweis zum Anzeigen (bei teuren Modellen gesetzt)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert",
+          "name"
+        ],
+        "title": "ModellEintrag"
+      },
+      "ModellWahl": {
+        "properties": {
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell",
+            "description": "'auto' oder ein Wert aus GET /v1/modelle; weglassen = unverändert"
+          },
+          "denkaufwand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand",
+            "description": "'auto' oder ein Wert aus GET /v1/modelle (denkstufen[].wert); weglassen = unverändert"
+          }
+        },
+        "type": "object",
+        "title": "ModellWahl"
+      },
       "Nachricht": {
         "properties": {
           "id": {
@@ -6188,6 +6940,71 @@
             },
             "type": "array",
             "title": "Quellen"
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell",
+            "description": "Modell, das diese Antwort (nur rolle=assistent) tatsächlich erzeugt hat (bei Wechsel im Zug: das zuletzt verwendete). Neu in 1.20.0"
+          },
+          "denkaufwand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand",
+            "description": "Tatsächlich verwendeter Denkaufwand, z. B. 'low' (neu in 1.20.0)"
+          },
+          "denkaufwand_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand Name",
+            "description": "Anzeigename dazu, z. B. 'niedrig' (neu in 1.20.0)"
+          },
+          "modell_gewechselt": {
+            "type": "boolean",
+            "title": "Modell Gewechselt",
+            "description": "true = im Zug automatisch auf das Arbeitsmodell bzw. einen höheren Denkaufwand gewechselt (neu in 1.20.0)",
+            "default": false
+          },
+          "fortschritt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fortschritt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Verlauf der Bearbeitung (Schritte, Werkzeuge, Denken) – unter der Antwort eingeklappt „Verlauf: 7 Werkzeuge, 1:12 min“ (neu in 1.20.0, bei älteren Nachrichten null)"
+          },
+          "abgebrochen": {
+            "type": "boolean",
+            "title": "Abgebrochen",
+            "description": "true = vom Nutzer abgebrochen (neu in 1.20.0)",
+            "default": false
+          },
+          "zwischenruf": {
+            "type": "boolean",
+            "title": "Zwischenruf",
+            "description": "Nur rolle=nutzer: true = als Zwischenruf während einer laufenden Antwort geschickt (neu in 1.20.0)",
+            "default": false
           }
         },
         "type": "object",
@@ -7104,6 +7921,46 @@
         },
         "type": "object",
         "title": "ZweiFaktorStart"
+      },
+      "Zwischenruf": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Was der Nutzer während der Bearbeitung ergänzt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "Zwischenruf"
+      },
+      "ZwischenrufAntwort": {
+        "properties": {
+          "angenommen": {
+            "type": "boolean",
+            "title": "Angenommen",
+            "default": true
+          },
+          "nachricht_id": {
+            "type": "integer",
+            "title": "Nachricht Id",
+            "description": "Als Nutzernachricht im Gesprächsverlauf gespeichert"
+          },
+          "hinweis": {
+            "type": "string",
+            "title": "Hinweis",
+            "default": "Kommt beim nächsten Schritt beim Assistenten an."
+          }
+        },
+        "type": "object",
+        "required": [
+          "nachricht_id"
+        ],
+        "title": "ZwischenrufAntwort"
       }
     },
     "securitySchemes": {

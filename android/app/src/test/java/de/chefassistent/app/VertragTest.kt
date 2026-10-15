@@ -541,7 +541,7 @@ class VorlesenTest {
         val status = schemas["ChatStatus"]!!.jsonObject["properties"]!!.jsonObject["status"]!!
             .jsonObject["enum"]!!.jsonArray.map { it.jsonPrimitive.content }
         assertEquals(
-            setOf(ChatStatus.STATUS_LAEUFT, ChatStatus.STATUS_FERTIG, ChatStatus.STATUS_FEHLER),
+            setOf(ChatStatus.STATUS_LAEUFT, ChatStatus.STATUS_FERTIG, ChatStatus.STATUS_FEHLER, ChatStatus.STATUS_ABGEBROCHEN),
             status.toSet(),
         )
 

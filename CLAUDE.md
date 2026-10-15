@@ -17,7 +17,7 @@ Antworten und Kommunikation auf **Deutsch**. Code und Commit-Messages auf Englis
 
 | Datei | Rolle |
 |---|---|
-| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.19.0 |
+| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.20.0 |
 | `API.md` | Erläuterung + Kotlin/Retrofit-Gerüst, für Android geschrieben |
 | `WINDOWS-HUELLE.md` | Auftrag für die Windows-App (WebView2-Hülle, Nachrichten `hallo`/`zeigen`/`oeffnen`/`ergebnis`/`sprechen`) |
 
@@ -170,7 +170,7 @@ Auf dem Galaxy S25 installiert und mit echtem Token gegen den Server gefahren:
 
 Nebenbei belegt: `shared_prefs/chef_assistent_zugang.xml` enthält nur verschlüsselte Schlüssel und Werte — das Token liegt nicht im Klartext.
 
-124 Unit-Tests laufen (`./gradlew testDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
+141 Unit-Tests laufen (`./gradlew testDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
 
 ### Anmeldung (`ui/anmeldung/`, `ui/geraete/`, seit v1.10.0)
 
@@ -315,6 +315,29 @@ Ein bereits getippter Entwurf wird **nicht ueberschrieben**, der erkannte Text h
 **Nicht `View.keepScreenOn` nehmen.** Damit blieb das Flag am S25 nach einer Unterbrechung am Fenster haengen (`dumpsys window`: `fl=81810180`, Bit 0x80), das Display waere bis zum Schliessen der App angeblieben. Deshalb `window.addFlags`/`clearFlags`, und `ON_STOP` loescht das Flag zusaetzlich.
 
 Am Geraet geprueft (2026-10-13), per `dumpsys power`: Wach-Lock nur waehrend der Aufnahme, nach Stopp und nach Home + Rueckkehr wieder frei. Nach Home: Hinweiszeile da, Erkanntes im Eingabefeld, nichts gesendet. Die Ein/Aus-Taste selbst ist ungeprueft (Geraet laesst sich per adb nicht entsperren), sie loest aber dasselbe `ON_STOP` aus.
+
+### Modellwahl, Fortschritt, Stopp, Zwischenruf (seit v1.20.0)
+
+Auftrag `AUFTRAG-APP-1.20.md`, API.md 1c (Teil A) und 1d (Teil B).
+
+**Teil A, Modellwahl** (`ui/chat/ModellWahl.kt`):
+
+- `ModellLeiste` zwischen Kontextleiste und Eingabe: zwei Chips (Modell, Denkaufwand) mit Menü, ⓘ zeigt `automatisch`. Listen kommen **nur** aus `GET /v1/modelle`, 404 (alter Server) blendet die Leiste aus.
+- **Teure Modelle** stehen im Menü abgesetzt unter „Teuer“ und brauchen eine Ja/Nein-Rückfrage. Solange eins eingestellt ist, ist der Chip in Warnfarbe (`ColorScheme.warnung`, Bernstein, in `theme/Theme.kt`) und darunter steht „⚠ teuer pro Anfrage“.
+- Je Gespräch: neu = auto/auto, nur lokal bis zur ersten Nachricht. Öffnen übernimmt die Werte aus der frisch geladenen Gesprächsliste. Ändern im bestehenden Gespräch schickt sofort `PATCH`, ein Fehler stellt die alte Wahl wieder her. Die Wahl liegt im `SavedStateHandle`.
+- `wahl` geht an Chat, Sprache und Frage zum Foto mit, und im `AusgangAuftrag` auch beim Nachsenden. `wahl` ist `null`, solange die Liste nicht geladen ist, damit nicht unbemerkt „auto“ ins Gespräch geschrieben wird.
+- **422 auf die Modellwahl** (`istModellFehler()` in `Vertrag.kt`, erkannt am Wort „Modell“/„Denkaufwand“ in `detail`): Liste neu laden, auf Automatisch zurück, Text ins Eingabefeld. Eine Aufnahme wird nur abgeschrieben. Im Korb geht der Auftrag ohne Wahl erneut raus, statt als „keine Sprache“ verworfen zu werden.
+- Unter jeder Antwort klein `gpt-5.6-sol · mittel · gewechselt`, `(teuer)` hinter teuren Modellen (`modellZeile()`).
+
+**Teil B, Fortschritt** (`ui/chat/Fortschritt.kt`):
+
+- Läuft eine Antwort und ist der Chat sichtbar, fragt die App jede Sekunde `GET /v1/chat/{id}?seit=` ab und führt die Ereignisse nach `nr` ohne Dubletten zusammen. Fehler bleiben still, auch 401: Erfolg, Funkloch und Anmeldung entscheidet weiter der wartende Chat-Aufruf.
+- `FortschrittBlase` statt „Assistent arbeitet …“: „Arbeitet · Schritt 3 · 5 Werkzeuge · 0:42“, `aktuell` kursiv, eingeklappte „Details“. Unter fertigen Antworten steht „Verlauf: N Werkzeuge · m:ss min“, wenn Werkzeuge oder Denken dabei waren.
+- **Denken nur in Details und Verlauf**, nie in der Blase, beim Vorlesen oder beim Kopieren.
+- **Senden-Knopf** (`SendeKnopf`): leeres Feld → „Stopp“ (rot), Text im Feld → „Zwischenruf“ (`primary`). Beides gibt es erst, wenn der Server einen `fortschritt` liefert, ein alter Server behält den gesperrten Knopf. Eine zweite normale Nachricht bleibt gesperrt. Enter im Textfeld macht nur einen Zeilenumbruch, stoppt also nie.
+- Ein Zwischenruf erscheint als Nutzerblase mit gestricheltem Rand und der Marke „Zwischenruf“. 409 heißt: Text bleibt im Feld, Hinweis „schon fertig“. Sprache während einer Antwort wird erst nur erkannt. Mit Diktat-Prüfung kommt der Text ins Feld, ohne geht er direkt als Zwischenruf raus.
+
+**Ungeprüft am Gerät:** die ganze Abnahme beider Teile. Astra kostet je Anfrage deutlich mehr, beim Testen sparsam wählen.
 
 ### Antworten: Diagramme, Tabellen, Code (`ui/antwort/`, seit v1.14.0)
 
@@ -669,11 +692,11 @@ Geprüft am 2026-09-24 auf dem Dev-PC: Start lädt die Anmeldeseite, das Server-
 
 ## Vertragsdateien holen
 
-Stand 2026-10-15, v1.19.0 (neu: HERO-Projekt anheften, `POST`/`GET /v1/hero-mappe`, `hero_projekt` an `NotizOrdner`, API.md 4 „HERO-Projekt anheften“, Auftrag `AUFTRAG-APP-1.19.md`. Davor v1.18.0 mit HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
+Stand 2026-10-15, v1.20.0 (neu: Modellwahl je Gespräch, `GET /v1/modelle`, `PATCH /v1/gespraeche/{gid}`, `modell`/`denkaufwand` in Chat und Sprache, Fortschritt per `GET /v1/chat/{anfrage_id}?seit=`, `POST …/abbrechen` und `…/zwischenruf`, API.md 1c und 1d, Auftrag `AUFTRAG-APP-1.20.md`. Davor v1.19.0 mit HERO-Projekt anheften, `POST`/`GET /v1/hero-mappe`, `hero_projekt` an `NotizOrdner`, API.md 4 „HERO-Projekt anheften“, Auftrag `AUFTRAG-APP-1.19.md`. Davor v1.18.0 mit HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
 
 ```
-f5f0de4e3faa691d1d606c1e30f3f495eab1f5cd244fa414d4b4ecd90bf886dc  openapi.json
-3356d4c25f054718a163a7a37f6714fb5b0f9b017e0f8d6e43bd82a2e2ec53d2  API.md
+c833691d6317b4044fc8a48e3f6465ca5e65e503d9f9652f47c79571adfd33bc  openapi.json
+4209f4e6a6f8964ade832ca2ba3d21bf386bccefd94d1b9aa697424b0a12d921  API.md
 ```
 
 `WINDOWS-HUELLE.md` kommt ebenfalls vom Server, ist aber der Auftrag für den Agenten, der die Windows-App baut, und gehört nicht in dieses Projekt.

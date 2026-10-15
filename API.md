@@ -36,8 +36,12 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/geraete` | Angemeldete Geräte |
 | DELETE | `/v1/geraete/{id}` | Gerät abmelden (z. B. verlorenes Handy) |
 | GET | `/v1/ich` | Wer bin ich, welches Modell |
+| GET | `/v1/modelle` | **Modellwahl**: wählbare Modelle und Denkstufen, was „Automatisch“ heißt (neu in 1.20.0) |
+| PATCH | `/v1/gespraeche/{id}` | Modell/Denkaufwand eines Gesprächs setzen (neu in 1.20.0) |
 | POST | `/v1/chat` | Textnachricht → Antwort |
-| GET | `/v1/chat/{anfrage_id}` | Stand/Ergebnis einer Chat-Anfrage abholen (neu in 1.17.0) |
+| GET | `/v1/chat/{anfrage_id}?seit=` | Stand/Ergebnis einer Chat-Anfrage abholen (neu in 1.17.0), mit **Fortschritt** (neu in 1.20.0) |
+| POST | `/v1/chat/{anfrage_id}/abbrechen` | Laufende Antwort stoppen (neu in 1.20.0) |
+| POST | `/v1/chat/{anfrage_id}/zwischenruf` | Während der Bearbeitung etwas ergänzen (neu in 1.20.0) |
 | POST | `/v1/sprache` | Sprachaufnahme → erkannter Text (+ Antwort) |
 | POST | `/v1/vorlesen` | Text → MP3 (optional; Alternative zu Android-TTS) |
 | GET | `/v1/notizen` | Eigene Notizen und Ordner (Auswahl fürs Ziel von Fotos/Videos) |
@@ -124,6 +128,8 @@ POST /v1/chat
 `gespraech_id` weglassen = neues Gespräch. Die Antwort enthält die ID; für Folgefragen mitschicken.
 `anfrage_id` (neu in 1.17.0, dringend empfohlen): je Nachricht eine neue UUID der App – siehe [1b](#1b-lange-anfragen-sicher--neu-in-1170).
 Optional `"bilder": ["<pfad>", …]` (max. 4) – Fotos, die der Assistent zu dieser Nachricht **ansieht**, siehe Abschnitt 4a.
+Optional `"modell"` / `"denkaufwand"` (neu in 1.20.0) – Modellwahl des Gesprächs, siehe [1c](#1c-modell-und-denkaufwand-wählen--neu-in-1200).
+Die Antwort sagt in `modell`, `denkaufwand`, `denkaufwand_name`, `modell_gewechselt`, womit sie erzeugt wurde (1c).
 
 ```json
 {
@@ -160,6 +166,131 @@ Optional `"bilder": ["<pfad>", …]` (max. 4) – Fotos, die der Assistent zu di
 - Bricht ein Zug mittendrin ab (KI-Dienst weg, interner Fehler), kommt trotzdem `200`: `antwort` beginnt mit
   „⚠️ Die Anfrage ist mittendrin abgebrochen …“ und listet, was bis dahin ausgeführt wurde (seit 1.17.0). Ganz normal
   anzeigen – der Nutzer schreibt „mach weiter“.
+
+## 1c. Modell und Denkaufwand wählen – neu in 1.20.0
+
+Wie in den Web-Versionen von ChatGPT/Claude kann der Nutzer **je Gespräch** Modell und Denkaufwand wählen. Standard
+ist „Automatisch“ (`"auto"`): Der Server nimmt für den Alltag `MODELL` (gpt-5.6-luna, Denkaufwand niedrig) und wechselt
+bei großen Aufgaben (Angebote, Auswertungen, feste Abläufe, mehr als 6 Werkzeugaufrufe) für den Rest der Antwort auf
+das Arbeitsmodell (gpt-5.6-sol, mittel) – genau wie bis 1.19.0.
+
+```http
+GET /v1/modelle
+```
+```json
+{
+  "modelle": [
+    {"wert": "gpt-5.6-luna", "name": "gpt-5.6-luna", "teuer": false, "hinweis": null},
+    {"wert": "gpt-5.6-sol", "name": "gpt-5.6-sol", "teuer": false, "hinweis": null},
+    {"wert": "gpt-5.6-astra", "name": "gpt-5.6-astra", "teuer": true,
+     "hinweis": "Deutlich teurer pro Anfrage – nur für besonders schwierige Aufgaben"}
+  ],
+  "denkstufen": [{"wert": "low", "name": "niedrig"}, {"wert": "medium", "name": "mittel"}, {"wert": "high", "name": "hoch"}],
+  "automatisch": "Automatisch: Der Server wählt je Nachricht. Alltag mit gpt-5.6-luna (Denkaufwand niedrig); bei großen Aufgaben (Angebote, Auswertungen, feste Abläufe, viele Schritte) Wechsel auf gpt-5.6-sol (Denkaufwand mittel). Teure Modelle (gpt-5.6-astra) nimmt die Automatik nie.",
+  "standard_modell": "gpt-5.6-luna", "arbeits_modell": "gpt-5.6-sol",
+  "standard_denkaufwand": {"wert": "low", "name": "niedrig"}, "arbeits_denkaufwand": {"wert": "medium", "name": "mittel"}
+}
+```
+Die Listen kommen aus der Server-Einstellung (`MODELLE_AUSWAHL`, `MODELLE_TEUER`, `DENKSTUFEN_AUSWAHL`) – nicht in der
+App fest einbauen. An die API geht immer `wert`.
+
+**Teure Modelle** (`teuer: true`, derzeit Astra): kosten pro Anfrage deutlich mehr. Die Automatik nimmt sie **nie**,
+nur auf ausdrückliche Wahl. Darstellung: in der Liste **abgesetzt** (eigener Abschnitt/Trennlinie unter den normalen
+Modellen) und mit „teuer“ in **Warnfarbe** gekennzeichnet; beim Auswählen **einmal bestätigen** lassen („gpt-5.6-astra
+ist deutlich teurer pro Anfrage. Für diesen Chat verwenden?“ – Nein = alte Auswahl bleibt); solange es im Gespräch
+eingestellt ist, das Auswahlfeld in Warnfarbe und daneben „⚠ teuer pro Anfrage“ (`hinweis` als Info). `"auto"` ist immer zusätzlich erlaubt und steht nicht in den Listen. Mögliche Denkstufen-Namen:
+minimal, niedrig, mittel, hoch, „sehr hoch“ (xhigh).
+
+**Setzen** – zwei gleichwertige Wege, beide speichern die Wahl im Gespräch:
+- `PATCH /v1/gespraeche/{id}` mit `{"modell": "gpt-5.6-sol", "denkaufwand": "auto"}` (Felder einzeln weglassbar =
+  unverändert) → Antwort = Eintrag wie in `GET /v1/gespraeche`. Für ein **bestehendes** Gespräch, sobald der Nutzer die
+  Auswahl ändert. Gilt ab der nächsten Nachricht.
+- Optionale Felder `modell` / `denkaufwand` in `POST /v1/chat` (bei `POST /v1/sprache` als Formularfelder). Nötig für
+  ein **neues** Gespräch (es hat noch keine ID); darf aber immer mitgeschickt werden. Gilt schon für diese Nachricht.
+
+Neues Gespräch ohne Felder = `auto`/`auto`. Ungültiger Wert → `422`, z. B.
+`{"detail": "Unbekanntes Modell „gpt-4“. Erlaubt: auto, gpt-5.6-luna, gpt-5.6-sol."}` bzw. „Unbekannter Denkaufwand …“
+(bei Chat/Sprache wird dann nichts ausgeführt). Fremdes/unbekanntes Gespräch → `404`.
+
+**Wie der Server entscheidet:**
+
+| Modell | Denkaufwand | Ergebnis |
+|---|---|---|
+| auto | auto | wie bisher: luna/niedrig, bei großer Aufgabe → sol/mittel |
+| fest (z. B. sol) | auto | ganze Antwort mit sol, kein Modellwechsel; Denkaufwand niedrig, bei großer Aufgabe mittel |
+| auto | fest (z. B. hoch) | luna, bei großer Aufgabe → sol; Denkaufwand immer hoch |
+| fest | fest | genau diese Kombination, kein Wechsel |
+
+Sonderaufgaben (Versicherungsbericht, Begehungsprotokoll, Spracherkennung, Vorlesen) haben eigene Modelle und
+bleiben davon unberührt. Steht ein gespeicherter Wert nicht mehr in der Auswahl (Server-Einstellung geändert), gilt
+er als `auto`.
+
+**Modell beim Anbieter nicht verfügbar** (OpenAI kennt die ID nicht bzw. gibt sie nicht frei): Es kommt `200` mit
+`antwort` „⚠️ Modell gpt-5.6-astra ist beim Anbieter nicht verfügbar – bitte anderes Modell wählen. Es wurde nichts
+ausgeführt …“. Normal anzeigen; der Nutzer stellt um und sendet erneut.
+
+**Anzeige:** `GET /v1/gespraeche` liefert je Gespräch `modell` und `denkaufwand` (gewählt, `auto` oder Wert).
+Jede Antwort (`POST /v1/chat`, `GET /v1/chat/{anfrage_id}`, `chat` in `/v1/sprache`) und jede `assistent`-Nachricht
+in `GET /v1/gespraeche/{id}` sagt, womit sie **tatsächlich** erzeugt wurde:
+```json
+{"modell": "gpt-5.6-sol", "denkaufwand": "medium", "denkaufwand_name": "mittel", "modell_gewechselt": true}
+```
+`modell_gewechselt: true` = während der Antwort automatisch auf das Arbeitsmodell bzw. mehr Denkaufwand gewechselt
+(angegeben ist das zuletzt verwendete). Bei Nachrichten von vor 1.20.0 sind die Felder `null`.
+
+## 1d. Fortschritt, Denken, Stopp und Zwischenruf – neu in 1.20.0
+
+Wie in den Konsolen der großen Modelle sieht der Nutzer, **was der Assistent gerade tut**, kann sein „Denken“
+aufklappen, ihn **stoppen** oder ihm einen **Zwischenruf** schicken.
+
+**Fortschritt abfragen.** Die App vergibt die `anfrage_id` selbst (1b) und fragt **während `POST /v1/chat` noch läuft**
+etwa **jede Sekunde** `GET /v1/chat/{anfrage_id}?seit=<n>` ab (parallel, auf einer zweiten Verbindung). `seit` = das
+`naechster` der vorigen Antwort (beim ersten Mal 0) – so kommen nur neue Ereignisse. Solange die Anfrage noch nicht
+beim Server ist, gibt es `404` → einfach weiter versuchen.
+```json
+{"anfrage_id": "3f2c9a0e-…", "status": "laeuft", "gespraech_id": "c8719cc52c8f4d0a", "antwort": null, "fehler": null,
+ "fortschritt": {
+   "ereignisse": [
+     {"nr": 3, "zeit": "2026-10-15T09:12:04.120+00:00", "sekunde": 4.2, "art": "werkzeug", "text": "Sucht Projekt „Altkaulsdorf“", "werkzeug": "hero_projekt_suchen"},
+     {"nr": 4, "zeit": "…", "sekunde": 4.6, "art": "werkzeug_fertig", "text": "fertig", "werkzeug": "hero_projekt_suchen", "ok": true, "dauer_ms": 380},
+     {"nr": 5, "zeit": "…", "sekunde": 4.7, "art": "schritt", "text": "Schritt 3 · gpt-5.6-sol · mittel", "schritt": 3, "modell": "gpt-5.6-sol", "denkaufwand": "medium"},
+     {"nr": 6, "zeit": "…", "sekunde": 9.8, "art": "denken", "text": "**Rechnungen prüfen** Ich vergleiche Angebot und Schlussrechnung …"}
+   ],
+   "naechster": 7, "schritte": 3, "werkzeuge": 5, "aktuell": "Denkt nach …", "dauer_s": 9.9,
+   "gestartet": "2026-10-15T09:12:00+00:00"}}
+```
+Ereignis-Arten: `schritt` (ein Modellaufruf beginnt), `werkzeug` (Werkzeug startet, `text` sagt auf Deutsch was –
+ohne vollständige Argumente), `werkzeug_fertig` (`ok`, `dauer_ms`), `wechsel` (Modellwechsel, 1c), `denken`
+(Denk-Zusammenfassung des Modells), `zwischenruf`, `abbruch` (Stopp angefordert), `abgebrochen`, `fehler`, `fertig`.
+Unbekannte Arten als einfache Zeile zeigen. `schritte`/`werkzeuge` = Zähler (Websuchen zählen als Werkzeug),
+`aktuell` = was gerade passiert (nur solange `laeuft`).
+
+**Denken:** Die Denk-Zusammenfassungen (`art: "denken"`) sind **nicht** Teil der Antwort und kommen nie in `antwort`.
+Dezent und standardmäßig eingeklappt zeigen. Manche Modelle liefern keine – dann gibt es keine `denken`-Ereignisse.
+
+**Darstellung (App und Web):** Statt „denkt nach …“ eine Zeile **„Arbeitet · Schritt 3 · 5 Werkzeuge · 0:42“**
+(Uhr lokal weiterzählen) und darunter `aktuell`; aufklappbar „Details“ mit der Ereignisliste (Werkzeug-Zeile mit
+„✓ 0,4 s“ bzw. Fehler, Denken kursiv/grau). Nach dem Ende hängt der gleiche Verlauf an der Antwort: `fortschritt` in
+der ChatAntwort und an jeder `assistent`-Nachricht in `GET /v1/gespraeche/{id}` (bei älteren Nachrichten `null`) –
+eingeklappt als **„Verlauf: 7 Werkzeuge · 1:12 min“** (nur zeigen, wenn Werkzeuge oder Denken dabei waren).
+
+**Stopp:** `POST /v1/chat/{anfrage_id}/abbrechen` → `200` mit dem aktuellen Stand (`status` noch `laeuft`). Der
+Assistent hört am **nächsten Schritt** auf: ein gerade laufender Modellaufruf läuft zu Ende, sein Ergebnis wird
+verworfen; ein gerade laufendes Werkzeug wird fertig. Danach liefert der wartende `POST /v1/chat` (bzw. das Abholen)
+`200` mit `abgebrochen: true` und `antwort` „⏹ Abgebrochen. …“ samt Liste, was bis dahin ausgeführt wurde – **das bleibt
+bestehen, nichts wird rückgängig gemacht**. `GET /v1/chat/{id}` hat dann `status: "abgebrochen"` (mit `antwort`).
+Schon fertig → `409`.
+
+**Zwischenruf:** `POST /v1/chat/{anfrage_id}/zwischenruf` mit `{"text": "nimm lieber die Rechnung von 2025"}` →
+`{"angenommen": true, "nachricht_id": 812, "hinweis": "Kommt beim nächsten Schritt beim Assistenten an."}`. Der Text geht
+beim nächsten Modellaufruf als zusätzliche Nutzernachricht mit, steht sofort im Verlauf (`rolle: "nutzer"`,
+`zwischenruf: true`) und als Ereignis `zwischenruf`. Kommt er, während das Modell gerade die Schlussantwort schreibt,
+arbeitet der Assistent noch einen Schritt weiter. Anfrage schon fertig (oder wird abgebrochen) → `409` „… bitte als
+normale Nachricht schreiben“ – dann den Text als neue Nachricht senden.
+
+Fremde oder unbekannte `anfrage_id` → `404` (wie beim Abholen). Abwärtskompatibel: Wer `fortschritt` nicht liest und
+nie abbricht, merkt nichts. `status: "abgebrochen"` kommt nur vor, wenn jemand (auch in der Weboberfläche) gestoppt
+hat – unbekannten Status mit gesetzter `antwort` wie `fertig` behandeln.
 
 ## 1b. Lange Anfragen sicher – neu in 1.17.0
 
@@ -925,8 +1056,10 @@ Ablegen, Ordneransicht). Im Browser nutzbar und in Chrome über „App installie
 
 ## 8. Verlauf
 
-`GET /v1/gespraeche` → `[{"id","titel","erstellt","geaendert","laeuft"}]` (`laeuft` seit 1.17.0, siehe 1b)
-`GET /v1/gespraeche/{id}` → `[{"id","rolle","text","zeit","dateien","links","bestaetigungen","quellen"}]` (`links` wie im Chat, seit 1.13.0)
+`GET /v1/gespraeche` → `[{"id","titel","erstellt","geaendert","laeuft","modell","denkaufwand"}]` (`laeuft` seit 1.17.0, siehe 1b; `modell`/`denkaufwand` = Wahl des Gesprächs seit 1.20.0, siehe 1c)
+`GET /v1/gespraeche/{id}` → `[{"id","rolle","text","zeit","dateien","links","bestaetigungen","quellen","modell","denkaufwand","denkaufwand_name","modell_gewechselt"}]` (`links` wie im Chat, seit 1.13.0; Modellfelder bei `assistent` seit 1.20.0)
+`PATCH /v1/gespraeche/{id}` → Modell/Denkaufwand setzen (1c)
+Seit 1.20.0 außerdem: `fortschritt` und `abgebrochen` bei `assistent`-Nachrichten, `zwischenruf` bei `nutzer`-Nachrichten (1d).
 `dateien` einer `nutzer`-Nachricht = mitgeschickte Bilder (seit 1.5.0).
 `rolle`: `nutzer` | `assistent` | `hinweis` (Systemzeile wie „Ausgeführt: … verschoben“ – klein/grau anzeigen).
 
@@ -936,12 +1069,18 @@ Ablegen, Ordneransicht). Im Browser nutzbar und in Chrome über „App installie
 interface AssistentApi {
     @GET("v1/ich") suspend fun ich(): Ich
     @POST("v1/chat") suspend fun chat(@Body a: ChatAnfrage): ChatAntwort      // ChatAnfrage mit anfrageId (1.17.0)
-    @GET("v1/chat/{anfrageId}") suspend fun chatStand(@Path("anfrageId") id: String): ChatStatus
+    @GET("v1/chat/{anfrageId}") suspend fun chatStand(@Path("anfrageId") id: String,
+        @Query("seit") seit: Int = 0): ChatStatus                                                             // seit: 1.20.0
+    @POST("v1/chat/{anfrageId}/abbrechen") suspend fun abbrechen(@Path("anfrageId") id: String): ChatStatus      // 1.20.0
+    @POST("v1/chat/{anfrageId}/zwischenruf") suspend fun zwischenruf(@Path("anfrageId") id: String,
+        @Body z: Zwischenruf): ZwischenrufAntwort                                                            // 1.20.0
     @Multipart @POST("v1/sprache")
     suspend fun sprache(@Part audio: MultipartBody.Part,
                         @Part("gespraech_id") gespraechId: RequestBody?,
                         @Part("antworten") antworten: RequestBody,
-                        @Part("anfrage_id") anfrageId: RequestBody? = null): SpracheAntwort
+                        @Part("anfrage_id") anfrageId: RequestBody? = null,
+                        @Part("modell") modell: RequestBody? = null,              // 1.20.0
+                        @Part("denkaufwand") denkaufwand: RequestBody? = null): SpracheAntwort
     @GET("v1/notizen") suspend fun notizen(): Notizen
     @Multipart @POST("v1/fotos")
     suspend fun foto(@Part foto: MultipartBody.Part,
@@ -963,6 +1102,8 @@ interface AssistentApi {
     @GET("v1/bestaetigungen") suspend fun offene(): List<OffeneBestaetigung>
     @GET("v1/gespraeche") suspend fun gespraeche(): List<GespraechKurz>
     @GET("v1/gespraeche/{id}") suspend fun verlauf(@Path("id") id: String): List<Nachricht>
+    @GET("v1/modelle") suspend fun modelle(): ModellAuswahl                                                  // 1.20.0
+    @PATCH("v1/gespraeche/{id}") suspend fun gespraechEinstellen(@Path("id") id: String, @Body w: ModellWahl): GespraechKurz  // 1.20.0
     @GET("v1/termine") suspend fun termine(@Query("von") von: String, @Query("bis") bis: String? = null): Termine
     @GET("v1/kalender/kategorien") suspend fun kategorien(): List<TerminKategorie>                        // 1.18.0
     @POST("v1/kalender/hero") suspend fun heroTerminAnlegen(@Body t: HeroTerminNeu,
@@ -990,13 +1131,34 @@ interface AssistentApi {
 }
 
 @Serializable data class ChatAnfrage(val text: String, val gespraech_id: String? = null,
-    val bilder: List<String> = emptyList())   // max. 4 Foto-Pfade (aus FotoAntwort.foto)
+    val bilder: List<String> = emptyList(),   // max. 4 Foto-Pfade (aus FotoAntwort.foto)
+    val modell: String? = null, val denkaufwand: String? = null)   // 1.20.0: "auto" oder Wert aus /v1/modelle
+@Serializable data class Denkstufe(val wert: String, val name: String)                                     // 1.20.0
+@Serializable data class ModellEintrag(val wert: String, val name: String, val teuer: Boolean = false,
+    val hinweis: String? = null)                                                                             // 1.20.0
+@Serializable data class ModellAuswahl(val modelle: List<ModellEintrag>, val denkstufen: List<Denkstufe>,
+    val automatisch: String, val standard_modell: String, val arbeits_modell: String? = null,
+    val standard_denkaufwand: Denkstufe, val arbeits_denkaufwand: Denkstufe)
+@Serializable data class ModellWahl(val modell: String? = null, val denkaufwand: String? = null)   // explicitNulls = false
+@Serializable data class Ereignis(val nr: Int, val zeit: String, val sekunde: Double, val art: String, val text: String,
+    val werkzeug: String? = null, val ok: Boolean? = null, val dauer_ms: Long? = null, val modell: String? = null,
+    val denkaufwand: String? = null, val schritt: Int? = null)                                              // 1.20.0
+@Serializable data class Fortschritt(val ereignisse: List<Ereignis> = emptyList(), val naechster: Int = 0,
+    val schritte: Int = 0, val werkzeuge: Int = 0, val aktuell: String? = null, val dauer_s: Double = 0.0,
+    val gestartet: String? = null)
+@Serializable data class Zwischenruf(val text: String)
+@Serializable data class ZwischenrufAntwort(val angenommen: Boolean, val nachricht_id: Long, val hinweis: String)
+@Serializable data class GespraechKurz(val id: String, val titel: String? = null, val erstellt: String,
+    val geaendert: String, val laeuft: Boolean = false, val modell: String = "auto", val denkaufwand: String = "auto")
 @Serializable data class Bestaetigung(val id: String, val beschreibung: String, val werkzeug: String)
 @Serializable data class Ausgefuehrt(val id: String, val status: String, val beschreibung: String)
 @Serializable data class Quelle(val titel: String, val url: String)
 @Serializable data class ChatAntwort(val gespraech_id: String, val antwort: String,
     val dateien: List<String> = emptyList(), val bestaetigungen: List<Bestaetigung> = emptyList(),
-    val ausgefuehrt: List<Ausgefuehrt> = emptyList(), val quellen: List<Quelle> = emptyList())
+    val ausgefuehrt: List<Ausgefuehrt> = emptyList(), val quellen: List<Quelle> = emptyList(),
+    val modell: String? = null, val denkaufwand: String? = null, val denkaufwand_name: String? = null,   // 1.20.0
+    val modell_gewechselt: Boolean = false,
+    val fortschritt: Fortschritt? = null, val abgebrochen: Boolean = false)                                  // 1.20.0
 @Serializable data class SpracheAntwort(val text: String, val chat: ChatAntwort? = null)
 @Serializable data class NotizOrdner(val name: String, val pfad: String, val notizen: Int, val geaendert: String)
 @Serializable data class NotizKurz(val titel: String, val pfad: String, val ordner: String, val geaendert: String)

@@ -3,7 +3,7 @@ package de.chefassistent.app.data
 import kotlinx.serialization.Serializable
 
 /**
- * Datentypen aus `openapi.json` (Chef-Assistent v1.16.0).
+ * Datentypen aus `openapi.json` (Chef-Assistent v1.20.0).
  *
  * Die Feldnamen sind bewusst deutsch und identisch mit dem Vertrag - hier wird
  * nichts uebersetzt und nichts umbenannt. Neue Felder darf der Server jederzeit
@@ -37,6 +37,14 @@ data class ChatAnfrage(
      * faellt aus dem JSON - ein Server vor 1.5.0 sieht dann nichts Neues.
      */
     val bilder: List<String>? = null,
+    /**
+     * Seit v1.20.0: Modell fuer dieses Gespraech, [MODELL_AUTO] oder ein `wert` aus
+     * `GET /v1/modelle`. Der Server speichert es im Gespraech, es gilt schon fuer
+     * diese Nachricht. `null` = Einstellung des Gespraechs bleibt.
+     */
+    val modell: String? = null,
+    /** Seit v1.20.0: Denkaufwand, [MODELL_AUTO] oder ein `denkstufen[].wert`. */
+    val denkaufwand: String? = null,
 ) {
     companion object {
         /** Grenze aus dem Vertrag (`maxItems`), mehr ergibt 422. */
@@ -56,6 +64,17 @@ data class ChatAntwort(
     val bestaetigungen: List<Bestaetigung> = emptyList(),
     val ausgefuehrt: List<Ausgefuehrt> = emptyList(),
     val quellen: List<Quelle> = emptyList(),
+    /** Seit v1.20.0: Modell, das diese Antwort tatsaechlich erzeugt hat (bei Wechsel das letzte). */
+    val modell: String? = null,
+    val denkaufwand: String? = null,
+    /** Anzeigename zu [denkaufwand], z. B. "mittel". */
+    val denkaufwand_name: String? = null,
+    /** Der Server hat waehrend der Antwort auf das Arbeitsmodell bzw. mehr Denkaufwand gewechselt. */
+    val modell_gewechselt: Boolean = false,
+    /** Seit v1.20.0: Verlauf der Bearbeitung (Schritte, Werkzeuge, Denken). */
+    val fortschritt: Fortschritt? = null,
+    /** Seit v1.20.0: vom Nutzer gestoppt. */
+    val abgebrochen: Boolean = false,
 )
 
 /**
@@ -535,6 +554,10 @@ data class GespraechKurz(
     val geaendert: String,
     /** Seit v1.17.0: der Assistent arbeitet in diesem Gespraech gerade. */
     val laeuft: Boolean = false,
+    /** Seit v1.20.0: im Gespraech gewaehltes Modell, [MODELL_AUTO] oder ein Wert aus `GET /v1/modelle`. */
+    val modell: String = MODELL_AUTO,
+    /** Seit v1.20.0: im Gespraech gewaehlter Denkaufwand. */
+    val denkaufwand: String = MODELL_AUTO,
 )
 
 @Serializable
@@ -548,6 +571,15 @@ data class Nachricht(
     val links: List<DateiLink> = emptyList(),
     val bestaetigungen: List<Bestaetigung> = emptyList(),
     val quellen: List<Quelle> = emptyList(),
+    /** Seit v1.20.0, nur `rolle = assistent`, wie bei [ChatAntwort]. */
+    val modell: String? = null,
+    val denkaufwand: String? = null,
+    val denkaufwand_name: String? = null,
+    val modell_gewechselt: Boolean = false,
+    val fortschritt: Fortschritt? = null,
+    val abgebrochen: Boolean = false,
+    /** Seit v1.20.0, nur `rolle = nutzer`: als Zwischenruf waehrend einer laufenden Antwort geschickt. */
+    val zwischenruf: Boolean = false,
 ) {
     companion object {
         const val ROLLE_NUTZER = "nutzer"
@@ -1159,13 +1191,145 @@ data class ChatStatus(
     val antwort: ChatAntwort? = null,
     /** Nur bei [STATUS_FEHLER]. */
     val fehler: String? = null,
+    /** Seit v1.20.0: Ereignisse ab `?seit=`, Zaehler und aktuelle Taetigkeit. */
+    val fortschritt: Fortschritt? = null,
 ) {
     companion object {
         const val STATUS_LAEUFT = "laeuft"
         const val STATUS_FERTIG = "fertig"
         const val STATUS_FEHLER = "fehler"
+        /** Seit v1.20.0: vom Nutzer gestoppt, [antwort] ist gesetzt. */
+        const val STATUS_ABGEBROCHEN = "abgebrochen"
     }
 }
 
 /** Erlaubte Form einer `anfrage_id` laut Vertrag. */
 val ANFRAGE_ID_MUSTER = Regex("^[A-Za-z0-9_-]{8,64}$")
+
+// --- Modellwahl (seit v1.20.0, API.md 1c) -----------------------------------
+
+/** Steht nicht in den Listen von [ModellAuswahl] und ist immer erlaubt: der Server waehlt. */
+const val MODELL_AUTO = "auto"
+
+/** `GET /v1/modelle`. Die Listen kann der Server aendern, deshalb nie fest einbauen. */
+@Serializable
+data class ModellAuswahl(
+    val modelle: List<ModellEintrag> = emptyList(),
+    val denkstufen: List<Denkstufe> = emptyList(),
+    /** Was "Automatisch" bedeutet, als Hilfetext. */
+    val automatisch: String = "",
+    val standard_modell: String = "",
+    val arbeits_modell: String? = null,
+    val standard_denkaufwand: Denkstufe? = null,
+    val arbeits_denkaufwand: Denkstufe? = null,
+) {
+    fun modell(wert: String?): ModellEintrag? = modelle.firstOrNull { it.wert == wert }
+
+    fun istTeuer(wert: String?): Boolean = modell(wert)?.teuer == true
+}
+
+@Serializable
+data class ModellEintrag(
+    /** Geht an die API. */
+    val wert: String,
+    /** Wird angezeigt. */
+    val name: String,
+    /** Abgesetzt und in Warnfarbe zeigen, vor dem Waehlen nachfragen. */
+    val teuer: Boolean = false,
+    val hinweis: String? = null,
+)
+
+@Serializable
+data class Denkstufe(
+    val wert: String,
+    val name: String,
+)
+
+/** `PATCH /v1/gespraeche/{gid}`. Nur gesetzte Felder gehen raus (`explicitNulls = false`). */
+@Serializable
+data class ModellWahl(
+    val modell: String? = null,
+    val denkaufwand: String? = null,
+)
+
+// --- Fortschritt, Stopp, Zwischenruf (seit v1.20.0, API.md 1d) ---------------
+
+@Serializable
+data class Fortschritt(
+    /** Ab `?seit=`, sonst alle. */
+    val ereignisse: List<Ereignis> = emptyList(),
+    /** Beim naechsten Abfragen als `?seit=` mitgeben. */
+    val naechster: Int = 0,
+    /** Modellaufrufe bisher. */
+    val schritte: Int = 0,
+    /** Werkzeugaufrufe bisher (inkl. Websuche). */
+    val werkzeuge: Int = 0,
+    /** Was gerade passiert, nur solange die Anfrage laeuft. */
+    val aktuell: String? = null,
+    val dauer_s: Double = 0.0,
+    val gestartet: String? = null,
+)
+
+@Serializable
+data class Ereignis(
+    /** Laufende Nummer je Anfrage, fuer `?seit=`. */
+    val nr: Int,
+    val zeit: String = "",
+    /** Sekunden seit Beginn der Anfrage. */
+    val sekunde: Double = 0.0,
+    /** Eine der `ART_*`, unbekannte Werte als einfache Zeile zeigen. */
+    val art: String,
+    val text: String = "",
+    val werkzeug: String? = null,
+    val ok: Boolean? = null,
+    val dauer_ms: Long? = null,
+    val modell: String? = null,
+    val denkaufwand: String? = null,
+    val schritt: Int? = null,
+) {
+    companion object {
+        const val ART_SCHRITT = "schritt"
+        const val ART_WERKZEUG = "werkzeug"
+        const val ART_WERKZEUG_FERTIG = "werkzeug_fertig"
+        const val ART_WECHSEL = "wechsel"
+        /** Nie in der Antwort zeigen, vorlesen oder kopieren. */
+        const val ART_DENKEN = "denken"
+        const val ART_ZWISCHENRUF = "zwischenruf"
+        const val ART_ABBRUCH = "abbruch"
+        const val ART_ABGEBROCHEN = "abgebrochen"
+        const val ART_FEHLER = "fehler"
+        const val ART_FERTIG = "fertig"
+    }
+}
+
+@Serializable
+data class Zwischenruf(
+    val text: String,
+) {
+    companion object {
+        /** `maxLength` aus dem Vertrag. */
+        const val MAX_ZEICHEN = 4000
+    }
+}
+
+@Serializable
+data class ZwischenrufAntwort(
+    val angenommen: Boolean = true,
+    val nachricht_id: Long,
+    val hinweis: String = "",
+)
+
+/**
+ * Ist ein 422 bei Chat oder Sprache die Ablehnung der Modellwahl? Dann hat sich die
+ * Liste auf dem Server geaendert (Auftrag 1.20, Fehlerfaelle). Nur wenn tatsaechlich
+ * etwas anderes als "auto" mitging - "auto" ist immer erlaubt -, und nur, wenn
+ * `detail` von Modell oder Denkaufwand spricht. Ein 422 aus anderem Grund soll die
+ * Auswahl nicht zuruecksetzen.
+ */
+fun istModellFehler(detail: String, wahl: ModellWahl?): Boolean {
+    if (wahl == null) return false
+    val festGewaehlt = (wahl.modell ?: MODELL_AUTO) != MODELL_AUTO ||
+        (wahl.denkaufwand ?: MODELL_AUTO) != MODELL_AUTO
+    if (!festGewaehlt) return false
+    return detail.contains("Modell", ignoreCase = true) || detail.contains("Denkaufwand", ignoreCase = true)
+}

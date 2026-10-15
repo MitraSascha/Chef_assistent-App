@@ -229,7 +229,12 @@ fun ChatScreen(
     // Hintergrundauftraege nur abfragen, solange der Chat zu sehen ist.
     LifecycleResumeEffect(Unit) {
         viewModel.auftraegeBeobachten(true)
-        onPauseOrDispose { viewModel.auftraegeBeobachten(false) }
+        // Fortschritt einer laufenden Antwort ebenso nur, solange man ihn sieht.
+        viewModel.fortschrittBeobachten(true)
+        onPauseOrDispose {
+            viewModel.auftraegeBeobachten(false)
+            viewModel.fortschrittBeobachten(false)
+        }
     }
 
     // Waehrend der Aufnahme darf der Bildschirm nicht ausgehen: gesperrt
@@ -566,6 +571,15 @@ fun ChatScreen(
                         beiInfo = { heroInfoOffen = true },
                         beiLoesen = { viewModel.kontextSetzen(null) },
                     )
+                    // Modell und Denkaufwand je Gespraech (seit v1.20.0, ModellWahl.kt).
+                    ModellLeiste(
+                        auswahl = zustand.modelle,
+                        modell = zustand.modell,
+                        denkaufwand = zustand.denkaufwand,
+                        aktiv = !zustand.laeuft,
+                        beiModell = viewModel::modellWaehlen,
+                        beiDenkaufwand = viewModel::denkaufwandWaehlen,
+                    )
                     Eingabeleiste(
                         entwurf = zustand.entwurf,
                         kannSenden = zustand.kannSenden,
@@ -575,6 +589,10 @@ fun ChatScreen(
                         laeuft = zustand.laeuft,
                         beiAenderung = viewModel::entwurfGeaendert,
                         beiSenden = viewModel::senden,
+                        knopf = zustand.sendeKnopf,
+                        knopfAktiv = zustand.sendeKnopfAktiv,
+                        beiStopp = viewModel::stoppen,
+                        beiZwischenruf = viewModel::zwischenrufSenden,
                         beiKamera = beiKamera,
                         beiGalerie = beiGalerie,
                         beiDokument = beiDokument,
@@ -677,6 +695,7 @@ fun ChatScreen(
 
                                 is AssistentEintrag -> AssistentBlase(
                                     eintrag = eintrag,
+                                    modellZeile = modellZeile(eintrag, zustand.modelle),
                                     liestVor = zustand.liestVor == eintrag.schluessel,
                                     beiVorlesen = { viewModel.vorlesenUmschalten(eintrag) },
                                     beiDatei = beiDatei,
@@ -695,7 +714,14 @@ fun ChatScreen(
                         }
                         if (zustand.laeuft) {
                             // Eigener Schluessel je Anfrage, sonst erbte die Blase die Startzeit der vorigen.
-                            item(key = "arbeitet-${zustand.eintraege.size}") { ArbeitetBlase() }
+                            // Mit Fortschritt (ab 1.20.0) haengt der Schluessel an der Anfrage, damit
+                            // ein Zwischenruf darueber die Blase nicht neu beginnen laesst.
+                            val laufend = zustand.laufend
+                            if (laufend?.fortschritt != null) {
+                                item(key = "fortschritt-${laufend.anfrageId}") { FortschrittBlase(laufend) }
+                            } else {
+                                item(key = "arbeitet-${zustand.eintraege.size}") { ArbeitetBlase() }
+                            }
                         }
                     }
                 }
@@ -1411,17 +1437,22 @@ private fun NutzerBlase(
     // Blase nur so breit wie der Text, hoechstens 85 % - wie in Google Messages.
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Spacer(Modifier.weight(0.15f))
+        val form = RoundedCornerShape(22.dp, 6.dp, 22.dp, 22.dp)
         Card(
-            shape = RoundedCornerShape(22.dp, 6.dp, 22.dp, 22.dp),
+            shape = form,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
             ),
-            modifier = Modifier.weight(0.85f, fill = false),
+            // Zwischenruf (v1.20.0): gestrichelter Rand, damit er sich von normalen Nachrichten abhebt.
+            modifier = Modifier.weight(0.85f, fill = false).then(
+                if (eintrag.zwischenruf) Modifier.gestrichelterRand(MaterialTheme.colorScheme.primary, form) else Modifier
+            ),
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (eintrag.zwischenruf) ZwischenrufMarke(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
                 // Fotos, die der Assistent zu dieser Frage ansehen sollte (v1.5.0).
                 val (bilder, andere) = eintrag.dateien.partition(::istBild)
                 bilder.forEach { pfad -> Vorschaubild(pfad, laden, beiDatei, beiOrdner) }
@@ -1566,6 +1597,8 @@ private fun Vorschaubild(
 @Composable
 private fun AssistentBlase(
     eintrag: AssistentEintrag,
+    /** Seit v1.20.0: "gpt-5.6-sol · mittel", `null` bei alten Nachrichten. */
+    modellZeile: String?,
     liestVor: Boolean,
     beiVorlesen: () -> Unit,
     beiDatei: (String) -> Unit,
@@ -1600,9 +1633,16 @@ private fun AssistentBlase(
                 QuellenListe(eintrag.quellen)
             }
 
+            // Seit v1.20.0: eingeklappt "Verlauf: N Werkzeuge · m:ss min".
+            VerlaufAufklapper(eintrag.fortschritt, eintrag.schluessel)
+
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                 val kontext = LocalContext.current
                 val teilenTitel = stringResource(R.string.antwort_teilen)
+                // Womit die Antwort erzeugt wurde, links neben den Knoepfen.
+                if (modellZeile != null) {
+                    ModellZeileText(modellZeile, Modifier.weight(1f).align(Alignment.CenterVertically))
+                }
                 IconButton(
                     onClick = { kopieren(kontext, textZumKopieren(eintrag.text)) },
                     modifier = Modifier.size(32.dp),
@@ -2362,6 +2402,11 @@ private fun Eingabeleiste(
     laeuft: Boolean,
     beiAenderung: (String) -> Unit,
     beiSenden: () -> Unit,
+    /** Seit v1.20.0: waehrend einer Antwort Stopp bzw. Zwischenruf statt Senden. */
+    knopf: SendeKnopf,
+    knopfAktiv: Boolean,
+    beiStopp: () -> Unit,
+    beiZwischenruf: () -> Unit,
     beiKamera: (istVideo: Boolean, fragen: Boolean) -> Unit,
     beiGalerie: () -> Unit,
     beiDokument: () -> Unit,
@@ -2433,6 +2478,7 @@ private fun Eingabeleiste(
                         Text(
                             when {
                                 nimmtAuf -> stringResource(R.string.sprache_nimmt_auf)
+                                knopf != SendeKnopf.SENDEN -> ZWISCHENRUF_PLATZHALTER
                                 laeuft -> stringResource(R.string.chat_denkt)
                                 else -> stringResource(R.string.chat_eingabe)
                             },
@@ -2468,16 +2514,13 @@ private fun Eingabeleiste(
             }
         }
 
-        FilledIconButton(
-            onClick = beiSenden,
-            enabled = kannSenden,
-            modifier = Modifier.size(56.dp),
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.Send,
-                contentDescription = stringResource(R.string.chat_senden),
-            )
-        }
+        SendenKnopf(
+            knopf = knopf,
+            aktiv = if (knopf == SendeKnopf.SENDEN) kannSenden else knopfAktiv,
+            beiSenden = beiSenden,
+            beiStopp = beiStopp,
+            beiZwischenruf = beiZwischenruf,
+        )
     }
 }
 

@@ -347,4 +347,19 @@
         <item quantity="one">%1$d Datei zu groß, nur auf dem Server</item>
         <item quantity="other">%1$d Dateien zu groß, nur auf dem Server</item>
     </plurals>
+
+    <!-- Modellwahl (seit v1.20.0, Auftrag 1.20 Teil A) -->
+    <string name="modell_automatisch">Automatisch</string>
+    <string name="modell_feld">Modell: %1$s</string>
+    <string name="denkaufwand_feld">Denkaufwand: %1$s</string>
+    <string name="modell_abschnitt_teuer">Teuer</string>
+    <string name="modell_teuer_marke">teuer</string>
+    <string name="modell_teuer_warnung">⚠ teuer pro Anfrage</string>
+    <string name="modell_teuer_frage">%1$s ist deutlich teurer pro Anfrage. Für diesen Chat verwenden?</string>
+    <string name="modell_ja">Ja</string>
+    <string name="modell_nein">Nein</string>
+    <string name="modell_info">Was heißt Automatisch?</string>
+    <string name="modell_info_titel">Automatisch</string>
+    <string name="modell_teuer_titel">Teures Modell</string>
+    <string name="modell_ok">OK</string>
 </resources>

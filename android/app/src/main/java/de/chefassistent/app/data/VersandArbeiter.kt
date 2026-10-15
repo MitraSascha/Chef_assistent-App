@@ -170,7 +170,7 @@ class VersandArbeiter(
 
                 if (auftrag.art == AusgangAuftrag.ART_TEXT) {
                     val antwort = mitGespraech(korb, notiz) { gid ->
-                        repository.chat(auftrag.chatText, gid, auftrag.bilder, anfrageId)
+                        repository.chat(auftrag.chatText, gid, auftrag.bilder, anfrageId, auftrag.wahl)
                     }
                     angekommen(korb, notiz, antwort.gespraech_id)
                     erledigt += notiz.name
@@ -198,7 +198,7 @@ class VersandArbeiter(
                 try {
                     if (geht) {
                         val antwort = mitGespraech(korb, notiz) { gid ->
-                            repository.sprache(datei, gid, antworten = true, anfrageId = anfrageId)
+                            repository.sprache(datei, gid, antworten = true, anfrageId = anfrageId, wahl = auftrag.wahl)
                         }
                         angekommen(korb, notiz, antwort.chat?.gespraech_id)
                         erledigt += notiz.name
@@ -223,6 +223,13 @@ class VersandArbeiter(
                 }
             } catch (fehler: ApiFehler) {
                 if (fehler.istVoruebergehend) return Result.retry()
+                // Das Modell von damals gibt es nicht mehr (422, seit 1.20.0). Ausgefuehrt
+                // wurde nichts - ohne Wahl erneut, dann gilt die Einstellung des Gespraechs.
+                // Sonst ginge eine Sprachnachricht als "keine Sprache erkannt" verloren.
+                if (fehler is ApiFehler.Ungueltig && istModellFehler(fehler.anzeigetext, notiz.auftrag.wahl)) {
+                    korb.auftragAendern(notiz.name, notiz.auftrag.copy(modell = null, denkaufwand = null))
+                    return Result.retry()
+                }
                 endgueltigGescheitert(korb, notiz, fehler)
                 erledigt += notiz.name
             }

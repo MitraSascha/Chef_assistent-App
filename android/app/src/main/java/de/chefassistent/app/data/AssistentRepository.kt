@@ -185,6 +185,7 @@ class AssistentRepository(
         gespraechId: String?,
         bilder: List<String> = emptyList(),
         anfrageId: String? = null,
+        wahl: ModellWahl? = null,
     ): ChatAntwort =
         ruf {
             it.chat(
@@ -193,6 +194,8 @@ class AssistentRepository(
                     gespraech_id = gespraechId,
                     anfrage_id = anfrageId,
                     bilder = bilder.take(ChatAnfrage.MAX_BILDER).ifEmpty { null },
+                    modell = wahl?.modell,
+                    denkaufwand = wahl?.denkaufwand,
                 )
             )
         }
@@ -201,8 +204,8 @@ class AssistentRepository(
      * Stand einer Anfrage (`GET /v1/chat/{anfrage_id}`, seit v1.17.0). `null` heisst
      * 404: die Nachricht kam nie an und kann mit derselben Kennung erneut raus.
      */
-    suspend fun chatStatus(anfrageId: String): ChatStatus? = try {
-        ruf { it.chatStatus(anfrageId) }
+    suspend fun chatStatus(anfrageId: String, seit: Int? = null): ChatStatus? = try {
+        ruf { it.chatStatus(anfrageId, seit) }
     } catch (_: ApiFehler.NichtGefunden) {
         null
     }
@@ -221,8 +224,9 @@ class AssistentRepository(
         gespraechId: String?,
         anfrageId: String,
         bilder: List<String> = emptyList(),
+        wahl: ModellWahl? = null,
     ): ChatAntwort {
-        val senden: suspend () -> ChatAntwort = { chat(text, gespraechId, bilder, anfrageId) }
+        val senden: suspend () -> ChatAntwort = { chat(text, gespraechId, bilder, anfrageId, wahl) }
         return try {
             senden()
         } catch (fehler: ApiFehler) {
@@ -232,8 +236,15 @@ class AssistentRepository(
     }
 
     /** Wie [chatSicher], fuer eine Sprachnachricht mit Antwort. */
-    suspend fun spracheSicher(aufnahme: File, gespraechId: String?, anfrageId: String): SpracheAntwort {
-        val senden: suspend () -> SpracheAntwort = { sprache(aufnahme, gespraechId, antworten = true, anfrageId = anfrageId) }
+    suspend fun spracheSicher(
+        aufnahme: File,
+        gespraechId: String?,
+        anfrageId: String,
+        wahl: ModellWahl? = null,
+    ): SpracheAntwort {
+        val senden: suspend () -> SpracheAntwort = {
+            sprache(aufnahme, gespraechId, antworten = true, anfrageId = anfrageId, wahl = wahl)
+        }
         return try {
             senden()
         } catch (fehler: ApiFehler) {
@@ -271,7 +282,10 @@ class AssistentRepository(
                     return stand.antwort ?: throw ApiFehler.UnlesbareAntwort(IOException("Fertig ohne Antwort"))
                 ChatStatus.STATUS_FEHLER ->
                     throw ApiFehler.AnfrageFehlgeschlagen(stand.fehler)
-                // laeuft (oder ein kuenftiger Zustand): weiter warten.
+                ChatStatus.STATUS_LAEUFT -> Unit
+                // abgebrochen (seit 1.20.0) oder ein kuenftiger Zustand: mit Antwort
+                // gilt er wie fertig (API.md 1d), sonst weiter warten.
+                else -> stand.antwort?.let { return it }
             }
         }
     }
@@ -289,6 +303,7 @@ class AssistentRepository(
         gespraechId: String?,
         antworten: Boolean = true,
         anfrageId: String? = null,
+        wahl: ModellWahl? = null,
     ): SpracheAntwort {
         if (aufnahme.length() > MAX_AUFNAHME_BYTES) {
             // Der Server wuerde mit 413 antworten. Das hier spart die Uebertragung
@@ -305,6 +320,8 @@ class AssistentRepository(
                 gespraechId = gespraechId?.toTextTeil(),
                 antworten = antworten.toString().toTextTeil(),
                 anfrageId = anfrageId?.toTextTeil(),
+                modell = wahl?.modell?.toTextTeil(),
+                denkaufwand = wahl?.denkaufwand?.toTextTeil(),
             )
         }
     }
@@ -543,6 +560,43 @@ class AssistentRepository(
     suspend fun gespraechLoeschen(gespraechId: String) {
         ruf { it.gespraechLoeschen(gespraechId) }
     }
+
+    /**
+     * Seit v1.20.0: Modell und Denkaufwand eines bestehenden Gespraechs speichern.
+     * Nur gesetzte Felder gehen raus. Antwort sind die gespeicherten Werte.
+     */
+    suspend fun gespraechEinstellen(gespraechId: String, wahl: ModellWahl): GespraechKurz =
+        ruf { it.gespraechEinstellen(gespraechId, wahl) }
+
+    // --- Modellwahl, Stopp, Zwischenruf (seit v1.20.0) ----------------------
+
+    /** `GET /v1/modelle`. `null` heisst: alter Server ohne Modellwahl (404), Auswahl ausblenden. */
+    suspend fun modelle(): ModellAuswahl? = try {
+        ruf { it.modelle() }
+    } catch (_: ApiFehler.NichtGefunden) {
+        null
+    }
+
+    /**
+     * Stopp (`POST /v1/chat/{anfrage_id}/abbrechen`). Wirkt erst am naechsten Schritt,
+     * die Antwort kommt danach normal ueber den wartenden Chat-Aufruf.
+     * `false` heisst 409 (schon fertig) oder 404 (noch nicht angekommen), beides ohne Meldung.
+     */
+    suspend fun chatAbbrechen(anfrageId: String): Boolean = try {
+        ruf { it.chatAbbrechen(anfrageId) }
+        true
+    } catch (_: ApiFehler.Beschaeftigt) {
+        false
+    } catch (_: ApiFehler.NichtGefunden) {
+        false
+    }
+
+    /**
+     * Zwischenruf waehrend einer laufenden Antwort. 409 (schon fertig oder wird gerade
+     * abgebrochen) kommt als [ApiFehler.Beschaeftigt] heraus: dann als neue Nachricht senden.
+     */
+    suspend fun zwischenruf(anfrageId: String, text: String): ZwischenrufAntwort =
+        ruf { it.zwischenruf(anfrageId, Zwischenruf(text.take(Zwischenruf.MAX_ZEICHEN))) }
 
     // --- Kalender ------------------------------------------------------------
 
