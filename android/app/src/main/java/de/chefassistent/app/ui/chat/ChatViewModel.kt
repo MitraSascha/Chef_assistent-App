@@ -33,6 +33,8 @@ import de.chefassistent.app.data.VideoAufbereitung
 import de.chefassistent.app.data.GespraechKurz
 import de.chefassistent.app.data.Nachricht
 import de.chefassistent.app.data.Notizen
+import de.chefassistent.app.data.HeroMappe
+import de.chefassistent.app.data.SuchTreffer
 import de.chefassistent.app.data.Quelle
 import de.chefassistent.app.data.Sprachausgabe
 import de.chefassistent.app.data.Tonwiedergabe
@@ -176,6 +178,21 @@ data class ChatZustand(
      * und Videos ohne weiteres Zutun dorthin.
      */
     val kontextZiel: String? = null,
+    /**
+     * HERO-Projektnummer, wenn der angeheftete Ordner eine HERO-Mappe ist
+     * (seit v1.19.0). Dann geht, was dort landet, automatisch ins HERO-Projekt.
+     */
+    val kontextHero: String? = null,
+    /** Treffer der HERO-Suche im Anheften-Dialog. */
+    val heroTreffer: List<SuchTreffer> = emptyList(),
+    val heroSucheLaeuft: Boolean = false,
+    /** `POST /v1/hero-mappe` laeuft gerade. */
+    val heroAnheften: Boolean = false,
+    /** Fehler beim Anheften eines HERO-Projekts, im Dialog angezeigt (404: `detail`). */
+    val heroFehler: String? = null,
+    /** Stand der angehefteten HERO-Mappe fuer das Info-Blatt, `null` = nicht geladen. */
+    val heroStand: HeroMappe? = null,
+    val heroStandLaeuft: Boolean = false,
     /** Eigene Notizen und Ordner aus `GET /v1/notizen`, fuer die Auswahl "Wohin?". */
     val ziele: Notizen? = null,
     val zieleLaden: Boolean = false,
@@ -365,27 +382,122 @@ class ChatViewModel(
      * zuletzt benutzten. Ein Kontext von gestern, der heute unbemerkt an jeder
      * Frage haengt, waere gefaehrlicher als ein Tipp zum erneuten Setzen.
      */
-    fun kontextSetzen(neuer: String?, ziel: String? = null) {
+    fun kontextSetzen(neuer: String?, ziel: String? = null, hero: String? = null) {
         val sauber = neuer?.trim()?.takeIf { it.isNotBlank() }
         if (sauber != null) {
             repository.einstellungen.kontextGemerkt(sauber)
         }
         // Heisst der Kontext wie einer der eigenen Ordner, gehoert der Ordner dazu -
         // auch wenn er von Hand getippt oder aus "zuletzt benutzt" gewaehlt wurde.
-        val ordner = ziel ?: sauber?.let { name ->
-            _zustand.value.ziele?.ordner?.firstOrNull { it.name.equals(name, ignoreCase = true) }?.pfad
+        val eigene = _zustand.value.ziele?.ordner.orEmpty()
+        val passend = if (ziel != null) {
+            eigene.firstOrNull { it.pfad == ziel }
+        } else {
+            sauber?.let { name -> eigene.firstOrNull { it.name.equals(name, ignoreCase = true) } }
         }
+        val ordner = ziel ?: passend?.pfad
+        val heroProjekt = if (sauber == null) null else hero ?: passend?.hero_projekt
+        heroSucheJob?.cancel()
         _zustand.update {
             val gewechselt = ordner != it.kontextZiel
             it.copy(
                 kontext = sauber,
                 kontextZiel = if (sauber == null) null else ordner,
+                kontextHero = heroProjekt,
+                heroTreffer = emptyList(),
+                heroSucheLaeuft = false,
+                heroFehler = null,
+                heroStand = if (gewechselt) null else it.heroStand,
                 letzteKontexte = repository.einstellungen.letzteKontexte,
                 // Neues Projekt, neue Ablage: die Notiz des vorigen Projekts
                 // darf nicht unbemerkt das naechste Foto bekommen.
                 letzteMedienNotiz = if (gewechselt) null else it.letzteMedienNotiz,
                 medienSerie = if (gewechselt) null else it.medienSerie,
             )
+        }
+    }
+
+    private var heroSucheJob: Job? = null
+
+    /**
+     * Sucht HERO-Projekte fuer den Anheften-Dialog (Auftrag 1.19): ab 2 Zeichen,
+     * 250 ms entprellt, die vorige Anfrage wird abgebrochen.
+     */
+    fun heroSuchen(eingabe: String) {
+        heroSucheJob?.cancel()
+        val q = eingabe.trim()
+        if (q.length < 2) {
+            _zustand.update { it.copy(heroTreffer = emptyList(), heroSucheLaeuft = false) }
+            return
+        }
+        _zustand.update { it.copy(heroSucheLaeuft = true) }
+        heroSucheJob = viewModelScope.launch {
+            delay(HERO_SUCHE_PAUSE_MS)
+            try {
+                val treffer = repository.heroProjekteSuchen(q)
+                _zustand.update { it.copy(heroTreffer = treffer, heroSucheLaeuft = false) }
+            } catch (fehler: ApiFehler) {
+                // Ohne Treffer bleibt der Dialog benutzbar, die eigenen Ordner gehen weiter.
+                _zustand.update { it.copy(heroTreffer = emptyList(), heroSucheLaeuft = false) }
+                if (fehler is ApiFehler.NichtAngemeldet) behandleFehler(fehler)
+            }
+        }
+    }
+
+    /** Dialog zu: Suche abbrechen und Treffer vergessen. */
+    fun heroSucheBeenden() {
+        heroSucheJob?.cancel()
+        _zustand.update { it.copy(heroTreffer = emptyList(), heroSucheLaeuft = false, heroFehler = null) }
+    }
+
+    /**
+     * HERO-Projekt anheften: `POST /v1/hero-mappe` liefert die Mappe, die danach
+     * wie ein eigener Ordner angeheftet wird - `name` als Bezug, `pfad` als Ziel.
+     * [fertig] schliesst den Dialog, nur bei Erfolg.
+     */
+    fun heroAnheften(treffer: SuchTreffer, fertig: () -> Unit) {
+        if (_zustand.value.heroAnheften) return
+        _zustand.update { it.copy(heroAnheften = true, heroFehler = null) }
+        viewModelScope.launch {
+            try {
+                val mappe = repository.heroMappeOeffnen(treffer.pfad)
+                kontextSetzen(mappe.name, mappe.pfad, mappe.projekt)
+                _zustand.update {
+                    it.copy(
+                        heroAnheften = false,
+                        heroStand = mappe,
+                        fehler = anwendung.getString(R.string.hero_angeheftet, mappe.projekt),
+                    )
+                }
+                fertig()
+                // Die Mappe steht danach auch unter "Deine Ordner" und als Ziel fuer Fotos.
+                zieleLaden()
+            } catch (fehler: ApiFehler) {
+                _zustand.update { it.copy(heroAnheften = false) }
+                if (fehler is ApiFehler.NichtAngemeldet) {
+                    behandleFehler(fehler)
+                } else {
+                    _zustand.update { it.copy(heroFehler = fehler.anzeigetext) }
+                }
+            }
+        }
+    }
+
+    /** Stand der angehefteten HERO-Mappe fuer das Info-Blatt (optional laut Auftrag 1.19). */
+    fun heroStandLaden() {
+        val projekt = _zustand.value.kontextHero ?: return
+        if (_zustand.value.heroStandLaeuft) return
+        _zustand.update { it.copy(heroStandLaeuft = true) }
+        viewModelScope.launch {
+            try {
+                val stand = repository.heroMappeStand(projekt)
+                _zustand.update { if (it.kontextHero == projekt) it.copy(heroStand = stand) else it }
+            } catch (fehler: ApiFehler) {
+                // 404 heisst: noch keine Mappe, also auch nichts unterwegs.
+                if (fehler is ApiFehler.NichtAngemeldet) behandleFehler(fehler)
+            } finally {
+                _zustand.update { it.copy(heroStandLaeuft = false) }
+            }
         }
     }
 
@@ -1992,6 +2104,7 @@ class ChatViewModel(
     }
 
     companion object {
+        private const val HERO_SUCHE_PAUSE_MS = 250L
         private const val S_ENTWURF = "entwurf"
         private const val S_GESPRAECH = "gespraech"
         private const val S_FADEN = "faden"

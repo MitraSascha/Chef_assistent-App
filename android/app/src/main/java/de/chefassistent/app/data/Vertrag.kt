@@ -221,6 +221,11 @@ data class NotizOrdner(
     val pfad: String,
     /** Anzahl Notizen direkt darin. */
     val notizen: Int,
+    /**
+     * HERO-Projektnummer, wenn der Ordner eine HERO-Mappe ist (seit v1.19.0).
+     * Alles darin geht automatisch ins HERO-Projekt.
+     */
+    val hero_projekt: String? = null,
     val geaendert: String,
 ) {
     /** Gemeinsamer Ordner eines GU-Projekts (seit v1.9.0), nicht der eigene. */
@@ -242,6 +247,57 @@ data class NotizKurz(
     val ordner: String,
     val geaendert: String,
 )
+
+/** Wurzel des HERO-Spiegels in der Ablage, Projekte liegen direkt darunter (`API.md` 4). */
+const val HERO_ARCHIV = "HERO-Archiv"
+
+/** Anfrage an `POST /v1/hero-mappe` (seit v1.19.0). */
+@Serializable
+data class HeroMappeAnfrage(
+    /** Nummer ("SAN-660"), Ordnername oder Pfad im HERO-Archiv. */
+    val projekt: String,
+)
+
+/**
+ * HERO-Mappe einer Person (seit v1.19.0): ein normaler Notizordner, dessen
+ * Inhalt der Server ins HERO-Projekt kopiert. Angeheftet wird mit [name] als
+ * Bezug und [pfad] als `notiz` fuer Anhaenge.
+ */
+@Serializable
+data class HeroMappe(
+    val name: String,
+    val pfad: String,
+    /** HERO-Projektnummer. */
+    val projekt: String,
+    val hero_ordner: String = "",
+    /** Was schon Richtung HERO ging, aelteste zuerst. */
+    val dateien: List<HeroMappeDatei> = emptyList(),
+)
+
+@Serializable
+data class HeroMappeDatei(
+    val quelle: String,
+    val ziel: String? = null,
+    /** Einer aus [HERO_DATEI_STATUS], unbekannte Werte zaehlen nicht mit. */
+    val status: String,
+    val zeit: String = "",
+)
+
+/** Werte fuer `status` in [HeroMappeDatei]. Ein Test vergleicht sie mit dem Vertrag. */
+const val HERO_STATUS_KOPIERT = "kopiert"
+const val HERO_STATUS_ZU_GROSS = "zu_gross"
+const val HERO_STATUS_SCHON_IN_HERO = "schon_in_hero"
+const val HERO_STATUS_VIDEO = "video"
+val HERO_DATEI_STATUS = listOf(HERO_STATUS_KOPIERT, HERO_STATUS_ZU_GROSS, HERO_STATUS_SCHON_IN_HERO, HERO_STATUS_VIDEO)
+
+/**
+ * Nur HERO-Projektordner selbst: `HERO-Archiv/<Projekt>`, nicht deren
+ * Unterordner wie `Fotos` oder `Rechnungen` (Auftrag 1.19).
+ */
+fun istHeroProjektordner(pfad: String): Boolean {
+    val teile = pfad.trim('/').split('/')
+    return teile.size == 2 && teile[0] == HERO_ARCHIV && teile[1].isNotBlank()
+}
 
 /** Antwort auf `GET /v1/ordner`: Inhalt eines Ordners der Ablage. */
 @Serializable

@@ -83,7 +83,7 @@
     <!-- Projektkontext -->
     <string name="kontext_setzen">Projekt anheften</string>
     <string name="kontext_titel">Projekt anheften</string>
-    <string name="kontext_feld">Projekt oder Baustelle</string>
+    <string name="kontext_feld">Projekt suchen oder eintippen</string>
     <string name="kontext_hinweis">Wird jeder Nachricht als Bezug vorangestellt – auch bei Sprache.</string>
     <string name="kontext_zuletzt">Zuletzt benutzt</string>
     <string name="kontext_ordner">Deine Ordner</string>
@@ -324,4 +324,27 @@
     <string name="aufgabe_frist_entfernen">Frist entfernen</string>
     <string name="aufgabe_streichen_titel">Aufgabe streichen?</string>
     <string name="aufgabe_streichen_frage">„%1$s“ wird in der Notiz gestrichen und verschwindet aus der Übersicht.</string>
+
+    <!-- HERO-Projekt anheften, seit v1.19.0 (Auftrag 1.19) -->
+    <string name="hero_abzeichen">HERO</string>
+    <string name="kontext_hero_projekte">HERO-Projekte</string>
+    <string name="hero_projekt_ohne_angaben">HERO-Projekt</string>
+    <string name="hero_angeheftet">%1$s angeheftet – Notizen, Fotos und Dokumente gehen automatisch ins HERO-Projekt (Videos nicht).</string>
+    <string name="hero_info_knopf">Wohin geht es?</string>
+    <string name="hero_info_text">Geht automatisch ins HERO-Projekt %1$s</string>
+    <string name="hero_info_details">Fotos und Dokumente kommen nach etwa einer Minute in HERO an, Notizen als PDF, sobald sie 15 Minuten unverändert sind. Videos nimmt HERO nicht an, sie bleiben auf dem Server – die Abschrift steht in der Notiz.</string>
+    <string name="hero_info_ok">OK</string>
+    <string name="hero_stand_leer">Noch nichts unterwegs nach HERO.</string>
+    <plurals name="hero_stand_in_hero">
+        <item quantity="one">In HERO: %1$d Datei</item>
+        <item quantity="other">In HERO: %1$d Dateien</item>
+    </plurals>
+    <plurals name="hero_stand_videos">
+        <item quantity="one">%1$d Video nur auf dem Server</item>
+        <item quantity="other">%1$d Videos nur auf dem Server</item>
+    </plurals>
+    <plurals name="hero_stand_zu_gross">
+        <item quantity="one">%1$d Datei zu groß, nur auf dem Server</item>
+        <item quantity="other">%1$d Dateien zu groß, nur auf dem Server</item>
+    </plurals>
 </resources>

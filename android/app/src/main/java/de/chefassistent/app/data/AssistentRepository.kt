@@ -593,6 +593,16 @@ class AssistentRepository(
     suspend fun suche(q: String, ordner: String? = null): SuchErgebnis =
         ruf { it.suche(q, ordner?.ifBlank { null }) }
 
+    /** HERO-Projekte zum Anheften: nur die Projektordner direkt im HERO-Archiv (Auftrag 1.19). */
+    suspend fun heroProjekteSuchen(q: String): List<SuchTreffer> =
+        ruf { it.suche(q, ordner = HERO_ARCHIV, typ = "ordner", max = 30) }
+            .treffer.filter { it.istOrdner && istHeroProjektordner(it.pfad) }
+
+    suspend fun heroMappeOeffnen(projekt: String): HeroMappe =
+        ruf { it.heroMappeOeffnen(HeroMappeAnfrage(projekt)) }
+
+    suspend fun heroMappeStand(projekt: String): HeroMappe = ruf { it.heroMappeStand(projekt) }
+
     /**
      * Laedt eine Datei aus `dateien` der Chat-Antwort in den Cache und gibt sie
      * als [File] zurueck. Der Aufrufer reicht sie per FileProvider weiter.

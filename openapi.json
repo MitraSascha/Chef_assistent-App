@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.18.0"
+    "version": "1.19.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -3551,6 +3551,141 @@
         ]
       }
     },
+    "/v1/hero-mappe": {
+      "post": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Hero Mappe Oeffnen",
+        "description": "HERO-Projekt für eine Begehung anheften: liefert die HERO-Mappe der Person (legt sie beim ersten Mal an).\nAlles, was darin landet – Fotos, Dokumente, Notizen (als PDF, sobald sie 15 Minuten unverändert sind) – geht\nautomatisch ins HERO-Projekt. Videos nicht (nimmt HERO nicht an), Altbestand eines vorhandenen Ordners nicht.",
+        "operationId": "hero_mappe_oeffnen_v1_hero_mappe_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeroMappeAnfrage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeroMappe"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Hero Mappe Stand",
+        "description": "Wie POST, legt aber nichts an: Stand der eigenen Mappe (was schon nach HERO ging).",
+        "operationId": "hero_mappe_stand_v1_hero_mappe_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "projekt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 300,
+              "title": "Projekt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeroMappe"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/freigabe": {
       "get": {
         "tags": [
@@ -5472,6 +5607,106 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HeroMappe": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Ordnername, z.B. 'SAN-660 Firma WEG Trelleborger Straße 14 in 13189 Berlin' – genau so als „Bezieht sich auf Projekt <name>.“ anheften"
+          },
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "Als 'notiz' bei /v1/fotos, /v1/videos, /v1/dokumente verwendbar"
+          },
+          "projekt": {
+            "type": "string",
+            "title": "Projekt",
+            "description": "HERO-Projektnummer"
+          },
+          "hero_ordner": {
+            "type": "string",
+            "title": "Hero Ordner",
+            "description": "Projektordner im HERO-Archiv"
+          },
+          "dateien": {
+            "items": {
+              "$ref": "#/components/schemas/HeroMappeDatei"
+            },
+            "type": "array",
+            "title": "Dateien",
+            "description": "Was schon Richtung HERO ging (älteste zuerst)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "pfad",
+          "projekt",
+          "hero_ordner",
+          "dateien"
+        ],
+        "title": "HeroMappe"
+      },
+      "HeroMappeAnfrage": {
+        "properties": {
+          "projekt": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 2,
+            "title": "Projekt",
+            "description": "HERO-Projekt: Nummer ('SAN-660', 'san 660'), Ordnername oder Pfad im HERO-Archiv (z.B. `projekt.pfad` aus /v1/suche)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "projekt"
+        ],
+        "title": "HeroMappeAnfrage"
+      },
+      "HeroMappeDatei": {
+        "properties": {
+          "quelle": {
+            "type": "string",
+            "title": "Quelle",
+            "description": "Datei in der Mappe"
+          },
+          "ziel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ziel",
+            "description": "Name im Upload-Ordner des HERO-Projekts"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "kopiert",
+              "zu_gross",
+              "schon_in_hero",
+              "video"
+            ],
+            "title": "Status",
+            "description": "kopiert = auf dem Weg nach HERO bzw. dort · zu_gross = über 25 MB, bleibt nur auf dem Server · schon_in_hero = dieselbe Datei liegt schon im HERO-Projekt · video = HERO nimmt keine Videos an, bleibt nur auf dem Server"
+          },
+          "zeit": {
+            "type": "string",
+            "title": "Zeit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "quelle",
+          "status",
+          "zeit"
+        ],
+        "title": "HeroMappeDatei"
+      },
       "HeroTerminErgebnis": {
         "properties": {
           "status": {
@@ -6010,6 +6245,18 @@
             "type": "integer",
             "title": "Notizen",
             "description": "Anzahl Notizen (.md) direkt darin"
+          },
+          "hero_projekt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Projekt",
+            "description": "Neu in 1.19.0: HERO-Projektnummer, wenn der Ordner eine HERO-Mappe ist – alles darin geht automatisch nach HERO (Abzeichen „HERO“ zeigen)"
           },
           "geaendert": {
             "type": "string",

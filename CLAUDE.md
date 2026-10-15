@@ -17,7 +17,7 @@ Antworten und Kommunikation auf **Deutsch**. Code und Commit-Messages auf Englis
 
 | Datei | Rolle |
 |---|---|
-| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.18.0 |
+| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.19.0 |
 | `API.md` | Erläuterung + Kotlin/Retrofit-Gerüst, für Android geschrieben |
 | `WINDOWS-HUELLE.md` | Auftrag für die Windows-App (WebView2-Hülle, Nachrichten `hallo`/`zeigen`/`oeffnen`/`ergebnis`/`sprechen`) |
 
@@ -143,7 +143,7 @@ Navigation: `MainActivity` hält u. a. die Ziele Anmeldung, Chat, Termine, Verbr
 Bewusst nicht: `GET /v1/freigabe` (Netzwerkpfade, nur für die Windows-Hülle) und `/v1/sicherheit*` (Passwort und Zwei-Faktor richtet jede Person in der Weboberfläche ein).
 
 
-Anmeldung mit Name/Passwort/Code (`POST /v1/anmelden`, Token verschlüsselt, danach `GET /v1/ich`) · Abmelden (`POST /v1/abmelden`) · Angemeldete Geräte (`/v1/geraete`) · Chat mit Markdown · Datei-Chips mit Download und Öffnen per FileProvider · Quellen-Chips · Bestätigungen mit Ja/Nein inkl. Nachladen beim Start und Ausblenden bei `ausgefuehrt` · Sperre gegen parallele Anfragen · Sprachaufnahme (`POST /v1/sprache`) · Fotos und Videos zur Notiz (`POST /v1/fotos`, `POST /v1/videos`), auch aus der Galerie, Ziel aus `GET /v1/notizen` · Ordneransicht der Ablage (`GET /v1/ordner`, seitenweise und sortierbar) mit Suche (`GET /v1/suche`) · Link-Karten aus `links` · Vorlesen über Android-TTS · Gesprächsliste, Verlauf laden, Gespräch löschen · Hintergrundaufträge (`/v1/auftraege`) · Aufgaben „Offen“ (`/v1/aufgaben`) · Kalender mit HERO-Terminen und Personenfilter (`/v1/kalender`, `/v1/personen`), HERO-Termine anlegen und verschieben (`/v1/kalender/kategorien`, `/v1/kalender/hero`) · Verbrauch · Angebote mit Vorschau und UGL (`/v1/angebote`) · Dokumente zur Notiz (`POST /v1/dokumente`), aus der Dateiauswahl oder per „Teilen“.
+Anmeldung mit Name/Passwort/Code (`POST /v1/anmelden`, Token verschlüsselt, danach `GET /v1/ich`) · Abmelden (`POST /v1/abmelden`) · Angemeldete Geräte (`/v1/geraete`) · Chat mit Markdown · Datei-Chips mit Download und Öffnen per FileProvider · Quellen-Chips · Bestätigungen mit Ja/Nein inkl. Nachladen beim Start und Ausblenden bei `ausgefuehrt` · Sperre gegen parallele Anfragen · Sprachaufnahme (`POST /v1/sprache`) · Fotos und Videos zur Notiz (`POST /v1/fotos`, `POST /v1/videos`), auch aus der Galerie, Ziel aus `GET /v1/notizen` · Ordneransicht der Ablage (`GET /v1/ordner`, seitenweise und sortierbar) mit Suche (`GET /v1/suche`) · Link-Karten aus `links` · Vorlesen über Android-TTS · Gesprächsliste, Verlauf laden, Gespräch löschen · Hintergrundaufträge (`/v1/auftraege`) · Aufgaben „Offen“ (`/v1/aufgaben`) · Kalender mit HERO-Terminen und Personenfilter (`/v1/kalender`, `/v1/personen`), HERO-Termine anlegen und verschieben (`/v1/kalender/kategorien`, `/v1/kalender/hero`) · Verbrauch · Angebote mit Vorschau und UGL (`/v1/angebote`) · Dokumente zur Notiz (`POST /v1/dokumente`), aus der Dateiauswahl oder per „Teilen“ · HERO-Projekt anheften (`/v1/hero-mappe`).
 
 ### Auf dem Gerät geprüft (2026-09-23)
 
@@ -170,7 +170,7 @@ Auf dem Galaxy S25 installiert und mit echtem Token gegen den Server gefahren:
 
 Nebenbei belegt: `shared_prefs/chef_assistent_zugang.xml` enthält nur verschlüsselte Schlüssel und Werte — das Token liegt nicht im Klartext.
 
-117 Unit-Tests laufen (`./gradlew testDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
+124 Unit-Tests laufen (`./gradlew testDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
 
 ### Anmeldung (`ui/anmeldung/`, `ui/geraete/`, seit v1.10.0)
 
@@ -289,6 +289,18 @@ Zwei Entscheidungen, die nicht offensichtlich sind:
 - **Sprache geht bei gesetztem Kontext immer ueber die Erkennung**, auch wenn die Diktat-Pruefung aus ist: `/v1/sprache` hat kein Textfeld, dem sich etwas voranstellen liesse. Die App holt den erkannten Text, setzt die Bezugszeile davor und schickt ihn an `/v1/chat` — ohne Zutun des Nutzers, der Ablauf fuehlt sich unveraendert an. Ohne das waere der angeheftete Kontext bei jeder Sprachnachricht wirkungslos.
 
 Am Geraet geprueft (2026-09-23): Kontext "HEZ-2003 Schulz" angeheftet, Frage "Worauf bezieht sich unsere Unterhaltung gerade?" → Antwort **"Unsere Unterhaltung bezieht sich gerade auf das Projekt HEZ-2003 Schulz."** Die Bezugszeile kommt also an, und in der Nutzerblase steht weiterhin nur der eigene Wortlaut. Merkliste, Vorbelegung des Feldes und "Loesen" ebenfalls geprueft.
+
+#### HERO-Projekt anheften (seit v1.19.0)
+
+Auftrag `AUFTRAG-APP-1.19.md`. Was in der **HERO-Mappe** landet (ein normaler Notizordner `Notizen/<Name>/SAN-660 …`), kopiert der Server ins HERO-Projekt: Fotos und Dokumente nach etwa 1 min, Notizen als PDF nach 15 min Ruhe. **Videos nicht**, HERO nimmt sie nicht an.
+
+- **Dialog:** Das Eingabefeld ist zugleich die Suche. Ab 2 Zeichen `GET /v1/suche?typ=ordner&ordner=HERO-Archiv&max=30`, 250 ms entprellt, vorige Anfrage abgebrochen (`ChatViewModel.heroSuchen`). Gezeigt werden nur Pfade `HERO-Archiv/<Projekt>` (`istHeroProjektordner`), also keine `Fotos/`, `Rechnungen/`. Zeile: Abzeichen **HERO**, Name fett, darunter Bauvorhaben · Titel · Status. Darunter die eigenen Ordner, nach der Eingabe gefiltert, HERO-Mappen mit Abzeichen.
+- **Antippen** → `POST /v1/hero-mappe` mit dem Trefferpfad → `kontextSetzen(name, pfad, projekt)`. Ab da wie jeder angeheftete Ordner: Bezugszeile mit `name` unverändert, `pfad` als `notiz` (`kontextZiel`, geht mit dem `MedienAuftrag` auch in den Korb). Snackbar „SAN-660 angeheftet – …“. Fehler (404) bleiben mit `detail` im Dialog.
+- **`kontextHero`** hält die Projektnummer. Gesetzt auch, wenn man eine Mappe aus „Deine Ordner“ oder „Zuletzt benutzt“ wählt (über `hero_projekt` aus `/v1/notizen`).
+- **Leiste:** Abzeichen vor dem Namen, daneben ⓘ → „Geht automatisch ins HERO-Projekt SAN-660“ samt Stand aus `GET /v1/hero-mappe` („In HERO: 12 Dateien · 2 Videos nur auf dem Server“). Langer Druck ist nicht gebaut, nur ⓘ.
+- **Zielauswahl für Fotos** zeigt HERO-Mappen ebenfalls mit Abzeichen.
+
+Am Gerät geprüft (2026-10-15): Suche „SAN-660“ zeigt genau einen HERO-Treffer mit Abzeichen und Projektangaben. **Nicht angetippt**, der POST legt eine echte Mappe an, und was darin landet, geht nach HERO. **Ungeprüft:** Anheften, Leiste mit ⓘ und Stand, 404, „SAN-99999“ ohne Treffer, die ganze Abnahme (Diktat und Fotos bis ins HERO-Projekt).
 
 ### Diktat wird vor dem Senden geprueft
 
@@ -657,11 +669,11 @@ Geprüft am 2026-09-24 auf dem Dev-PC: Start lädt die Anmeldeseite, das Server-
 
 ## Vertragsdateien holen
 
-Stand 2026-10-14, v1.18.0 (neu: HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
+Stand 2026-10-15, v1.19.0 (neu: HERO-Projekt anheften, `POST`/`GET /v1/hero-mappe`, `hero_projekt` an `NotizOrdner`, API.md 4 „HERO-Projekt anheften“, Auftrag `AUFTRAG-APP-1.19.md`. Davor v1.18.0 mit HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
 
 ```
-6b3bda6ac242721361510eec963af4e88db219c64239d19844ba67eb3b5940c8  openapi.json
-b89738ad90a2f9da166526bb44fb2af3f95de03d22ffa953902b93fae125cb58  API.md
+f5f0de4e3faa691d1d606c1e30f3f495eab1f5cd244fa414d4b4ecd90bf886dc  openapi.json
+3356d4c25f054718a163a7a37f6714fb5b0f9b017e0f8d6e43bd82a2e2ec53d2  API.md
 ```
 
 `WINDOWS-HUELLE.md` kommt ebenfalls vom Server, ist aber der Auftrag für den Agenten, der die Windows-App baut, und gehört nicht in dieses Projekt.

@@ -174,6 +174,14 @@ import de.chefassistent.app.data.VideoAufbereitung
 import de.chefassistent.app.data.GespraechKurz
 import de.chefassistent.app.data.GU_PRAEFIX
 import de.chefassistent.app.data.Notizen
+import de.chefassistent.app.data.NotizOrdner
+import de.chefassistent.app.data.SuchTreffer
+import de.chefassistent.app.data.HeroMappe
+import de.chefassistent.app.data.HERO_STATUS_KOPIERT
+import de.chefassistent.app.data.HERO_STATUS_SCHON_IN_HERO
+import de.chefassistent.app.data.HERO_STATUS_VIDEO
+import de.chefassistent.app.data.HERO_STATUS_ZU_GROSS
+import androidx.compose.material.icons.outlined.Info
 import de.chefassistent.app.data.Quelle
 import de.chefassistent.app.ui.MarkdownText
 import de.chefassistent.app.ui.antwort.AntwortInhalt
@@ -216,6 +224,7 @@ fun ChatScreen(
     val schublade = rememberDrawerState(DrawerValue.Closed)
     val bereich = rememberCoroutineScope()
     var kontextDialogOffen by remember { mutableStateOf(false) }
+    var heroInfoOffen by remember { mutableStateOf(false) }
 
     // Hintergrundauftraege nur abfragen, solange der Chat zu sehen ist.
     LifecycleResumeEffect(Unit) {
@@ -252,16 +261,41 @@ fun ChatScreen(
 
     if (kontextDialogOffen) {
         LaunchedEffect(Unit) { viewModel.zieleLaden() }
+        val schliessen = {
+            viewModel.heroSucheBeenden()
+            kontextDialogOffen = false
+        }
         KontextDialog(
             aktuell = zustand.kontext,
             zuletzt = zustand.letzteKontexte,
-            ordner = zustand.ziele?.ordner.orEmpty().map { it.name to it.pfad },
+            ordner = zustand.ziele?.ordner.orEmpty(),
+            heroTreffer = zustand.heroTreffer,
+            heroSucheLaeuft = zustand.heroSucheLaeuft,
+            heroAnheften = zustand.heroAnheften,
+            heroFehler = zustand.heroFehler,
+            beiEingabe = viewModel::heroSuchen,
+            beiHeroWahl = { treffer -> viewModel.heroAnheften(treffer) { schliessen() } },
             beiWahl = { text, ziel ->
                 viewModel.kontextSetzen(text, ziel)
-                kontextDialogOffen = false
+                schliessen()
             },
-            beiAbbruch = { kontextDialogOffen = false },
+            beiAbbruch = schliessen,
         )
+    }
+
+    if (heroInfoOffen) {
+        val projekt = zustand.kontextHero
+        if (projekt == null) {
+            heroInfoOffen = false
+        } else {
+            LaunchedEffect(projekt) { viewModel.heroStandLaden() }
+            HeroInfoDialog(
+                projekt = projekt,
+                stand = zustand.heroStand?.takeIf { it.projekt == projekt },
+                laedt = zustand.heroStandLaeuft,
+                beiSchliessen = { heroInfoOffen = false },
+            )
+        }
     }
 
     zustand.medium?.let { medium ->
@@ -527,7 +561,9 @@ fun ChatScreen(
                 Column {
                     Kontextleiste(
                         kontext = zustand.kontext,
+                        hero = zustand.kontextHero,
                         beiOeffnen = { kontextDialogOffen = true },
+                        beiInfo = { heroInfoOffen = true },
                         beiLoesen = { viewModel.kontextSetzen(null) },
                     )
                     Eingabeleiste(
@@ -1045,7 +1081,10 @@ private fun StimmenAuswahl(stimme: String?, beiWahl: (String?) -> Unit) {
 @Composable
 private fun Kontextleiste(
     kontext: String?,
+    /** HERO-Projektnummer, wenn eine HERO-Mappe angeheftet ist. */
+    hero: String?,
     beiOeffnen: () -> Unit,
+    beiInfo: () -> Unit,
     beiLoesen: () -> Unit,
 ) {
     Row(
@@ -1072,7 +1111,20 @@ private fun Kontextleiste(
                 selected = true,
                 onClick = beiOeffnen,
                 shape = CircleShape,
-                label = { Text(stringResource(R.string.kontext_angeheftet, kontext), maxLines = 1) },
+                modifier = Modifier.weight(1f, fill = false),
+                label = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (hero != null) {
+                            HeroAbzeichen()
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(
+                            stringResource(R.string.kontext_angeheftet, kontext),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                },
                 leadingIcon = {
                     Icon(
                         Icons.Default.PushPin,
@@ -1090,51 +1142,178 @@ private fun Kontextleiste(
                     }
                 },
             )
+            // Wohin geht es? Bei einer HERO-Mappe ist das nicht offensichtlich.
+            if (hero != null) {
+                IconButton(onClick = beiInfo) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = stringResource(R.string.hero_info_knopf),
+                    )
+                }
+            }
         }
     }
 }
 
-/** Kontext eintippen oder aus den zuletzt benutzten waehlen. */
+/** Kleines Abzeichen "HERO" vor HERO-Projekten und HERO-Mappen (Auftrag 1.19). */
+@Composable
+private fun HeroAbzeichen() {
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = MaterialTheme.colorScheme.tertiary,
+        contentColor = MaterialTheme.colorScheme.onTertiary,
+    ) {
+        Text(
+            text = stringResource(R.string.hero_abzeichen),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+        )
+    }
+}
+
+/** Wohin die Anhaenge gehen, dazu der Stand aus `GET /v1/hero-mappe` (optional laut Auftrag). */
+@Composable
+private fun HeroInfoDialog(
+    projekt: String,
+    stand: HeroMappe?,
+    laedt: Boolean,
+    beiSchliessen: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = beiSchliessen,
+        title = { Text(stringResource(R.string.hero_info_text, projekt)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.hero_info_details))
+                when {
+                    stand != null -> Text(
+                        text = heroStandText(stand),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    laedt -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = beiSchliessen) { Text(stringResource(R.string.hero_info_ok)) }
+        },
+    )
+}
+
+/** "In HERO: 12 Dateien · 2 Videos nur auf dem Server" - unbekannte Status zaehlen nicht mit. */
+@Composable
+private fun heroStandText(stand: HeroMappe): String {
+    val anzahl = stand.dateien.groupingBy { it.status }.eachCount()
+    val inHero = (anzahl[HERO_STATUS_KOPIERT] ?: 0) + (anzahl[HERO_STATUS_SCHON_IN_HERO] ?: 0)
+    val videos = anzahl[HERO_STATUS_VIDEO] ?: 0
+    val zuGross = anzahl[HERO_STATUS_ZU_GROSS] ?: 0
+    if (inHero + videos + zuGross == 0) return stringResource(R.string.hero_stand_leer)
+    return buildList {
+        add(pluralStringResource(R.plurals.hero_stand_in_hero, inHero, inHero))
+        if (videos > 0) add(pluralStringResource(R.plurals.hero_stand_videos, videos, videos))
+        if (zuGross > 0) add(pluralStringResource(R.plurals.hero_stand_zu_gross, zuGross, zuGross))
+    }.joinToString(" · ")
+}
+
+/**
+ * Kontext eintippen, ein HERO-Projekt suchen (seit v1.19.0) oder aus den
+ * eigenen Ordnern und den zuletzt benutzten waehlen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun KontextDialog(
     aktuell: String?,
     zuletzt: List<String>,
-    /** Eigene Ordner als (Name, Pfad), zuletzt geaendert zuerst. */
-    ordner: List<Pair<String, String>>,
+    /** Eigene Ordner, zuletzt geaendert zuerst. */
+    ordner: List<NotizOrdner>,
+    heroTreffer: List<SuchTreffer>,
+    heroSucheLaeuft: Boolean,
+    heroAnheften: Boolean,
+    heroFehler: String?,
+    beiEingabe: (String) -> Unit,
+    beiHeroWahl: (SuchTreffer) -> Unit,
     beiWahl: (String?, String?) -> Unit,
     beiAbbruch: () -> Unit,
 ) {
     var eingabe by remember { mutableStateOf(aktuell.orEmpty()) }
     // Pfad des gewaehlten Ordners. Tippt man danach etwas anderes, passt er nicht mehr.
     var ordnerPfad by remember { mutableStateOf<String?>(null) }
-    val passenderPfad = ordnerPfad?.takeIf { pfad -> ordner.any { it.second == pfad && it.first == eingabe.trim() } }
+    val passenderPfad = ordnerPfad?.takeIf { pfad -> ordner.any { it.pfad == pfad && it.name == eingabe.trim() } }
+    // Die Eingabe ist zugleich die Suche: HERO-Projekte beim Server, eigene Ordner hier.
+    LaunchedEffect(eingabe) { beiEingabe(eingabe) }
+    val filter = eingabe.trim()
+    val passendeOrdner = ordner.filter {
+        filter.isEmpty() || it.pfad == ordnerPfad || it.name.contains(filter, ignoreCase = true)
+    }
 
     AlertDialog(
         onDismissRequest = beiAbbruch,
         title = { Text(stringResource(R.string.kontext_titel)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 OutlinedTextField(
                     value = eingabe,
                     onValueChange = { eingabe = it },
                     label = { Text(stringResource(R.string.kontext_feld)) },
                     supportingText = { Text(stringResource(R.string.kontext_hinweis)) },
                     singleLine = true,
+                    enabled = !heroAnheften,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                if (ordner.isNotEmpty()) {
+                if (heroSucheLaeuft || heroAnheften) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                heroFehler?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                if (heroTreffer.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.kontext_hero_projekte),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Column {
+                        heroTreffer.forEach { treffer ->
+                            HeroTrefferZeile(
+                                treffer = treffer,
+                                frei = !heroAnheften,
+                                beiKlick = { beiHeroWahl(treffer) },
+                            )
+                        }
+                    }
+                }
+
+                if (passendeOrdner.isNotEmpty()) {
                     Text(
                         text = stringResource(R.string.kontext_ordner),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ordner.take(MAX_ORDNER_VORSCHLAEGE).forEach { (name, pfad) ->
+                        passendeOrdner.take(MAX_ORDNER_VORSCHLAEGE).forEach { o ->
+                            val name = o.name
+                            val pfad = o.pfad
                             AssistChip(
                                 onClick = { eingabe = name; ordnerPfad = pfad },
-                                label = { Text(name, maxLines = 1) },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (o.hero_projekt != null) {
+                                            HeroAbzeichen()
+                                            Spacer(Modifier.width(6.dp))
+                                        }
+                                        Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                },
                                 leadingIcon = {
                                     Icon(
                                         Icons.Default.Folder,
@@ -1146,8 +1325,13 @@ private fun KontextDialog(
                         }
                     }
                     if (passenderPfad != null) {
+                        val heroNr = ordner.firstOrNull { it.pfad == passenderPfad }?.hero_projekt
                         Text(
-                            text = stringResource(R.string.kontext_ordner_ziel),
+                            text = if (heroNr != null) {
+                                stringResource(R.string.hero_info_text, heroNr)
+                            } else {
+                                stringResource(R.string.kontext_ordner_ziel)
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1174,7 +1358,7 @@ private fun KontextDialog(
         confirmButton = {
             TextButton(
                 onClick = { beiWahl(eingabe, passenderPfad) },
-                enabled = eingabe.isNotBlank(),
+                enabled = eingabe.isNotBlank() && !heroAnheften,
             ) {
                 Text(stringResource(R.string.kontext_uebernehmen))
             }
@@ -1910,6 +2094,39 @@ private fun MedienDialog(
     )
 }
 
+/**
+ * HERO-Treffer im Anheften-Dialog: Abzeichen, Name fett, darunter
+ * Bauvorhaben · Titel · Status (Auftrag 1.19).
+ */
+@Composable
+private fun HeroTrefferZeile(treffer: SuchTreffer, frei: Boolean, beiKlick: () -> Unit) {
+    val p = treffer.projekt
+    val unter = listOfNotNull(p?.bauvorhaben, p?.titel, p?.status)
+        .filter { it.isNotBlank() }
+        .joinToString(" · ")
+        .ifBlank { stringResource(R.string.hero_projekt_ohne_angaben) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = frei, onClick = beiKlick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(Modifier.padding(top = 2.dp)) { HeroAbzeichen() }
+        Column(modifier = Modifier.padding(start = 10.dp)) {
+            Text(treffer.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = unter,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 /** Ein Pfad ohne `.md` ist ein Ordner - so unterscheidet der Server es auch. */
 private fun istOrdnerPfad(pfad: String) = !pfad.endsWith(".md", ignoreCase = true)
 
@@ -1981,6 +2198,7 @@ private fun ZielDialog(
                                 unter = pluralStringResource(R.plurals.ziel_notizen_anzahl, o.notizen, o.notizen),
                                 gewaehlt = gewaehlt == o.pfad,
                                 beiKlick = { beiWahl(o.pfad) },
+                                hero = o.hero_projekt != null,
                             )
                         }
                     }
@@ -2033,6 +2251,8 @@ private fun ZielZeile(
     unter: String?,
     gewaehlt: Boolean,
     beiKlick: () -> Unit,
+    /** HERO-Mappe: Abzeichen vor dem Namen. */
+    hero: Boolean = false,
 ) {
     Row(
         modifier = Modifier
@@ -2045,7 +2265,13 @@ private fun ZielZeile(
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(modifier = Modifier.padding(start = 12.dp)) {
-            Text(titel, maxLines = 2)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (hero) {
+                    HeroAbzeichen()
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(titel, maxLines = 2)
+            }
             if (unter != null) {
                 Text(
                     text = unter,

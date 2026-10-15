@@ -272,6 +272,14 @@ interface AssistentApi {
         @Query("max") max: Int? = null,
     ): SuchErgebnis
 
+    /** HERO-Projekt anheften: Mappe holen, beim ersten Mal anlegen (seit v1.19.0). */
+    @POST("v1/hero-mappe")
+    suspend fun heroMappeOeffnen(@Body anfrage: HeroMappeAnfrage): HeroMappe
+
+    /** Wie [heroMappeOeffnen], legt aber nichts an. 404, solange es keine Mappe gibt. */
+    @GET("v1/hero-mappe")
+    suspend fun heroMappeStand(@Query("projekt") projekt: String): HeroMappe
+
     @Streaming
     @GET("v1/datei")
     suspend fun datei(@Query("pfad") pfad: String): ResponseBody

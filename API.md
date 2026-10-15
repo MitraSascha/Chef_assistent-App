@@ -44,6 +44,8 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | POST | `/v1/fotos` | Foto an eine Notiz hängen |
 | POST | `/v1/dokumente` | Dokument (PDF, Word, Excel …) an eine Notiz hängen – neu in 1.12.0 |
 | POST | `/v1/videos` | Video an eine Notiz hängen, Gesprochenes wird abgeschrieben |
+| POST | `/v1/hero-mappe` | **HERO-Projekt anheften**: HERO-Mappe holen/anlegen – Inhalt geht automatisch nach HERO (neu in 1.19.0) |
+| GET | `/v1/hero-mappe?projekt=` | Stand der HERO-Mappe: was schon Richtung HERO ging (neu in 1.19.0) |
 | GET | `/v1/auftraege` | Hintergrundaufträge (Versicherungsberichte) mit Stand |
 | GET | `/v1/auftraege/{id}` | Ein Auftrag |
 | POST | `/v1/auftraege/{id}/abbrechen` | Auftrag abbrechen |
@@ -441,6 +443,55 @@ Empfehlung für die App: Im Anhang-Menü neben Kamera/Video **„Dokument“** (
 MIME-Typen `application/pdf`, `application/vnd.openxmlformats-officedocument.*`, `text/*`, `message/rfc822`) und
 **Teilen-Ziel** („Teilen → Chef-Assistent“ aus Mail-App/Dateien) für dieselben Typen. Dateiname aus
 `OpenableColumns.DISPLAY_NAME` übernehmen. Upload wie bei Videos mit Fortschritt; Typ-Prüfung macht der Server.
+
+### HERO-Projekt anheften (HERO-Mappe) – neu in 1.19.0
+
+Anlass (15.10.2026): Bei einer Begehung zu einem Projekt, das es in HERO schon gibt, sollen **alle Daten und Bilder
+automatisch ins HERO-Projekt** – nicht erst von Hand hochgeladen werden. Bisher ließen sich nur eigene Notizordner und
+GU-Projekte anheften; ein selbst erdachter Ordner im HERO-Archiv wurde nie nach HERO übertragen.
+
+**So funktioniert es:** Zu jedem HERO-Projekt bekommt jede Person eine **HERO-Mappe** in ihrem Notizordner,
+z. B. `Notizen/Sascha/SAN-660 Firma WEG Trelleborger Straße 14 in 13189 Berlin` (der Name beginnt mit der
+Projektnummer). Die Mappe ist ein ganz normaler Notizordner – Notizen, Fotos, Videos, Dokumente, Begehungsprotokolle,
+auch Unterordner wie „Keller“. Der Server kopiert **alles, was darin neu entsteht**, in
+`HERO-Archiv/<Projekt>/Nach HERO hochladen`; der HERO-Spiegel lädt es von dort ins HERO-Projekt (werktags alle 5 Minuten):
+
+| Was | Wann nach HERO |
+|---|---|
+| Fotos, Dokumente ≤ 25 MB | nach 1 Minute Ruhe (fertig geschrieben) |
+| Notizen (`.md`) | **als PDF**, sobald sie **15 Minuten unverändert** sind; spätere Nachträge kommen als neuer Stand „… (Stand 15.10.2026 14-32).pdf“ |
+| **Videos** | **gehen nicht nach HERO** – HERO weist Videos ab. Sie bleiben in der Mappe auf dem Server (`status: video`); die Abschrift steht in der Notiz und kommt mit deren PDF nach HERO |
+| Andere Dateien > 25 MB | bleiben nur auf dem Server (`status: zu_gross`) |
+| Datei liegt schon im HERO-Projekt | wird nicht doppelt hochgeladen (`status: schon_in_hero`) |
+
+Was schon vor dem Verknüpfen in einem Ordner mit Projektnummer lag, bleibt, wo es ist (kein Altbestand nach HERO).
+
+`POST /v1/hero-mappe` – Mappe holen bzw. beim ersten Mal anlegen:
+
+```json
+{"projekt": "SAN-660"}
+```
+`projekt` darf die Nummer (`SAN-660`, `san 660`), der Ordnername oder der Pfad im HERO-Archiv sein (z. B.
+`projekt.pfad` aus `/v1/suche`). Antwort:
+
+```json
+{"name": "SAN-660 Firma WEG Trelleborger Straße 14 in 13189 Berlin",
+ "pfad": "Notizen/Sascha/SAN-660 Firma WEG Trelleborger Straße 14 in 13189 Berlin",
+ "projekt": "SAN-660", "hero_ordner": "HERO-Archiv/SAN-660 Firma WEG Trelleborger Straße 14 in 13189 Berlin",
+ "dateien": [{"quelle": "Notizen/Sascha/SAN-660 …/2026-10-15 09-12-04.jpg", "ziel": "2026-10-15 09-12-04.jpg",
+              "status": "kopiert", "zeit": "2026-10-15T07:13:10+00:00"}]}
+```
+`404` = kein (eindeutiges) HERO-Projekt zu der Angabe. `GET /v1/hero-mappe?projekt=SAN-660` liefert denselben Stand,
+legt aber nichts an (`404`, solange es keine Mappe gibt).
+
+Anheften wie bei Notizordnern:
+- Chat-Nachrichten beginnen mit `Bezieht sich auf Projekt <name>.` (`name` aus der Antwort). Der Server erkennt
+  dabei auch HERO-Ordnernamen und die bloße Nummer und legt die Mappe notfalls selbst an.
+- Fotos/Videos/Dokumente mit `notiz = <pfad>` schicken. Auch ein Pfad im HERO-Archiv
+  (`HERO-Archiv/SAN-660 …`) oder die Nummer als `notiz` landet in der Mappe – nie im Spiegel selbst.
+- `GET /v1/notizen` liefert die Mappen wie andere Ordner, mit neuem Feld **`hero_projekt`** (`"SAN-660"`, sonst
+  `null`) → Abzeichen „HERO“ zeigen.
+- Ohne App: Im Chat „Begehung zu SAN-660, Keller: …“ – der Assistent legt die Notiz in die Mappe (`SAN-660/Keller`).
 
 ## 4b. Versicherungsberichte (Hintergrundaufträge) – neu in 1.6.0
 
