@@ -31,6 +31,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -405,46 +406,29 @@ fun SendenKnopf(
     beiStopp: () -> Unit,
     beiZwischenruf: () -> Unit,
 ) {
-    val polster = PaddingValues(horizontal = 16.dp)
+    // Alle drei rund und gleich gross: ein breiter Knopf mit Text drueckte das
+    // Eingabefeld auf eine schmale Spalte zusammen (am S25 gesehen). Was der Knopf
+    // tut, sagen Farbe, Symbol und der Platzhalter "Zwischenruf an den Assistenten …".
+    val form = Modifier.size(56.dp)
     when (knopf) {
-        SendeKnopf.SENDEN -> FilledIconButton(
-            onClick = beiSenden,
-            enabled = aktiv,
-            modifier = Modifier.size(56.dp),
-        ) {
+        SendeKnopf.SENDEN -> FilledIconButton(onClick = beiSenden, enabled = aktiv, modifier = form) {
             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.chat_senden))
         }
 
-        SendeKnopf.STOPP -> Button(
+        SendeKnopf.STOPP -> FilledIconButton(
             onClick = beiStopp,
             enabled = aktiv,
-            contentPadding = polster,
-            colors = ButtonDefaults.buttonColors(
+            colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.error,
                 contentColor = MaterialTheme.colorScheme.onError,
             ),
-            modifier = Modifier.heightIn(min = 56.dp),
+            modifier = form,
         ) {
-            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text("Stopp", modifier = Modifier.padding(start = 6.dp))
+            Icon(Icons.Default.Stop, contentDescription = "Stopp")
         }
 
-        SendeKnopf.ZWISCHENRUF -> Button(
-            onClick = beiZwischenruf,
-            enabled = aktiv,
-            contentPadding = polster,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-            modifier = Modifier.heightIn(min = 56.dp),
-        ) {
-            Text(ZWISCHENRUF_MARKE)
-            Icon(
-                Icons.AutoMirrored.Filled.Send,
-                contentDescription = null,
-                modifier = Modifier.padding(start = 6.dp).size(18.dp),
-            )
+        SendeKnopf.ZWISCHENRUF -> FilledIconButton(onClick = beiZwischenruf, enabled = aktiv, modifier = form) {
+            Icon(Icons.Default.Campaign, contentDescription = ZWISCHENRUF_MARKE)
         }
     }
 }

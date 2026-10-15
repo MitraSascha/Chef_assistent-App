@@ -337,7 +337,21 @@ Auftrag `AUFTRAG-APP-1.20.md`, API.md 1c (Teil A) und 1d (Teil B).
 - **Senden-Knopf** (`SendeKnopf`): leeres Feld → „Stopp“ (rot), Text im Feld → „Zwischenruf“ (`primary`). Beides gibt es erst, wenn der Server einen `fortschritt` liefert, ein alter Server behält den gesperrten Knopf. Eine zweite normale Nachricht bleibt gesperrt. Enter im Textfeld macht nur einen Zeilenumbruch, stoppt also nie.
 - Ein Zwischenruf erscheint als Nutzerblase mit gestricheltem Rand und der Marke „Zwischenruf“. 409 heißt: Text bleibt im Feld, Hinweis „schon fertig“. Sprache während einer Antwort wird erst nur erkannt. Mit Diktat-Prüfung kommt der Text ins Feld, ohne geht er direkt als Zwischenruf raus.
 
-**Ungeprüft am Gerät:** die ganze Abnahme beider Teile. Astra kostet je Anfrage deutlich mehr, beim Testen sparsam wählen.
+**Stopp und Zwischenruf sind runde 56-dp-Knöpfe** (rotes Quadrat bzw. Megafon), nicht wie im Auftrag mit Text. Mit Text drückte der Knopf das Eingabefeld am S25 auf eine schmale Spalte zusammen.
+
+Am Gerät geprüft (2026-10-15), mit Server 1.20.0:
+
+| | Ergebnis |
+|---|---|
+| Neues Gespräch, „Hallo“ | `gpt-5.6-luna · niedrig` |
+| sol/hoch im bestehenden Gespräch, „Hallo“ | `gpt-5.6-sol · hoch` |
+| Neues Gespräch, dann zurück | neu steht auf auto/auto, das alte wieder auf sol/hoch, alte Antworten behalten ihre Zeile |
+| Astra gewählt | Rückfrage mit Hinweis, „Nein“ lässt Automatisch stehen |
+| Lange Leseanfrage | Fortschritt zählt Schritte/Werkzeuge/Zeit, danach „Verlauf: 2 Werkzeuge · 0:09 min“, aufgeklappt mit ✓-Dauern und Denken grau |
+| Zwischenruf | gestrichelte Blase mit Marke vor der laufenden Antwort |
+| Stopp | „Wird abgebrochen …“, dann „⏹ Abgebrochen“ mit Liste, darunter `gpt-5.6-sol · mittel · gewechselt` |
+
+**Ungeprüft:** Astra mit „Ja“ (kostet), Sprachnachricht mit Wahl, 422 auf die Modellwahl, Funkloch während der Fortschrittsanzeige, Zwischenruf per Sprache, Hell-Modus. Das Denken kommt vom Server auf Englisch („Gathering weekly schedule …“), offene Frage ans Backend. Das ⓘ der Modell-Leiste ist bei „Automatisch/Automatisch“ halb abgeschnitten und erst nach seitlichem Wischen ganz zu sehen. Testgespräche von heute („Hallo“, „Nur lesen …“) können gelöscht werden.
 
 ### Antworten: Diagramme, Tabellen, Code (`ui/antwort/`, seit v1.14.0)
 
