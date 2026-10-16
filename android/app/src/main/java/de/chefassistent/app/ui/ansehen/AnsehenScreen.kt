@@ -145,7 +145,7 @@ fun AnsehenScreen(
             val datei = zustand.datei
             when {
                 zustand.laeuft -> CircularProgressIndicator()
-                zustand.fehler != null -> Hinweis(zustand.fehler!!, viewModel::laden)
+                zustand.fehler != null -> Hinweis(zustand.fehler!!, viewModel::neuLaden)
                 datei == null -> Unit
                 zustand.text != null -> TextAnsicht(zustand.text!!, istMarkdown = name.endsWith(".md", true))
                 else -> when (dateiArt(name)) {

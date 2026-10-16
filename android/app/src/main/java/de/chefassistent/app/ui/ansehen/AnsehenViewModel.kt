@@ -31,8 +31,12 @@ data class AnsehenZustand(
  * `GET /v1/datei?pfad=…&anzeigen=true`. Gezeigt wird sie in [AnsehenScreen].
  */
 class AnsehenViewModel(
-    private val repository: AssistentRepository,
+    /** Dateiname bzw. Pfad, entscheidet ueber die Ansicht (PDF, Bild, Text …). */
     val pfad: String,
+    /** Laedt die Datei in den Cache. Buero: `GET /v1/datei`, Monteur: `GET /v1/monteur/dateien/{uuid}`. */
+    private val quelle: suspend () -> File,
+    /** Nach 401: Token lokal verwerfen. */
+    private val abmelden: () -> Unit,
 ) : ViewModel() {
 
     private val _zustand = MutableStateFlow(AnsehenZustand())
@@ -42,11 +46,13 @@ class AnsehenViewModel(
         laden()
     }
 
-    fun laden() {
+    fun neuLaden() = laden()
+
+    private fun laden() {
         _zustand.update { it.copy(laeuft = true, fehler = null) }
         viewModelScope.launch {
             try {
-                val datei = repository.dateiLaden(pfad, anzeigen = true)
+                val datei = quelle()
                 val text = if (dateiArt(pfad) in TEXTARTEN || pfad.endsWith(".csv", true) || pfad.endsWith(".tsv", true)) {
                     // Notizen sind klein; grosse Logdateien werden gekuerzt statt den Speicher zu sprengen.
                     withContext(Dispatchers.IO) { datei.bufferedReader().use { it.readTextBis(MAX_ZEICHEN) } }
@@ -54,7 +60,7 @@ class AnsehenViewModel(
                 _zustand.update { it.copy(datei = datei, text = text) }
             } catch (fehler: ApiFehler) {
                 if (fehler is ApiFehler.NichtAngemeldet) {
-                    repository.abmelden()
+                    abmelden()
                     _zustand.update { it.copy(abgemeldet = true) }
                 } else {
                     _zustand.update { it.copy(fehler = fehler.anzeigetext) }
@@ -70,7 +76,12 @@ class AnsehenViewModel(
         private const val MAX_ZEICHEN = 400_000
 
         fun factory(repository: AssistentRepository, pfad: String) = viewModelFactory {
-            initializer { AnsehenViewModel(repository, pfad) }
+            initializer { AnsehenViewModel(pfad, { repository.dateiLaden(pfad, anzeigen = true) }, repository::abmelden) }
+        }
+
+        /** Beliebige Quelle, etwa die Projektmappe der Monteur-App. */
+        fun factory(name: String, laden: suspend () -> File, abmelden: () -> Unit) = viewModelFactory {
+            initializer { AnsehenViewModel(name, laden, abmelden) }
         }
     }
 }

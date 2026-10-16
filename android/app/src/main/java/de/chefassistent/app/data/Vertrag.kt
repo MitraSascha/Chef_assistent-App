@@ -19,7 +19,12 @@ data class Ich(
     val anzeigename: String,
     val modell: String,
     val version: String,
+    /** Seit v1.22.0: `buero` oder `monteur` (Monteure erreichen nur `/v1/monteur/…`). */
+    val rolle: String = ROLLE_BUERO,
 )
+
+const val ROLLE_BUERO = "buero"
+const val ROLLE_MONTEUR = "monteur"
 
 @Serializable
 data class ChatAnfrage(

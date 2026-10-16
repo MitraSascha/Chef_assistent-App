@@ -42,7 +42,14 @@ object Netzwerk {
     fun ohneLeseTimeout(pfad: String): Boolean =
         pfad.trimEnd('/').let { it.endsWith("/v1/chat") || it.endsWith("/v1/sprache") }
 
-    fun api(basisUrl: String, token: () -> String?): AssistentApi {
+    fun api(basisUrl: String, token: () -> String?): AssistentApi =
+        dienst(basisUrl, token, AssistentApi::class.java)
+
+    /**
+     * Derselbe Zugang fuer eine andere Retrofit-Schnittstelle, etwa die der
+     * Monteur-App. Token, Fehleruebersetzung und Timeouts bleiben gleich.
+     */
+    fun <T> dienst(basisUrl: String, token: () -> String?, schnittstelle: Class<T>): T {
         val client = OkHttpClient.Builder()
             .connectTimeout(VERBINDUNGS_TIMEOUT_SEKUNDEN, TimeUnit.SECONDS)
             .readTimeout(LESE_TIMEOUT_SEKUNDEN, TimeUnit.SECONDS)
@@ -58,11 +65,16 @@ object Netzwerk {
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-            .create(AssistentApi::class.java)
+            .create(schnittstelle)
     }
 
-    /** `POST /v1/anmelden` ist der einzige Aufruf, der nie ein Token mitschickt. */
-    fun istAnmeldung(pfad: String): Boolean = pfad.trimEnd('/').endsWith("/v1/anmelden")
+    /**
+     * `POST /v1/anmelden` und `POST /v1/monteur/einrichten` (Monteur-App, 1.22.0)
+     * schicken nie ein Token mit.
+     */
+    fun istAnmeldung(pfad: String): Boolean = pfad.trimEnd('/').let {
+        it.endsWith("/v1/anmelden") || it.endsWith("/v1/monteur/einrichten")
+    }
 
     /**
      * Macht aus dem, was der Nutzer eintippt, eine Basis-URL, die Retrofit akzeptiert:

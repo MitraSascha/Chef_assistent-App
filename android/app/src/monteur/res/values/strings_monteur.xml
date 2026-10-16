@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App: Geruest, Einrichtung, Heute, Projektmappe. Bericht, Zeiten und Urlaub haben eigene Dateien. -->
+<resources>
+    <!-- Mikrofon -->
+    <string name="m_mikro_frage">Was hast du gemacht?</string>
+    <string name="m_mikro_hinweis">Was, wie lange, welches Material – in deiner Sprache, Stichworte reichen.</string>
+    <string name="m_mikro_laeuft">Aufnahme läuft – tippen zum Beenden</string>
+    <string name="m_mikro_keine_erlaubnis">Ohne Mikrofon-Berechtigung geht kein Diktat. Bitte in den Einstellungen erlauben.</string>
+    <string name="m_mikro_belegt">Das Mikrofon ist gerade belegt.</string>
+
+    <!-- Einrichtung -->
+    <string name="m_einrichtung_text">Einmal einrichten: den QR-Code aus dem Büro scannen.</string>
+    <string name="m_qr_scannen">Mit QR-Code einrichten</string>
+    <string name="m_code_eintippen">Code eintippen</string>
+    <string name="m_code_feld">Code, z. B. ABCD-EFGH-JKLM</string>
+    <string name="m_einrichten">Einrichten</string>
+    <string name="m_code_ungueltig">Code ungültig oder abgelaufen – bitte im Büro einen neuen holen.</string>
+    <string name="m_qr_fremd">Das ist kein Einrichtungscode für Mitra Monteur.</string>
+    <string name="m_scanner_fehlt">Der QR-Scanner ist nicht verfügbar. Bitte den Code eintippen.</string>
+    <string name="m_server">Server-Adresse</string>
+    <string name="m_versteckt">Erweitert</string>
+    <string name="m_buero_zugang">Mit Büro-Zugang anmelden</string>
+    <string name="m_name">Name</string>
+    <string name="m_passwort">Passwort</string>
+    <string name="m_zweifaktor">Code aus der Authenticator-App</string>
+    <string name="m_anmelden">Anmelden</string>
+    <string name="m_sitzung_abgelaufen">Bitte im Büro einen neuen QR-Code holen.</string>
+
+    <!-- Navigation und Menue -->
+    <string name="m_nav_heute">Heute</string>
+    <string name="m_nav_zeiten">Zeiten</string>
+    <string name="m_nav_urlaub">Urlaub</string>
+    <string name="m_menue">Menü</string>
+    <string name="m_abmelden">Abmelden</string>
+    <string name="m_abmelden_frage">Wirklich abmelden? Danach braucht es einen neuen QR-Code aus dem Büro.</string>
+    <string name="m_abbrechen">Abbrechen</string>
+    <string name="m_ok">OK</string>
+    <string name="m_zurueck">Zurück</string>
+    <string name="m_nochmal">Nochmal versuchen</string>
+
+    <!-- Heute -->
+    <string name="m_tag_zurueck">Voriger Tag</string>
+    <string name="m_tag_vor">Nächster Tag</string>
+    <string name="m_woche_zeigen">Woche zeigen</string>
+    <string name="m_tag_zeigen">Nur den Tag zeigen</string>
+    <string name="m_keine_termine">Keine Termine.</string>
+    <string name="m_bericht_fehlt">Bericht fehlt</string>
+    <string name="m_entwurf">Entwurf</string>
+    <string name="m_kollegen">Mit %1$s</string>
+    <string name="m_ganztaegig">ganztägig</string>
+    <string name="m_wartet">%1$d warten auf Netz</string>
+    <string name="m_jetzt_senden">Jetzt senden</string>
+    <string name="m_bericht_tippen">Bericht tippen</string>
+    <string name="m_anrufen">%1$s anrufen</string>
+    <string name="m_navigation">Navigation zu %1$s</string>
+    <string name="m_keine_app">Dafür ist keine App installiert.</string>
+    <string name="m_meldung_oeffnen">Öffnen</string>
+
+    <!-- Projektmappe -->
+    <string name="m_notizen">Notizen aus dem Büro</string>
+    <string name="m_unterlagen">Unterlagen</string>
+    <string name="m_keine_unterlagen">Keine Unterlagen.</string>
+    <string name="m_fotos">Fotos</string>
+    <string name="m_pdf_folgt">PDF folgt</string>
+    <string name="m_bericht">Bericht</string>
+    <string name="m_entwurf_oeffnen">Entwurf weiterbearbeiten</string>
+    <string name="m_bericht_ansehen">Bericht %1$s</string>
+    <string name="m_foto_von">Foto %1$d von %2$d</string>
+</resources>
