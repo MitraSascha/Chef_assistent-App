@@ -85,6 +85,20 @@ class MonteurKorb(context: Context) {
         zaehlen()
     }
 
+    /**
+     * Foto, Video oder Dokument fuer die Projektmappe (seit 1.22.0). Die Datei wird
+     * verschluesselt kopiert und danach geloescht; Videos koennen bis 1 GB gross sein,
+     * der Upload laeuft deshalb immer ueber [MonteurVersand] im Hintergrund.
+     */
+    @Synchronized
+    fun dateiEinreihen(auftrag: DateiAuftrag, datei: File) {
+        val name = DATEI_VORSATZ + auftrag.anfrage_id
+        tresor.verschluesseln(datei, inhaltDatei(name))
+        tresor.fassungSchreiben(ordner, name, KorbEintrag(datei = auftrag), KorbEintrag.serializer())
+        datei.delete()
+        zaehlen()
+    }
+
     /** Ob fuer diesen Termin schon ein Bericht wartet (dann nicht doppelt aufnehmen lassen). */
     @Synchronized
     fun wartendeBerichte(): List<BerichtAuftrag> =
@@ -98,13 +112,20 @@ class MonteurKorb(context: Context) {
      * Schickt alles ab, aeltestes zuerst. `true` = Korb leer bzw. nur noch
      * Endgueltiges beiseitegelegt; `false` = etwas wartet weiter (spaeter erneut).
      */
-    suspend fun senden(repository: MonteurRepository): Boolean = sendeSperre.withLock { sendenGesperrt(repository) }
+    suspend fun senden(
+        repository: MonteurRepository,
+        /** Upload-Fortschritt einer Datei: Titel und Prozent, fuer Benachrichtigung und Projektmappe. */
+        fortschritt: (String, Int) -> Unit = { _, _ -> },
+    ): Boolean = sendeSperre.withLock { sendenGesperrt(repository, fortschritt) }
 
     /** Worker und Oberflaeche duerfen nicht gleichzeitig senden, sonst ginge ein Eintrag doppelt raus. */
     private val sendeSperre = Mutex()
 
-    private suspend fun sendenGesperrt(repository: MonteurRepository): Boolean {
-        val namen = synchronized(this) { tresor.namenMitFassung(ordner).sorted() }
+    private suspend fun sendenGesperrt(repository: MonteurRepository, fortschritt: (String, Int) -> Unit): Boolean {
+        // Aeltestes zuerst: die Namen sind zufaellige IDs, also nach Dateialter.
+        val namen = synchronized(this) {
+            tresor.namenMitFassung(ordner).sortedBy { n -> tresor.alleDateien(ordner, n).minOfOrNull { it.lastModified() } ?: 0L }
+        }
         for (name in namen) {
             val eintrag = synchronized(this) { tresor.fassungLesen(ordner, name, KorbEintrag.serializer()) }
             if (eintrag == null) {
@@ -112,13 +133,13 @@ class MonteurKorb(context: Context) {
                 continue
             }
             val ergebnis = try {
-                versenden(repository, name, eintrag)
+                versenden(repository, name, eintrag, fortschritt)
             } catch (fehler: ApiFehler) {
                 if (fehler.istVoruebergehend) {
                     zaehlen()
                     return false
                 }
-                melden(KorbMeldung(name, eintrag.titel(), fehler.anzeigetext, fertig = false, berichtId = eintrag.abschluss?.bericht_id))
+                melden(KorbMeldung(name, eintrag.titel(), fehler.anzeigetext, fertig = false, berichtId = eintrag.abschluss?.bericht_id, projektId = eintrag.datei?.projekt_id))
                 synchronized(this) { wegLegen(name) }
                 continue
             }
@@ -135,7 +156,25 @@ class MonteurKorb(context: Context) {
     }
 
     /** `null` = jetzt nicht moeglich, spaeter erneut. */
-    private suspend fun versenden(repository: MonteurRepository, name: String, eintrag: KorbEintrag): KorbMeldung? {
+    private suspend fun versenden(
+        repository: MonteurRepository,
+        name: String,
+        eintrag: KorbEintrag,
+        fortschritt: (String, Int) -> Unit,
+    ): KorbMeldung? {
+        eintrag.datei?.let { d ->
+            val klar = when (val aus = tresor.auspacken(inhaltDatei(name), File(cache, d.dateiname.substringAfterLast('/')))) {
+                is Auspacken.Fertig -> aus.datei
+                Auspacken.KeinPlatz -> return null
+                is Auspacken.Defekt -> throw ApiFehler.UnlesbareAntwort(aus.ursache)
+            }
+            try {
+                val antwort = repository.hochladen(d.projekt_id, klar, d.text, d.anfrage_id) { fortschritt(d.dateiname, it) }
+                return KorbMeldung(name, antwort.name.ifBlank { d.dateiname }, antwort.hinweis, fertig = true, projektId = d.projekt_id)
+            } finally {
+                klar.delete()
+            }
+        }
         eintrag.bericht?.let { b ->
             val verschluesselt = audioDatei(name)
             var klar: File? = null
@@ -188,6 +227,8 @@ class MonteurKorb(context: Context) {
 
     private fun audioDatei(name: String) = File(ordner, "$name.m4a.enc")
 
+    private fun inhaltDatei(name: String) = File(ordner, "$name.datei.enc")
+
     private fun loeschen(name: String) {
         tresor.alleDateien(ordner, name).forEach { it.delete() }
     }
@@ -205,6 +246,8 @@ class MonteurKorb(context: Context) {
     private companion object {
         /** Eigener Name je Abschluss, damit er nie mit dem Bericht-Eintrag gleicher ID zusammenfaellt. */
         const val ABSCHLUSS_VORSATZ = "abschluss_"
+
+        const val DATEI_VORSATZ = "datei_"
     }
 }
 
@@ -214,8 +257,10 @@ data class KorbEintrag(
     val zeit: ZeitNeu? = null,
     val abwesenheit: AbwesenheitNeu? = null,
     val abschluss: AbschlussAuftrag? = null,
+    val datei: DateiAuftrag? = null,
 ) {
     fun titel(): String = when {
+        datei != null -> datei.dateiname
         bericht != null -> bericht.titel
         abschluss != null -> abschluss.titel
         zeit != null -> "Zeit ${zeit.beginn.substringAfter('T')}–${zeit.ende.substringAfter('T')}"
@@ -244,11 +289,23 @@ data class AbschlussAuftrag(
     val titel: String = "Bericht",
 )
 
-/** Rueckmeldung vom Nachsenden. [berichtId] fuehrt zum fertigen Entwurf. */
+/** Foto, Video oder Dokument fuer die Projektmappe, das auf Netz wartet. */
+@Serializable
+data class DateiAuftrag(
+    val anfrage_id: String,
+    val projekt_id: Int,
+    /** Mit Endung - der Server erkennt daran die Art. */
+    val dateiname: String,
+    /** Kurze Beschreibung, kommt in den Dateinamen. */
+    val text: String = "",
+)
+
+/** Rueckmeldung vom Nachsenden. [berichtId] fuehrt zum fertigen Entwurf, [projektId] zur Mappe. */
 data class KorbMeldung(
     val schluessel: String,
     val titel: String,
     val text: String,
     val fertig: Boolean,
     val berichtId: String? = null,
+    val projektId: Int? = null,
 )

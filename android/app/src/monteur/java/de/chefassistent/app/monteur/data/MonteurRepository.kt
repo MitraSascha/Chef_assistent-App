@@ -119,6 +119,32 @@ class MonteurRepository(
         ziel
     }
 
+    /**
+     * Foto, Video oder Dokument ins Projekt (seit 1.22.0). Der Server erkennt die Art
+     * am Dateinamen; Fotos verkleinert er selbst. [fortschritt] meldet Prozent.
+     */
+    suspend fun hochladen(
+        projektId: Int,
+        datei: File,
+        text: String,
+        anfrageId: String,
+        fortschritt: (Int) -> Unit = {},
+    ): Hochgeladen {
+        val typ = (android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(datei.extension.lowercase())
+            ?: "application/octet-stream").toMediaType()
+        val teil = MultipartBody.Part.createFormData("datei", datei.name, ZaehlenderKoerper(datei, typ, fortschritt))
+        return ruf {
+            it.hochladen(projektId, teil, text.trim().takeIf { t -> t.isNotEmpty() }?.toTextTeil(), anfrageId.toTextTeil())
+        }
+    }
+
+    /** Adresse zum Abspielen eines Projektvideos; Spulen geht (Range). Token kommt als Kopfzeile dazu, siehe [token]. */
+    fun videoAdresse(projektId: Int, name: String): String =
+        Netzwerk.normalisiereUrl(einstellungen.basisUrl) + "v1/monteur/projekte/$projektId/videos/" + android.net.Uri.encode(name)
+
+    /** Fuer den Videospieler, der nicht ueber Retrofit laeuft. */
+    fun token(): String? = einstellungen.token
+
     // --- Bericht -----------------------------------------------------------------
 
     /**
@@ -230,6 +256,35 @@ class MonteurRepository(
             throw ApiFehler.UnlesbareAntwort(fehler)
         } catch (fehler: IOException) {
             throw ApiFehler.KeineVerbindung(fehler)
+        }
+    }
+
+    /** Dateikoerper, der mitzaehlt - fuer den Fortschritt grosser Videos. */
+    private class ZaehlenderKoerper(
+        private val datei: File,
+        private val typ: okhttp3.MediaType,
+        private val melden: (Int) -> Unit,
+    ) : RequestBody() {
+        override fun contentType() = typ
+        override fun contentLength() = datei.length()
+        override fun writeTo(sink: okio.BufferedSink) {
+            val gesamt = contentLength().coerceAtLeast(1)
+            var geschrieben = 0L
+            var zuletzt = -1
+            datei.inputStream().use { ein ->
+                val puffer = ByteArray(64 * 1024)
+                while (true) {
+                    val n = ein.read(puffer)
+                    if (n < 0) break
+                    sink.write(puffer, 0, n)
+                    geschrieben += n
+                    val prozent = (geschrieben * 100 / gesamt).toInt()
+                    if (prozent != zuletzt) {
+                        zuletzt = prozent
+                        melden(prozent)
+                    }
+                }
+            }
         }
     }
 

@@ -35,6 +35,16 @@ interface MonteurApi {
     @GET("v1/monteur/projekte/{pid}")
     suspend fun projekt(@Path("pid") id: Int): Projektmappe
 
+    /** Foto, Video oder Dokument vom Handy ins Projekt (eine Datei je Aufruf). */
+    @Multipart
+    @POST("v1/monteur/projekte/{pid}/dateien")
+    suspend fun hochladen(
+        @Path("pid") projektId: Int,
+        @Part datei: MultipartBody.Part,
+        @Part("text") text: RequestBody? = null,
+        @Part("anfrage_id") anfrageId: RequestBody? = null,
+    ): Hochgeladen
+
     @Streaming
     @GET("v1/monteur/dateien/{uuid}")
     suspend fun datei(@Path("uuid") uuid: String, @Query("vorschau") vorschau: Boolean? = null): Response<ResponseBody>

@@ -98,7 +98,9 @@ private class VideoTimeoutInterceptor(private val sekunden: Long) : Interceptor 
     override fun intercept(chain: Interceptor.Chain): Response {
         val pfad = chain.request().url.encodedPath
         // Dokumente: bis 50 MB, danach liest der Server den Text heraus.
-        val lang = pfad.endsWith("/v1/videos") || pfad.endsWith("/v1/dokumente")
+        // Monteur-App (1.22.0): Fotos, Videos bis 1 GB und Dokumente ins Projekt.
+        val lang = pfad.endsWith("/v1/videos") || pfad.endsWith("/v1/dokumente") ||
+            (pfad.contains("/v1/monteur/projekte/") && pfad.endsWith("/dateien"))
         val kette = when {
             lang -> chain.withReadTimeout(sekunden.toInt(), TimeUnit.SECONDS)
                 .withWriteTimeout(sekunden.toInt(), TimeUnit.SECONDS)

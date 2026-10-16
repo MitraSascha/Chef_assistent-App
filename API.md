@@ -89,6 +89,8 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/monteur/tage?von=&bis=` | Eigene Termine je Tag mit Kunde, Adresse, Telefon, Beschreibung, Berichtsstand (1.22.0) |
 | GET | `/v1/monteur/projekte/{id}` | Projektmappe: Notizen, Unterlagen (Angebote, Pläne, Aufmaße, Berichte – keine Rechnungen), Fotos (1.22.0) |
 | GET | `/v1/monteur/dateien/{uuid}?vorschau=` | PDF/Foto aus der Projektmappe (Vorschau 480 px) (1.22.0) |
+| POST | `/v1/monteur/projekte/{id}/dateien` | Foto/Dokument vom Handy → HERO-Projekt; Video → nur Server (1.22.0) |
+| GET | `/v1/monteur/projekte/{id}/videos/{name}` | Video aus dem Projektordner abspielen (1.22.0) |
 | POST | `/v1/monteur/berichte` | Diktat/Text → Berichtsentwurf (Termin wird selbst erkannt) (1.22.0) |
 | GET | `/v1/monteur/berichte`, `/v1/monteur/berichte/{id}` | Eigene Berichte (1.22.0) |
 | POST | `/v1/monteur/berichte/{id}/diktat` | Entwurf per Sprache ergänzen/korrigieren (1.22.0) |
@@ -1003,7 +1005,8 @@ Bausteine wie in der Büro-App). Grundsatz: **Handy raus, sagen oder tippen, was
 Monteur-Endpunkte zum Testen ebenfalls nutzen (mit ihrer eigenen HERO-Zuordnung; ohne Zuordnung `409`).
 
 **Einrichtung (einmal je Handy).** Das Büro legt den Monteur an (`POST /v1/monteure` oder
-`chef-assistent-benutzer monteur-anlegen igor "Igor Gregorczuk" 142455`) und zeigt den QR-Code. Inhalt:
+`chef-assistent-benutzer monteur-anlegen igor "Igor Gregorczuk"` – der HERO-Mitarbeiter wird über den Namen gefunden,
+nicht eindeutig → Liste mit IDs; `hero_partner` bzw. die ID als 3. Angabe ist optional) und zeigt den QR-Code. Inhalt:
 `mitra-monteur:<Server-URL>#<Code>` (Code `ABCD-EFGH-JKLM`, einmal gültig, 7 Tage). Die App scannt, nimmt die
 Server-URL vor dem `#` und ruft `POST /v1/monteur/einrichten {"code","geraet"}` → `{"token":"cs_…",…}`. Abtippen
 des Codes muss auch gehen (Groß-/Kleinschreibung und Bindestriche egal). Falscher/benutzter/abgelaufener Code → `401`,
@@ -1024,6 +1027,14 @@ PDFs), Dokument, Bericht, Reparaturauftrag, Bestellschein, Lieferschein, Brief �
 Dateien: `GET /v1/monteur/dateien/{uuid}` (PDF/Bild inline), Fotos-Liste mit `?vorschau=true` (JPEG, 480 px).
 Monteure sehen nur Projekte, auf denen sie eingeteilt sind (Termine 90 Tage zurück bis 30 voraus) oder zu denen sie
 einen Bericht geschrieben haben – sonst `404`. `datei: null` = PDF ist noch nicht im Archiv (Spiegel lädt nach).
+
+**Fotos, Dokumente, Videos vom Handy.** `POST /v1/monteur/projekte/{id}/dateien` (multipart `datei`, optional `text`
+kurz → Dateiname, `anfrage_id`) → `{"art":"foto|dokument|video","name","ziel":"hero|server","hinweis"}`.
+Fotos (JPEG/PNG/WebP, max. 25 MB; verkleinert auf 2560 px, ohne GPS) und Dokumente (PDF, Word, Excel, Text, max.
+50 MB) kommen über „Nach HERO hochladen“ in **wenigen Minuten ins HERO-Projekt** (danach auch in `fotos`/`unterlagen`).
+**Videos** (mp4, mov, …, max. 1 GB) bleiben **auf dem Server** im Projektordner `Videos` – HERO nimmt keine Videos –
+und stehen in der Projektmappe unter `videos:[{"name","groesse_mb","datum"}]`, abspielen mit
+`GET /v1/monteur/projekte/{id}/videos/{name}` (Spulen geht). Anderes → `415`, Projekt ohne Ordner → `409`.
 
 **Bericht.** Ablauf wie Angebote, aber für den Monteur so kurz wie möglich:
 1. `POST /v1/monteur/berichte` (multipart): `audio` **oder** `text`, optional `termin_id` / `projekt_nr` / `datum`,

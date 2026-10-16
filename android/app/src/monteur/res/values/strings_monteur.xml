@@ -69,5 +69,15 @@
     <string name="m_bericht">Bericht</string>
     <string name="m_entwurf_oeffnen">Entwurf weiterbearbeiten</string>
     <string name="m_bericht_ansehen">Bericht %1$s</string>
+    <string name="m_videos">Videos (nur auf dem Server)</string>
+    <string name="m_hochladen_knopf">Foto/Video/Datei</string>
+    <string name="m_hochladen_foto">Foto aufnehmen</string>
+    <string name="m_hochladen_video">Video aufnehmen</string>
+    <string name="m_hochladen_datei">Datei wählen</string>
+    <string name="m_hochladen_titel">Ins Projekt hochladen</string>
+    <string name="m_hochladen_beschreibung">Kurze Beschreibung (optional)</string>
+    <string name="m_hochladen_los">Hochladen</string>
+    <string name="m_hochladen_gestartet">Wird hochgeladen – läuft auch ohne Netz und im Hintergrund weiter.</string>
+    <string name="m_hochladen_laeuft">%1$s wird hochgeladen … %2$d %%</string>
     <string name="m_foto_von">Foto %1$d von %2$d</string>
 </resources>

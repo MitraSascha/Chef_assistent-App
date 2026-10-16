@@ -64,6 +64,7 @@ import de.chefassistent.app.monteur.ui.heute.HeuteReiter
 import de.chefassistent.app.monteur.ui.heute.HeuteViewModel
 import de.chefassistent.app.monteur.ui.projekt.ProjektScreen
 import de.chefassistent.app.monteur.ui.projekt.ProjektViewModel
+import de.chefassistent.app.monteur.ui.projekt.VideoAnsicht
 import de.chefassistent.app.monteur.ui.rememberAufnahme
 import de.chefassistent.app.monteur.ui.urlaub.UrlaubReiter
 import de.chefassistent.app.monteur.ui.urlaub.UrlaubViewModel
@@ -82,6 +83,7 @@ private const val ZIEL_START = "start"
 private const val ZIEL_PROJEKT = "projekt/{pid}?termin={termin}&titel={titel}&entwurf={entwurf}"
 private const val ZIEL_BERICHT = "bericht?id={id}&termin={termin}&projekt={projekt}&titel={titel}&aufnahme={aufnahme}"
 private const val ZIEL_DATEI = "datei/{uuid}?name={name}"
+private const val ZIEL_VIDEO = "video/{pid}?name={name}"
 
 /**
  * Monteur-App (Auftrag 1.22): Einrichtung per QR-Code, dann unten drei Reiter
@@ -150,6 +152,7 @@ private fun MonteurNavigation(app: MonteurApp) {
                 beiZurueck = { nav.popBackStack() },
                 beiAbmeldung = zurEinrichtung,
                 beiDatei = { uuid, name -> nav.navigate("datei/${Uri.encode(uuid)}?name=${Uri.encode(name)}") },
+                beiVideo = { name -> nav.navigate("video/$pid?name=${Uri.encode(name)}") },
                 beiBericht = { berichtId, projektNr ->
                     zuBericht(
                         BerichtStart(
@@ -180,6 +183,19 @@ private fun MonteurNavigation(app: MonteurApp) {
             )
             val vm: BerichtViewModel = viewModel(factory = BerichtViewModel.factory(app, start))
             BerichtScreen(vm, beiZurueck = { nav.popBackStack() }, beiAbmeldung = zurEinrichtung)
+        }
+
+        composable(
+            ZIEL_VIDEO,
+            arguments = listOf(navArgument("pid") { type = NavType.IntType }, textArgument("name")),
+        ) { e ->
+            val pid = e.arguments?.getInt("pid") ?: return@composable
+            val name = e.arguments?.getString("name").leerAlsNull() ?: return@composable
+            VideoAnsicht(
+                adresse = app.repository.videoAdresse(pid, name),
+                token = app.repository.token(),
+                beiZurueck = { nav.popBackStack() },
+            )
         }
 
         composable(

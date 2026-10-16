@@ -72,7 +72,21 @@ import de.chefassistent.app.R
 import de.chefassistent.app.data.ApiFehler
 import de.chefassistent.app.data.FotoAufbereitung
 import de.chefassistent.app.monteur.MonteurApp
+import de.chefassistent.app.monteur.data.DateiAuftrag
 import de.chefassistent.app.monteur.data.Foto
+import de.chefassistent.app.monteur.data.KorbMeldung
+import de.chefassistent.app.monteur.data.MonteurRepository
+import de.chefassistent.app.monteur.data.MonteurVersand
+import de.chefassistent.app.monteur.data.Video
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import kotlinx.coroutines.flow.map
 import de.chefassistent.app.monteur.data.Projektmappe
 import de.chefassistent.app.monteur.data.Unterlage
 import de.chefassistent.app.monteur.ui.heute.Zeile
@@ -127,6 +141,40 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
         }
     }
 
+    /**
+     * Foto, Video oder Dokument hochladen: immer ueber den Ausgangskorb, damit ohne
+     * Netz nichts verloren geht und grosse Videos im Hintergrund weiterlaufen.
+     */
+    fun hochladen(datei: File, name: String, text: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                // Verschluesseltes Kopieren dauert bei grossen Videos ein paar Sekunden.
+                app.korb.dateiEinreihen(DateiAuftrag(MonteurRepository.neueAnfrageId(), projektId, name, text), datei)
+            }
+            MonteurVersand.anstossen(app)
+        }
+    }
+
+    /** Rueckmeldungen des Korbs zu diesem Projekt (Hinweis „Landet in wenigen Minuten im HERO-Projekt“ …). */
+    val meldungen = app.korb.gemeldet.map { liste -> liste.filter { it.projektId == projektId } }
+
+    fun meldungGezeigt(meldung: KorbMeldung) {
+        app.korb.meldungErledigt(meldung)
+        // Ein Video steht danach in der Liste, Fotos und Dokumente nach ein paar Minuten.
+        if (meldung.fertig) laden()
+    }
+
+    /** Laufender Upload: Titel und Prozent aus dem Versand-Arbeiter. */
+    val hochladenStand = WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(MonteurVersand.NAME).map { infos ->
+        infos.firstOrNull { it.state == WorkInfo.State.RUNNING }?.progress?.let { p ->
+            p.getString(MonteurVersand.TITEL)?.let { it to p.getInt(MonteurVersand.FORTSCHRITT, 0) }
+        }
+    }
+
+    fun videoAdresse(name: String) = app.repository.videoAdresse(projektId, name)
+
+    fun token() = app.repository.token()
+
     /** Foto laden, `null` bei Fehler (dann bleibt die Kachel grau). */
     suspend fun foto(foto: Foto, vorschau: Boolean): Bitmap? = try {
         val datei = app.repository.datei(foto.uuid, foto.name.ifBlank { "${foto.uuid}.jpg" }, vorschau)
@@ -156,9 +204,21 @@ fun ProjektScreen(
     beiAbmeldung: () -> Unit,
     beiDatei: (uuid: String, name: String) -> Unit,
     beiBericht: (berichtId: String?, projektNr: String?) -> Unit,
+    beiVideo: (name: String) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
+    val meldungen by viewModel.meldungen.collectAsStateWithLifecycle(emptyList())
+    val hochladen by viewModel.hochladenStand.collectAsStateWithLifecycle(null)
+    val snackbar = remember { SnackbarHostState() }
+    val vorbereitet = stringResource(R.string.m_hochladen_gestartet)
+    LaunchedEffect(meldungen) {
+        meldungen.firstOrNull()?.let { m ->
+            viewModel.meldungGezeigt(m)
+            snackbar.showSnackbar(listOf(m.titel, m.text).filter { it.isNotBlank() }.joinToString(": "))
+        }
+    }
     val kontext = LocalContext.current
+    val bereich = rememberCoroutineScope()
     var fotoIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     LaunchedEffect(zustand.abgemeldet) { if (zustand.abgemeldet) beiAbmeldung() }
     val mappe = zustand.mappe
@@ -187,18 +247,37 @@ fun ProjektScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             // Grosser Knopf unten, wie in HERO: Termin antippen, dort alles erledigen.
             // Eigene Flaeche, sonst scheint die Liste darunter durch.
             Surface(color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp)) {
+            hochladen?.let { (titel, prozent) ->
+                Text(
+                    stringResource(R.string.m_hochladen_laeuft, titel, prozent),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                LinearProgressIndicator(progress = { prozent / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HochladenKnopf(
+                aktiv = mappe != null,
+                modifier = Modifier.weight(1f),
+                beiDatei = { datei, name, text ->
+                    viewModel.hochladen(datei, name, text)
+                    bereich.launch { snackbar.showSnackbar(vorbereitet) }
+                },
+            )
             Button(
                 onClick = { beiBericht(entwurfId, mappe?.nr) },
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.hauptflaeche, contentColor = Color.White),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .weight(1f)
                     .heightIn(min = 56.dp),
             ) {
                 Icon(Icons.Outlined.Description, null)
@@ -206,7 +285,11 @@ fun ProjektScreen(
                 Text(
                     stringResource(if (entwurfId != null) R.string.m_entwurf_oeffnen else R.string.m_bericht),
                     style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+            }
+            }
             }
             }
         },
@@ -264,6 +347,12 @@ fun ProjektScreen(
                     }
                     items(liste, key = { "u_${art}_${it.datei ?: it.name}_${it.nr}" }) { u -> UnterlageZeile(u, beiDatei) }
                 }
+                if (mappe.videos.isNotEmpty()) {
+                    item(key = "videos_titel") { Ueberschrift(stringResource(R.string.m_videos)) }
+                    items(mappe.videos, key = { "v_${it.name}" }) { v ->
+                        VideoZeile(v) { beiVideo(v.name) }
+                    }
+                }
                 if (mappe.fotos.isNotEmpty()) {
                     item(key = "fotos_titel") { Ueberschrift(stringResource(R.string.m_fotos)) }
                     val reihen = mappe.fotos.withIndex().chunked(3)
@@ -283,6 +372,31 @@ fun ProjektScreen(
     val index = fotoIndex
     if (index != null && mappe != null && mappe.fotos.isNotEmpty()) {
         FotoVollbild(mappe.fotos, index.coerceIn(0, mappe.fotos.lastIndex), viewModel) { fotoIndex = null }
+    }
+}
+
+/** Videos bleiben auf dem Server (HERO nimmt keine) - Name, Groesse, Datum. */
+@Composable
+private fun VideoZeile(video: Video, beiKlick: () -> Unit) {
+    val farben = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = farben.surfaceContainer,
+        border = BorderStroke(1.dp, farben.outlineVariant),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = beiKlick),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(10.dp).heightIn(min = 40.dp)) {
+            TypMarke(video.name)
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                Text(video.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val unter = listOfNotNull(
+                    "%.1f MB".format(java.util.Locale.GERMANY, video.groesse_mb),
+                    datumText(video.datum.takeIf { it.isNotBlank() }),
+                ).joinToString(" · ")
+                Text(unter, style = MaterialTheme.typography.bodySmall, color = farben.onSurfaceVariant)
+            }
+            Icon(Icons.Outlined.PlayCircle, null, tint = farben.onSurfaceVariant)
+        }
     }
 }
 

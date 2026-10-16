@@ -134,6 +134,31 @@ class MonteurVertragTest {
     }
 
     @Test
+    fun `Projektmappe mit Videos und Antwort aufs Hochladen`() {
+        val m = json.decodeFromString<Projektmappe>(
+            """{"id":1,"nr":"SAN-1","titel":"t","kunde":"k","adresse":"a","telefon":[],"notizen":"","unterlagen":[],
+            "fotos":[],"videos":[{"name":"Begehung.mp4","groesse_mb":12.5,"datum":"2026-10-16"}]}"""
+        )
+        assertEquals(12.5, m.videos.single().groesse_mb, 0.0)
+        val h = json.decodeFromString<de.chefassistent.app.monteur.data.Hochgeladen>(
+            """{"art":"video","name":"Begehung.mp4","ziel":"server","hinweis":"Bleibt auf dem Server"}"""
+        )
+        assertEquals("server", h.ziel)
+        // Alte Mappe ohne Videos bleibt lesbar.
+        val alt = json.decodeFromString<Projektmappe>(
+            """{"id":1,"nr":"","titel":"","kunde":"","adresse":"","telefon":[],"notizen":"","unterlagen":[],"fotos":[]}"""
+        )
+        assertTrue(alt.videos.isEmpty())
+    }
+
+    @Test
+    fun `Groesse fuer den Hochladen-Dialog`() {
+        assertEquals("1 kB", de.chefassistent.app.monteur.ui.projekt.groesseText(200))
+        assertEquals("1,5 MB", de.chefassistent.app.monteur.ui.projekt.groesseText(1_572_864))
+        assertEquals("1,0 GB", de.chefassistent.app.monteur.ui.projekt.groesseText(1L shl 30))
+    }
+
+    @Test
     fun `leeres Array bleibt erhalten`() {
         assertEquals("[]", materialJson(emptyList()).toString())
         assertTrue(materialJson(emptyList()) is JsonArray)

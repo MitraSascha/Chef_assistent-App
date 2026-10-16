@@ -5019,6 +5019,184 @@
         }
       }
     },
+    "/v1/monteur/projekte/{pid}/dateien": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Projekt Hochladen",
+        "description": "Vom Handy ins Projekt: Fotos (verkleinert, ohne GPS) und Dokumente landen in wenigen Minuten im HERO-Projekt,\nVideos bleiben auf dem Server im Projektordner (HERO nimmt keine Videos) und erscheinen in der Projektmappe.",
+        "operationId": "projekt_hochladen_v1_monteur_projekte__pid__dateien_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_projekt_hochladen_v1_monteur_projekte__pid__dateien_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Hochgeladen"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/monteur/projekte/{pid}/videos/{name}": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Projekt Video",
+        "description": "Video aus dem Projektordner abspielen (Range-Anfragen gehen, also Spulen).",
+        "operationId": "projekt_video_v1_monteur_projekte__pid__videos__name__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pid"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/monteur/zeiten": {
       "get": {
         "tags": [
@@ -7297,6 +7475,41 @@
         ],
         "title": "Body_foto_v1_fotos_post"
       },
+      "Body_projekt_hochladen_v1_monteur_projekte__pid__dateien_post": {
+        "properties": {
+          "datei": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Datei",
+            "description": "Foto, Video oder Dokument – eine Datei je Aufruf"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Text",
+            "description": "Optional: kurze Beschreibung (kommt in den Dateinamen)",
+            "default": ""
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id",
+            "description": "Ausgangskorb"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datei"
+        ],
+        "title": "Body_projekt_hochladen_v1_monteur_projekte__pid__dateien_post"
+      },
       "Body_sprache_v1_sprache_post": {
         "properties": {
           "audio": {
@@ -7898,6 +8111,18 @@
           "anzeigename": {
             "type": "string",
             "title": "Anzeigename"
+          },
+          "hero_partner": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Partner",
+            "description": "Verknüpfter HERO-Mitarbeiter"
           },
           "code": {
             "type": "string",
@@ -9398,6 +9623,44 @@
         ],
         "title": "HeroTerminVerschieben"
       },
+      "Hochgeladen": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "foto",
+              "dokument",
+              "video"
+            ],
+            "title": "Art"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "ziel": {
+            "type": "string",
+            "enum": [
+              "hero",
+              "server"
+            ],
+            "title": "Ziel",
+            "description": "hero = kommt in wenigen Minuten ins HERO-Projekt; server = Video, bleibt im Projektordner auf dem Server"
+          },
+          "hinweis": {
+            "type": "string",
+            "title": "Hinweis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "name",
+          "ziel",
+          "hinweis"
+        ],
+        "title": "Hochgeladen"
+      },
       "Ich": {
         "properties": {
           "name": {
@@ -10033,16 +10296,22 @@
             "title": "Anzeigename"
           },
           "hero_partner": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Hero Partner",
-            "description": "HERO-Mitarbeiter-ID (aus GET /v1/personen)"
+            "description": "HERO-Mitarbeiter-ID; weglassen = über den vollen Namen (anzeigename) suchen – nicht eindeutig/unbekannt -> 422 mit den Kandidaten"
           }
         },
         "type": "object",
         "required": [
           "name",
-          "anzeigename",
-          "hero_partner"
+          "anzeigename"
         ],
         "title": "MonteurNeu"
       },
@@ -10740,6 +11009,14 @@
             "type": "array",
             "title": "Fotos",
             "description": "Projektfotos aus HERO, neueste zuerst"
+          },
+          "videos": {
+            "items": {
+              "$ref": "#/components/schemas/Video"
+            },
+            "type": "array",
+            "title": "Videos",
+            "description": "Videos (nur auf dem Server), neueste zuerst"
           }
         },
         "type": "object",
@@ -11650,6 +11927,30 @@
           "rueckfrage"
         ],
         "title": "Verstanden"
+      },
+      "Video": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "für GET /v1/monteur/projekte/{id}/videos/{name}"
+          },
+          "groesse_mb": {
+            "type": "number",
+            "title": "Groesse Mb"
+          },
+          "datum": {
+            "type": "string",
+            "title": "Datum"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "groesse_mb",
+          "datum"
+        ],
+        "title": "Video"
       },
       "VideoAntwort": {
         "properties": {

@@ -7,7 +7,7 @@ Zeit, Material, Tätigkeit) und **Zeit-/Urlaubsbuchung**. Die KI soll den größ
 Mehrere Kollegen schreiben nur Stichworte oder einfaches Deutsch – der Bericht muss trotzdem einer Hausverwaltung
 vorgelegt werden können. Das erledigt der Server; die App muss nur Aufnahme/Text schicken.
 
-Vertrag: [`openapi.json`](openapi.json) 1.22.0 (sha256 `6470912c…2b80ed8`), Beschreibung in [`API.md` 5c](API.md).
+Vertrag: [`openapi.json`](openapi.json) 1.22.0 (sha256 `098cc637…526a513`), Beschreibung in [`API.md` 5c](API.md).
 Es gibt nur Ergänzungen; die Büro-App bleibt unverändert (Aufträge 1.13–1.21 gelten weiter). Neu in `GET /v1/ich`:
 Feld `rolle` (`buero` | `monteur`).
 
@@ -47,6 +47,11 @@ Feld `rolle` (`buero` | `monteur`).
   mit Nummer/Name, Datum, Status; antippen → PDF im eingebauten Viewer (`GET /v1/monteur/dateien/{uuid}`, mit Token).
   `datei: null` → grau „PDF folgt“.
 - **Fotos** als Raster mit `?vorschau=true`, antippen → Vollbild (ohne `vorschau`), wischen.
+- **Videos** (nur Server) als Liste mit Größe, antippen → Player (`GET …/projekte/{id}/videos/{name}`, mit Token).
+- Knopf **„Foto/Video/Datei“**: Kamera (Foto oder Video) oder Datei wählen → `POST /v1/monteur/projekte/{id}/dateien`
+  (eine Datei je Aufruf, im Ausgangskorb mit `anfrage_id` – große Videos im Hintergrund per WorkManager mit
+  Fortschritt). Nach Erfolg den `hinweis` kurz zeigen („Landet in wenigen Minuten im HERO-Projekt“ bzw. „Bleibt auf
+  dem Server“). Fotos vorher NICHT selbst verkleinern (macht der Server).
 - Rechnungen gibt es hier bewusst nicht (Server sperrt sie).
 - Großer Knopf **„Bericht“** unten.
 

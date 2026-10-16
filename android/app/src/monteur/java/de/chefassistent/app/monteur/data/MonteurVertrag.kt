@@ -95,6 +95,27 @@ data class Projektmappe(
     val notizen: String = "",
     val unterlagen: List<Unterlage> = emptyList(),
     val fotos: List<Foto> = emptyList(),
+    /** Seit 1.22.0: Videos bleiben auf dem Server (HERO nimmt keine). */
+    val videos: List<Video> = emptyList(),
+)
+
+@Serializable
+data class Video(
+    /** Fuer `GET /v1/monteur/projekte/{id}/videos/{name}`. */
+    val name: String,
+    val groesse_mb: Double = 0.0,
+    val datum: String = "",
+)
+
+/** Antwort auf `POST /v1/monteur/projekte/{id}/dateien`. */
+@Serializable
+data class Hochgeladen(
+    /** foto | dokument | video */
+    val art: String = "",
+    val name: String = "",
+    /** hero = kommt in wenigen Minuten ins HERO-Projekt, server = bleibt im Projektordner. */
+    val ziel: String = "",
+    val hinweis: String = "",
 )
 
 @Serializable
