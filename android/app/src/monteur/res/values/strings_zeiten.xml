@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App, Reiter „Zeiten“ (Auftrag 1.22, Abschnitt 4). -->
+<resources>
+    <!-- Kopf -->
+    <string name="z_tag_zurueck">Vorheriger Tag</string>
+    <string name="z_tag_vor">Nächster Tag</string>
+    <string name="z_heute">Zu heute</string>
+
+    <!-- Arten -->
+    <string name="z_art">Art</string>
+    <string name="z_art_arbeit">Arbeit</string>
+    <string name="z_art_fahrt">Fahrt</string>
+    <string name="z_art_pause">Pause</string>
+    <string name="z_art_material">Material</string>
+    <string name="z_art_buero">Büro</string>
+    <string name="z_art_vor_ort">Vor Ort</string>
+    <string name="z_art_sonstige">Sonstiges</string>
+
+    <!-- Liste -->
+    <string name="z_eintraege">Einträge</string>
+    <string name="z_laedt">Zeiten werden geladen …</string>
+    <string name="z_leer">Noch nichts eingetragen. Stempeluhr, „Zeit eintragen“ oder einfach sagen, was war.</string>
+    <string name="z_summe_arbeit">Arbeit</string>
+    <string name="z_summe_pause">Pause</string>
+    <string name="z_status_eingereicht">eingereicht</string>
+    <string name="z_wartet">Wartet auf Netz</string>
+    <string name="z_wartet_auf_netz">Wartet auf Netz – wird gesendet, sobald Verbindung da ist.</string>
+    <string name="z_eingereicht_hinweis">Eingereicht – Änderungen nur noch im Büro</string>
+    <string name="z_neu">Zeit eintragen</string>
+    <string name="z_tippen">Tippen statt sprechen</string>
+    <string name="z_tippen_feld">Was war heute?</string>
+    <string name="z_tippen_beispiel">z. B. 7 bis 16 Uhr gearbeitet, halbe Stunde Pause</string>
+    <string name="z_tippen_senden">Senden</string>
+
+    <!-- Stempeluhr -->
+    <string name="z_stempel">Stempeluhr</string>
+    <string name="z_stempel_laeuft">%1$s seit %2$s</string>
+    <string name="z_stempel_wechsel_hinweis">Wechsel bucht das Laufende und startet die gewählte Art.</string>
+    <string name="z_stempel_start">Start</string>
+    <string name="z_stempel_wechsel">Wechsel</string>
+    <string name="z_stempel_stopp">Stopp</string>
+    <string name="z_ohne_projekt">Ohne Projekt</string>
+
+    <!-- Formular -->
+    <string name="z_neu_titel">Zeit eintragen</string>
+    <string name="z_aendern_titel">Zeit ändern</string>
+    <string name="z_von">Von</string>
+    <string name="z_bis">Bis</string>
+    <string name="z_zeit_ungueltig">Beginn und Ende dürfen nicht gleich sein.</string>
+    <string name="z_folgetag">Endet am nächsten Tag.</string>
+    <string name="z_projekt">Projekt-Nr. (optional)</string>
+    <string name="z_kommentar">Kommentar (optional)</string>
+    <string name="z_speichern">Speichern</string>
+    <string name="z_abbrechen">Abbrechen</string>
+    <string name="z_ok">OK</string>
+    <string name="z_loeschen">Löschen</string>
+    <string name="z_loeschen_frage">Zeit löschen?</string>
+    <string name="z_loeschen_text">%1$s %2$s wird aus HERO gelöscht.</string>
+    <string name="z_geloescht">Zeit gelöscht</string>
+
+    <!-- Verstehen -->
+    <string name="z_versteht">Wird verstanden …</string>
+    <string name="z_vorschlag">Vorschlag für %1$s</string>
+    <string name="z_vorschlag_unlesbar">unvollständig</string>
+    <string name="z_vorschlag_leer">Darin war keine Zeit zu erkennen.</string>
+    <string name="z_urlaub_hinweis">Das klingt nach Urlaub – bitte im Reiter Urlaub eintragen.</string>
+    <string name="z_uebernehmen">Übernehmen</string>
+    <string name="z_uebernommen">Zeiten eingetragen</string>
+    <string name="z_verwerfen">Verwerfen</string>
+    <string name="z_schliessen">Schließen</string>
+    <string name="z_nochmal">Nochmal versuchen</string>
+
+    <!-- Tag bestaetigen -->
+    <string name="z_bestaetigen">Tag bestätigen</string>
+    <string name="z_bestaetigen_text">Zeiten prüfen und ans Büro geben</string>
+    <string name="z_uebersicht_titel">Tag bestätigen – %1$s</string>
+    <string name="z_uebersicht_leer">Noch keine Zeiten eingetragen.</string>
+    <string name="z_uebersicht_summen">Arbeit %1$s · Pause %2$s</string>
+    <string name="z_uebersicht_hinweis">Danach lassen sich die Zeiten nur noch im Büro ändern.</string>
+    <string name="z_einreichen">Tag einreichen</string>
+    <string name="z_eingereicht_meldung">Tag eingereicht</string>
+
+    <!-- Stundenkonto -->
+    <string name="z_konto">Stundenkonto %1$s</string>
+    <string name="z_konto_details">Soll %1$s · bestätigt %2$s · eingereicht %3$s</string>
+</resources>
