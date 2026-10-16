@@ -14,8 +14,8 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
- * Ausgangskorb der Monteur-App: Berichte (Diktat oder Text), Zeiten und
- * Urlaubsantraege, die nicht rausgingen. **Ohne Netz darf nichts verloren gehen**
+ * Ausgangskorb der Monteur-App: Berichte (Diktat oder Text), Abschluesse
+ * („Passt – nach HERO“), Zeiten und Urlaubsantraege, die nicht rausgingen. **Ohne Netz darf nichts verloren gehen**
  * (Grundsatz wie in der Buero-App).
  *
  * Jeder Eintrag traegt seine `anfrage_id`. Der Server legt bei derselben ID nie
@@ -55,6 +55,21 @@ class MonteurKorb(context: Context) {
         aufnahme?.delete()
         zaehlen()
     }
+
+    /**
+     * „Passt – nach HERO“ ohne Netz bzw. bei 502/5xx. Der Server legt bei Wiederholung
+     * nie einen zweiten Bericht an (gleiche Bericht-ID), Nachsenden ist also gefahrlos.
+     * Die Unterschrift liegt dabei im verschluesselten Eintrag.
+     */
+    @Synchronized
+    fun abschlussEinreihen(auftrag: AbschlussAuftrag) {
+        tresor.fassungSchreiben(ordner, ABSCHLUSS_VORSATZ + auftrag.bericht_id, KorbEintrag(abschluss = auftrag), KorbEintrag.serializer())
+        zaehlen()
+    }
+
+    /** Ob fuer diesen Bericht schon ein Abschluss wartet (dann nicht erneut abschliessen lassen). */
+    @Synchronized
+    fun abschlussWartet(berichtId: String): Boolean = tresor.hatFassung(ordner, ABSCHLUSS_VORSATZ + berichtId)
 
     @Synchronized
     fun zeitEinreihen(zeit: ZeitNeu) {
@@ -103,7 +118,7 @@ class MonteurKorb(context: Context) {
                     zaehlen()
                     return false
                 }
-                melden(KorbMeldung(name, eintrag.titel(), fehler.anzeigetext, fertig = false))
+                melden(KorbMeldung(name, eintrag.titel(), fehler.anzeigetext, fertig = false, berichtId = eintrag.abschluss?.bericht_id))
                 synchronized(this) { wegLegen(name) }
                 continue
             }
@@ -145,6 +160,17 @@ class MonteurKorb(context: Context) {
                 klar?.delete()
             }
         }
+        eintrag.abschluss?.let { a ->
+            val bericht = try {
+                repository.berichtAbschliessen(a.bericht_id, a.abschluss)
+            } catch (fehler: ApiFehler.Beschaeftigt) {
+                // 409 = offene Material-Rueckfrage: wiederholt sich bei jedem Versuch,
+                // der Monteur muss sie klaeren. Beiseitelegen statt endlos senden.
+                throw ApiFehler.Ungueltig(fehler.anzeigetext)
+            }
+            val text = if (bericht.hero_nr != null) "Bericht ${bericht.hero_nr} ist in HERO." else "Bericht ist in HERO."
+            return KorbMeldung(name, a.titel, text, fertig = true, berichtId = bericht.id)
+        }
         eintrag.zeit?.let { z ->
             repository.zeitNeu(z)
             return KorbMeldung(name, eintrag.titel(), "Zeit nachgetragen.", fertig = true)
@@ -175,6 +201,11 @@ class MonteurKorb(context: Context) {
     private fun zaehlen() {
         _anzahl.value = tresor.namenMitFassung(ordner).size
     }
+
+    private companion object {
+        /** Eigener Name je Abschluss, damit er nie mit dem Bericht-Eintrag gleicher ID zusammenfaellt. */
+        const val ABSCHLUSS_VORSATZ = "abschluss_"
+    }
 }
 
 @Serializable
@@ -182,9 +213,11 @@ data class KorbEintrag(
     val bericht: BerichtAuftrag? = null,
     val zeit: ZeitNeu? = null,
     val abwesenheit: AbwesenheitNeu? = null,
+    val abschluss: AbschlussAuftrag? = null,
 ) {
     fun titel(): String = when {
         bericht != null -> bericht.titel
+        abschluss != null -> abschluss.titel
         zeit != null -> "Zeit ${zeit.beginn.substringAfter('T')}–${zeit.ende.substringAfter('T')}"
         abwesenheit != null -> "Antrag ${abwesenheit.von} – ${abwesenheit.bis}"
         else -> ""
@@ -200,6 +233,14 @@ data class BerichtAuftrag(
     val projekt_nr: String? = null,
     val datum: String? = null,
     /** Fuer die Anzeige, z. B. „Bericht SAN-1243 Böse“. */
+    val titel: String = "Bericht",
+)
+
+/** Ein „Passt – nach HERO“, das auf Netz wartet. */
+@Serializable
+data class AbschlussAuftrag(
+    val bericht_id: String,
+    val abschluss: Abschluss,
     val titel: String = "Bericht",
 )
 

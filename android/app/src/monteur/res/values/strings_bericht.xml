@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App: Bericht (Auftrag 1.22, Abschnitt 3). -->
+<resources>
+    <string name="b_titel">Bericht</string>
+    <string name="b_zurueck">Zurück</string>
+    <string name="b_nochmal">Nochmal</string>
+    <string name="b_abbrechen">Abbrechen</string>
+    <string name="b_speichern">Speichern</string>
+    <string name="b_ok">OK</string>
+
+    <!-- Eingabe -->
+    <string name="b_mikro_frage">Was hast du gemacht?</string>
+    <string name="b_mikro_hinweis">Was, wie lange, welches Material – in deiner Sprache, Stichworte reichen.</string>
+    <string name="b_ohne_termin">Ohne Termin: der Termin wird automatisch gesucht.</string>
+    <string name="b_oder_tippen">oder tippen</string>
+    <string name="b_text_feld">Was hast du gemacht?</string>
+    <string name="b_senden">Senden</string>
+    <string name="b_aufnahme_liegt">Die Aufnahme ist noch da.</string>
+    <string name="b_aufnahme_nochmal">Aufnahme nochmal senden</string>
+    <string name="b_aufnahme_verwerfen">Aufnahme verwerfen</string>
+
+    <!-- Laeuft / wartet -->
+    <string name="b_laeuft">KI schreibt den Bericht …</string>
+    <string name="b_laeuft_dauer">Das dauert meist 10–40 Sekunden. %1$d s</string>
+    <string name="b_wartet">Wartet auf Netz – wird automatisch gesendet</string>
+    <string name="b_wartet_text">Dein Diktat ist sicher gespeichert. Sobald Netz da ist, schreibt die KI den Bericht. Er erscheint dann unter „Heute“.</string>
+    <string name="b_abschluss_wartet">Wartet auf Netz – geht automatisch nach HERO</string>
+    <string name="b_abschluss_wartet_text">„Passt“ ist gespeichert, samt Unterschrift. Sobald Netz da ist, wird der Bericht in HERO angelegt – nie doppelt.</string>
+    <string name="b_fertig_knopf">Fertig</string>
+
+    <!-- Karte -->
+    <string name="b_automatisch">Automatisch zugeordnet: %1$s</string>
+    <string name="b_automatisch_pruefen">Bitte prüfen, ob das der richtige Termin ist.</string>
+    <string name="b_projekt_unbekannt">Projekt unbekannt</string>
+    <string name="b_taetigkeit">Ausgeführte Arbeiten</string>
+    <string name="b_taetigkeit_leer">Noch kein Text – antippen zum Schreiben.</string>
+    <string name="b_bearbeiten">Bearbeiten</string>
+    <string name="b_anstehend">Noch offen</string>
+    <string name="b_stunden">Stunden</string>
+    <string name="b_monteur">Monteur</string>
+    <string name="b_helfer">Helfer</string>
+    <string name="b_stunden_wert">%1$s h</string>
+    <string name="b_weniger">Weniger</string>
+    <string name="b_mehr">Mehr</string>
+    <string name="b_anfahrt">Anfahrt</string>
+    <string name="b_kleinmaterial">Klein- &amp; Dichtmaterial</string>
+    <string name="b_material">Material</string>
+    <string name="b_material_leer">Kein Material.</string>
+    <string name="b_frei_lassen">Frei lassen</string>
+    <string name="b_per_sprache">Antworten</string>
+    <string name="b_entfernen">Entfernen</string>
+    <string name="b_artikel_nr">Art.-Nr. %1$s</string>
+    <string name="b_frei">freie Position</string>
+    <string name="b_zeiten">Zeiten</string>
+    <string name="b_buero">Fürs Büro</string>
+    <string name="b_rueckfragen">Rückfragen</string>
+    <string name="b_ergaenzen">Ergänzen / Korrigieren</string>
+    <string name="b_diktat_laeuft">KI überarbeitet den Bericht …</string>
+    <string name="b_diktat_liegt">Die Ergänzung ging nicht raus.</string>
+    <string name="b_unterschreibt">Kunde unterschreibt</string>
+    <string name="b_unterschrieben">Unterschrieben von %1$s</string>
+    <string name="b_unterschrieben_ohne_name">Unterschrift liegt vor</string>
+    <string name="b_unterschrift_neu">Neu</string>
+    <string name="b_passt">Passt – nach HERO</string>
+    <string name="b_verwerfen">Entwurf verwerfen</string>
+
+    <!-- Arten der Zeiten -->
+    <string name="b_art_arbeit">Arbeit</string>
+    <string name="b_art_fahrt">Fahrt</string>
+    <string name="b_art_pause">Pause</string>
+    <string name="b_art_material">Material holen</string>
+    <string name="b_art_buero">Büro</string>
+    <string name="b_art_vor_ort">Vor Ort</string>
+
+    <!-- Rueckfragen -->
+    <string name="b_ohne_unterschrift_titel">Ohne Unterschrift abschließen?</string>
+    <string name="b_ohne_unterschrift_text">Der Bericht geht ohne Kundenunterschrift nach HERO.</string>
+    <string name="b_ohne_unterschrift_ja">Ohne Unterschrift</string>
+    <string name="b_verwerfen_titel">Entwurf verwerfen?</string>
+    <string name="b_verwerfen_text">Der Entwurf wird gelöscht. Das lässt sich nicht rückgängig machen.</string>
+    <string name="b_verwerfen_ja">Verwerfen</string>
+    <string name="b_hinweis_titel">Noch nicht fertig</string>
+
+    <!-- Unterschrift -->
+    <string name="b_unterschrift_titel">Unterschrift Kunde</string>
+    <string name="b_unterschrift_hier">Hier unterschreiben</string>
+    <string name="b_unterschrift_name">Name</string>
+    <string name="b_loeschen">Löschen</string>
+
+    <!-- Fertig -->
+    <string name="b_fertig">Bericht ist in HERO</string>
+    <string name="b_fertig_hinweise">Bitte beachten</string>
+</resources>
