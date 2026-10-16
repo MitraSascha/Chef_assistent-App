@@ -23,6 +23,9 @@ import de.chefassistent.app.monteur.data.BerichtAuftrag
 import de.chefassistent.app.monteur.data.MonteurBericht
 import de.chefassistent.app.monteur.data.MaterialAenderung
 import de.chefassistent.app.monteur.data.MonteurRepository
+import de.chefassistent.app.monteur.data.PasstAuftrag
+import de.chefassistent.app.monteur.data.Passt
+import de.chefassistent.app.monteur.data.Karte
 import de.chefassistent.app.monteur.data.MonteurVersand
 import de.chefassistent.app.monteur.data.materialJson
 import kotlinx.coroutines.Job
@@ -112,6 +115,17 @@ class BerichtViewModel(
     val start: BerichtStart,
     private val gespeichert: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
+
+    /**
+     * Karte aus dem Eingang (1.23.0). Wechselt bei jeder Ergaenzung, weil der Server
+     * dafuer eine neue Karte mit derselben Bericht-ID liefert; ueberlebt den Prozesstod.
+     */
+    private var karteId: String?
+        get() = gespeichert[K_KARTE] ?: start.karteId
+        set(wert) {
+            gespeichert[K_KARTE] = wert
+        }
+
 
     private val repository = app.repository
 
@@ -506,7 +520,7 @@ class BerichtViewModel(
         viewModelScope.launch {
             try {
                 ausstehendeSenden()
-                val neu = repository.berichtDiktat(id, aufnahme = datei)
+                val neu = ergaenzen(id, aufnahme = datei, text = null) ?: return@launch
                 datei.delete()
                 _zustand.update { it.copy(offenesDiktat = null) }
                 uebernehmen(neu, null)
@@ -542,7 +556,7 @@ class BerichtViewModel(
         viewModelScope.launch {
             try {
                 ausstehendeSenden()
-                val neu = repository.berichtDiktat(id, text = text)
+                val neu = ergaenzen(id, aufnahme = null, text = text) ?: return@launch
                 _zustand.update { it.copy(ergaenzung = "") }
                 uebernehmen(neu, null)
             } catch (fehler: ApiFehler) {
@@ -551,6 +565,29 @@ class BerichtViewModel(
                 _zustand.update { it.copy(diktatLaeuft = false) }
             }
         }
+    }
+
+    /**
+     * Ergaenzung senden. Mit Karte (1.23.0) ueber den Eingang mit `bericht_id` - die
+     * Antwort ist eine neue Karte mit derselben Bericht-ID, die alte wird ersetzt.
+     * Erkennt die KI etwas anderes als einen Bericht, bleibt der Entwurf, wie er ist,
+     * und es kommt ein Hinweis (`null`).
+     */
+    private suspend fun ergaenzen(id: String, aufnahme: File?, text: String?): MonteurBericht? {
+        if (karteId == null) return repository.berichtDiktat(id, aufnahme = aufnahme, text = text)
+        val karte = repository.eingang(
+            anfrageId = MonteurRepository.neueAnfrageId(),
+            aufnahme = aufnahme,
+            text = text,
+            berichtId = id,
+        )
+        val bericht = karte.bericht
+        if (karte.art != Karte.ART_BERICHT || bericht == null) {
+            _meldungen.trySend(ANDERE_ART)
+            return null
+        }
+        karteId = karte.id
+        return bericht
     }
 
     fun offenesDiktatSenden() {
@@ -615,7 +652,25 @@ class BerichtViewModel(
         sperrend {
             if (!ausstehendeSenden()) return@sperrend
             try {
-                val fertig = repository.berichtAbschliessen(bericht.id, abschluss)
+                val karte = karteId
+                val fertig = if (karte != null) {
+                    // 1.23.0: einziger Bestaetigungsweg ist „Passt“ an der Karte.
+                    val antwort = repository.passt(
+                        karte,
+                        Passt(
+                            unterschrift_png = abschluss.unterschrift_png,
+                            unterschrift_name = abschluss.unterschrift_name,
+                            zeiten_buchen = abschluss.zeiten_buchen,
+                        ),
+                    )
+                    val b = antwort.bericht ?: repository.bericht(bericht.id)
+                    b.copy(
+                        hero_nr = b.hero_nr ?: antwort.ergebnisText("hero_nr"),
+                        hinweise = (b.hinweise + antwort.hinweise).distinct(),
+                    )
+                } else {
+                    repository.berichtAbschliessen(bericht.id, abschluss)
+                }
                 _zustand.update { it.copy(unterschrift = null) }
                 striche.clear()
                 zeigen(fertig)
@@ -641,7 +696,18 @@ class BerichtViewModel(
         try {
             val titel = listOfNotNull(bericht.projekt?.nr?.ifBlank { null }, kundeAusTitel(start.titel).ifBlank { null })
                 .joinToString(" · ").ifBlank { null }
-            app.korb.abschlussEinreihen(AbschlussAuftrag(bericht.id, abschluss, titel?.let { "Bericht $it" } ?: "Bericht"))
+            val karte = karteId
+            if (karte != null) {
+                app.korb.passtEinreihen(
+                    PasstAuftrag(
+                        karte,
+                        Passt(abschluss.unterschrift_png, abschluss.unterschrift_name, abschluss.zeiten_buchen),
+                        titel?.let { "Bericht $it" } ?: "Bericht",
+                    )
+                )
+            } else {
+                app.korb.abschlussEinreihen(AbschlussAuftrag(bericht.id, abschluss, titel?.let { "Bericht $it" } ?: "Bericht"))
+            }
             MonteurVersand.anstossen(app)
             _zustand.update { it.copy(phase = Phase.ABSCHLUSS_WARTET, unterschrift = null) }
         } catch (_: Exception) {
@@ -658,7 +724,8 @@ class BerichtViewModel(
         val id = berichtId ?: return
         sperrend {
             try {
-                repository.berichtVerwerfen(id)
+                val karte = karteId
+                if (karte != null) repository.karteVerwerfen(karte) else repository.berichtVerwerfen(id)
                 schliessen()
             } catch (fehler: ApiFehler) {
                 when (fehler) {
@@ -718,6 +785,10 @@ class BerichtViewModel(
         private const val K_VERBRAUCHT = "bericht_aufnahme_verbraucht"
         private const val K_OFFEN = "bericht_offene_aufnahme"
         private const val K_AUTOMATISCH = "bericht_automatisch"
+        private const val K_KARTE = "bericht_karte"
+
+        /** Ergaenzung wurde nicht als Bericht erkannt. */
+        private const val ANDERE_ART = "Das klang nicht nach einer Ergänzung zum Bericht. Für Fragen, Material oder Infos ans Büro den Mikrofon-Knopf auf „Heute“ nehmen."
 
         fun factory(app: MonteurApp, start: BerichtStart) = viewModelFactory {
             initializer { BerichtViewModel(app, start, createSavedStateHandle()) }

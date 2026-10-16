@@ -87,7 +87,7 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/verbrauch` | Token-Verbrauch je Monat |
 | POST | `/v1/monteur/einrichten` | **Monteur-App:** Einrichtungscode (QR) → Sitzung `cs_…` (ohne Anmeldung, neu in 1.22.0) |
 | GET | `/v1/monteur/tage?von=&bis=` | Eigene Termine je Tag mit Kunde, Adresse, Telefon, Beschreibung, Berichtsstand (1.22.0) |
-| GET | `/v1/monteur/projekte/{id}` | Projektmappe: Notizen, Unterlagen (Angebote, Pläne, Aufmaße, Berichte – keine Rechnungen), Fotos (1.22.0) |
+| GET | `/v1/monteur/projekte/{id}` | Projektmappe: Notizen, Unterlagen (Angebote, Pläne, Aufmaße, Berichte – keine Rechnungen), Fotos (1.22.0), **Verlauf** = Kommentare im HERO-Projektverlauf (neu in 1.23.0) |
 | GET | `/v1/monteur/dateien/{uuid}?vorschau=` | PDF/Foto aus der Projektmappe (Vorschau 480 px) (1.22.0) |
 | POST | `/v1/monteur/projekte/{id}/dateien` | Foto/Dokument vom Handy → HERO-Projekt; Video → nur Server (1.22.0) |
 | GET | `/v1/monteur/projekte/{id}/videos/{name}` | Video aus dem Projektordner abspielen (1.22.0) |
@@ -104,6 +104,12 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/monteur/stundenkonto` | Soll, bestätigt, Saldo (1.22.0) |
 | GET / POST / DELETE | `/v1/monteur/abwesenheiten` | Urlaubsstand + Anträge / beantragen / zurückziehen (1.22.0) |
 | POST | `/v1/monteur/verstehen` | Sprache → Vorschläge für Zeiten oder Urlaub (bucht nichts) (1.22.0) |
+| POST | `/v1/monteur/eingang` | **Ein Eingang für alles**: Sprache/Text/Fotos → KI erkennt Bericht, Frage, Bestellung, Meldung, Zeiten, Urlaub → **eine Karte** (neu in 1.23.0) |
+| GET | `/v1/monteur/eingang` | Eigene Karten der letzten 7 Tage, neueste zuerst (z. B. offene nach App-Neustart) (1.23.0) |
+| GET | `/v1/monteur/eingang/{id}` | Eine Karte (1.23.0) |
+| POST | `/v1/monteur/eingang/{id}/passt` | **„Passt“** → je nach Art: Bericht nach HERO, fertiger Bestellschein, Kommentar im Projektverlauf, Zeiten buchen, Urlaub beantragen (1.23.0) |
+| DELETE | `/v1/monteur/eingang/{id}` | Karte verwerfen (1.23.0) |
+| GET | `/v1/monteur/anleitung?pfad=` | Herstelleranleitung (PDF) aus unserer Bibliothek – Treffer einer Antwortkarte (1.23.0) |
 | GET / POST | `/v1/monteure`, `/v1/monteure/{name}/einrichtungscode` | Büro: Monteur-Zugänge anlegen, QR-Code erzeugen (1.22.0) |
 
 ## 0. Anmeldung – neu in 1.10.0
@@ -1021,7 +1027,8 @@ Maps-Intent), Telefon → Wählen.
 
 **Projektmappe** (Termin antippen → Projekt, wie in HERO). `GET /v1/monteur/projekte/{projekt.id}` →
 `{"id","nr","titel","kunde","adresse","geo","telefon",[…],"notizen": "<Notizfeld des Projekts in HERO>",
-"unterlagen":[{"art","nr","name","datum","status","datei"}],"fotos":[{"uuid","name","datum"}]}`. `unterlagen` =
+"unterlagen":[{"art","nr","name","datum","status","datei"}],"fotos":[{"uuid","name","datum"}],
+"verlauf":[{"datum","titel","text"}],"videos":[…]}` (`verlauf` neu in 1.23.0, siehe [5d](#5d-monteur-app-ein-eingang-für-alles--neu-in-1230)). `unterlagen` =
 alles außer Finanzen: Angebot (nur aktuelle Fassung), Auftragsbestätigung, Aufmaß, Unterlage (Pläne, hochgeladene
 PDFs), Dokument, Bericht, Reparaturauftrag, Bestellschein, Lieferschein, Brief – nach Art, je Art neueste zuerst.
 **Rechnungen, Stornos, Mahnungen und Kalkulationen sind für Monteure gesperrt** (auch beim direkten Dateiabruf).
@@ -1070,8 +1077,22 @@ kommentar?,anfrage_id?}`, ändern/löschen nur mit Status `neu` (sonst `409`). *
 `POST /v1/monteur/zeiten/{datum}/einreichen` (danach nur noch im Büro änderbar). Stempeluhr:
 `POST /v1/monteur/stempel {"aktion":"start|stopp|wechsel","art","projekt_nr?"}` (Uhrzeit nimmt der Server).
 `GET /v1/monteur/stundenkonto?von=&bis=` → Minuten Soll/bestätigt/eingereicht/Saldo.
-Regeln (stehen auch in der KI): Fahrt von zu Hause zur ersten Baustelle und Heimfahrt zählen nicht; Notdienst von
-Motorstart bis Ankunft zu Hause.
+
+**Arten der Zeitabschnitte** (`art`; Regeln des Betriebs, stehen auch in der KI – seit 1.23.0 mit `lager`):
+
+| `art` | Was | Projekt | Arbeitszeit | Dem Kunden berechnet |
+|---|---|---|---|---|
+| `lager` (neu in 1.23.0) | Laden/Beladen, Lager, Firma, Werkstatt – z. B. 07:00–07:45 | **ohne** | ja | nein |
+| `fahrt` | Fahrt zum Kunden bzw. zwischen Kunden | – | ja | nein (steckt in der Anfahrtspauschale) |
+| `arbeit` | Arbeit beim Kunden | mit | ja | ja |
+| `material` | während des Einsatzes extra zum Händler und zurück | mit | ja | ja (als Arbeitszeit) |
+| `pause` | Pause | – | nein | nein |
+
+Fahrt von zu Hause zur Firma bzw. zur ersten Baustelle und die Heimfahrt zählen **nicht** (gar nicht eintragen).
+Notdienst: von Motorstart zu Hause bis Ankunft zu Hause komplett Arbeitszeit (Fahrten `fahrt`, vor Ort `arbeit`).
+Die Berichtsstunden (`monteur_stunden`) sind nur `arbeit` + `material`. In HERO ist `lager` dieselbe Kategorie wie
+`arbeit`, nur ohne Projekt – `GET /v1/monteur/zeiten` liefert Arbeit ohne Projekt daher als `lager`. `buero`, `vor_ort`
+(und beim Lesen `sonstige`) gibt es weiterhin für Einträge aus HERO bzw. von Hand.
 
 **Urlaub.** `GET /v1/monteur/abwesenheiten?jahr=` → `{"stand":{"jahresurlaub","genehmigt","beantragt","verfuegbar"},
 "eintraege":[{"id","art","status":"beantragt|genehmigt|abgelehnt","von","bis","halber_tag_anfang","halber_tag_ende",
@@ -1082,6 +1103,146 @@ unentschieden). Genehmigt wird im HERO-Web; HERO mailt die Entscheidung selbst.
 **Sprache für Zeiten/Urlaub.** `POST /v1/monteur/verstehen` (multipart `audio`|`text`, `datum?`) →
 `{"text","datum","zeiten":[…],"abwesenheit":{…}|null,"rueckfrage"}` – nur Vorschläge, die App zeigt sie zum
 Bestätigen und bucht dann mit den Endpunkten oben („Feierabend, halbe Stunde Pause“, „nächste Woche Do und Fr frei“).
+Seit 1.23.0 nimmt die App für den Mikrofon-Knopf den **Eingang** ([5d](#5d-monteur-app-ein-eingang-für-alles--neu-in-1230));
+`verstehen`, `berichte`, `zeiten` und `abwesenheiten` bleiben unverändert für Änderungen von Hand.
+
+## 5d. Monteur-App: ein Eingang für alles – neu in 1.23.0
+
+Grundsatz (User 16.10.2026): **keine neuen Knöpfe.** Monteure haben es eilig – was erst überlegen lässt, welcher Knopf
+der richtige ist, wird nicht benutzt. Es gibt **einen** Mikrofon-Knopf und die Kamera. Der Monteur sagt, tippt oder
+fotografiert; die KI erkennt aus Inhalt, Uhrzeit und Tagesplan, was er will, und zeigt **eine Karte**. Bestätigt wird
+immer mit **„Passt“**.
+
+| Absicht (`art`) | Beispiel | Was bei „Passt“ passiert |
+|---|---|---|
+| `bericht` | „WC getauscht, 2 Std, zwei Eckventile“ | Fertiger Baustellenbericht in HERO (wie 5c), Fotos hängen am Bericht |
+| `frage` | Foto vom Typenschild + „was heißt F.28?“ | Nichts – die Antwort ist das Ergebnis (Karte ist sofort `erledigt`) |
+| `bestellung` | „Mir fehlen noch 3 Eckventile 1/2 Zoll“ | **fertiger Bestellschein** (BS-Nummer, Empfänger Gut Mollenhauer) im HERO-Projekt – Positionen per Klick ins Angebot/die Rechnung, Büro bestellt per IDS – + Kommentar im Projektverlauf |
+| `meldung` | „Kunde nicht da“ (+ Foto der Tür), „komme 20 Min später“, „Wasserschaden entdeckt, Angebot nötig“ | **Kommentar im HERO-Projektverlauf**, Fotos ins HERO-Projekt |
+| `zeiten` | „Feierabend, halbe Stunde Pause“ | Zeitabschnitte in HERO gebucht (Status neu) |
+| `urlaub` | „Nächste Woche Donnerstag und Freitag frei“ | Antrag in HERO |
+
+### Senden: `POST /v1/monteur/eingang` (multipart)
+
+| Feld | | |
+|---|---|---|
+| `audio` | optional | Aufnahme (m4a/aac …, max. 25 MB), jede Sprache |
+| `text` | optional | Getipptes; mit `audio` zusammen wird beides aneinandergehängt |
+| `fotos` | optional, 0–5 | Feld mehrfach schicken; je max. 25 MB, nicht selbst verkleinern |
+| `termin_id` | optional | Wenn der Monteur gerade in einem Termin (Projektmappe) ist |
+| `projekt_nr` | optional | Statt Termin |
+| `datum` | optional | `YYYY-MM-DD`, Standard heute (Nachträge) |
+| `bericht_id` | optional | Berichtsentwurf, der gerade offen ist → Ergänzungen landen in **diesem** Entwurf |
+| `bezug_id` | optional | Karten-ID einer Antwort (`frage`) → **Nachfrage** dazu |
+| `anfrage_id` | empfohlen | 8–64 Zeichen `[A-Za-z0-9_-]`; wird zur **Karten-ID** (Ausgangskorb) |
+
+Mindestens `audio`, `text` oder ein Foto, sonst `422`. Mehr als 5 Fotos → `422`, kein lesbares Foto → `415`,
+zu groß → `413`, KI nicht erreichbar → `502`. Dauer: meist 5–30 s, eine Frage mit Internetsuche auch bis ~60 s.
+
+**Absicht.** Die KI wählt genau eine Art. Ist `bericht_id` ein offener Entwurf und klingt es nach Ergänzung/Korrektur,
+ist es `bericht`. Mit `bezug_id` auf eine Frage-Karte ist es immer `frage` (Nachfrage, die vorige Frage und Antwort
+gehen mit). **Nur Fotos ohne Text** → `frage` („Was ist das, was muss ich wissen?“); `meldung` nur, wenn die KI das am
+Foto eindeutig erkennt.
+
+**Projekt.** Für `bericht`, `bestellung` und `meldung` (bei `frage` nur, wenn `termin_id`/`projekt_nr` mitkommt):
+offener Bericht (`bericht_id`) > `projekt_nr` > `termin_id` > **der Termin, bei dem der Monteur laut Plan gerade ist**
+(wie bei Berichten in 5c). Kein Termin mit Projekt an dem Tag → `422` „bitte Termin oder Projekt wählen“ (eine Frage
+geht dann ohne Projekt). Fremdes Projekt → `404`. Das erkannte Projekt steht in `projekt` – die App zeigt es deutlich.
+
+### Antwort: die Karte
+
+```json
+{
+  "id": "3f9c…", "art": "bestellung", "status": "offen", "datum": "2026-10-16",
+  "text": "mir fehlen noch drei Eckventile halb Zoll",
+  "termin_id": "hero:…", "projekt": {"id": 4711, "nr": "SAN-660", "kunde": "Müller"},
+  "fotos": 0,
+  "bericht": null, "antwort": null,
+  "bestellung": {"material": [{"text": "Eckventil 1/2", "menge": 3, "einheit": "Stk", "suchtext": "Eckventil 1/2 3/8",
+                               "artikel": {"nr": "…", "name": "…", "einheit": "Stk"}, "vorschlaege": […], "rueckfrage": null}],
+                 "hinweis": "bis morgen früh"},
+  "meldung": null, "zeiten": null, "abwesenheit": null,
+  "rueckfrage": null, "ergebnis": null
+}
+```
+
+Immer da: `id`, `art`, `status` (`offen`, `erledigt`, `verworfen`), `datum`, `text` (erkannter bzw. gesendeter Text),
+`termin_id`, `projekt` (`{id, nr, kunde}` oder `null`), `fotos` (Anzahl), `rueckfrage` (Frage der KI an den Monteur
+oder `null`), `ergebnis` (`null` bis „Passt“). Je nach `art` ist **genau eines** dieser Felder gefüllt:
+
+| `art` | Feld | Inhalt |
+|---|---|---|
+| `bericht` | `bericht` | `MonteurBericht` wie in 5c (`id`, `status`, `entwurf` …). Korrekturen von Hand weiter mit `PATCH /v1/monteur/berichte/{bericht.id}`, per Sprache einfach wieder in den Eingang mit `bericht_id` |
+| `frage` | `antwort` | `{text, quellen:[{titel, url}], anleitungen:[{pfad, seite, titel}], artikel:[{nr, name, einheit}]}` – `text` kurz, Schritte nummeriert, in der Sprache der Frage; `quellen` = Internet (Herstellerseiten, Datenblätter, **YouTube**); `anleitungen` = Treffer in unserer Anleitungsbibliothek; `artikel` = Katalog (Gut Mollenhauer) mit Artikelnummer, **keine Preise** |
+| `bestellung` | `bestellung` | `{material:[Material wie im Bericht], hinweis}` – `hinweis` = Termin/Dringlichkeit/Lieferort, wenn gesagt |
+| `meldung` | `meldung` | `{art, text}` – `art`: `nicht_angetroffen`, `verspaetung`, `mangel`, `nachtrag`, `sonstiges`; `text` von der KI sauber formuliert (Deutsch, Uhrzeit), kommt so in den Projektverlauf |
+| `zeiten` | `zeiten` | `[{beginn: "HH:MM", ende, art}]`, `art`: `lager`, `fahrt`, `arbeit`, `material`, `pause` (Regeln in 5c) |
+| `urlaub` | `abwesenheit` | `{art, von, bis, halber_tag_anfang, halber_tag_ende, kommentar}` |
+
+Bei `bericht` gilt: Ist mit `bericht_id` ein Entwurf offen, wird er ergänzt (gleiche `bericht.id`, neue Karten-ID);
+sonst entsteht ein neuer Entwurf. Mitgeschickte Fotos hängen am Bericht.
+
+### Bestätigen: `POST /v1/monteur/eingang/{id}/passt` (JSON)
+
+Alle Felder optional – nur schicken, was der Monteur auf der Karte geändert hat:
+
+| `art` | Felder | `ergebnis` |
+|---|---|---|
+| `bericht` | `unterschrift_png` (PNG base64/Data-URL), `unterschrift_name`, `zeiten_buchen` (Standard `true`) | `{hero_nr, hinweise[]}` – wie `…/abschliessen` in 5c |
+| `frage` | – (kein „Passt“ nötig; Aufruf schadet nicht, liefert die Karte) | – |
+| `bestellung` | `material`: **vollständige** neue Liste `[{index, menge, text?, einheit?, artikel_nr?}]` wie beim Bericht (`index` = Position in der Karte, `null` = neu; `artikel_nr` aus `vorschlaege` oder `GET /v1/monteur/artikel`, `null` = freie Position) | `{hero: "Bestellschein BS-… im Projekt", hero_id, hero_nr, hinweise[]}` |
+| `meldung` | `text` (max. 2000 Zeichen): korrigierter Text | `{hero: "Kommentar im Projektverlauf", hinweise[]}` |
+| `zeiten` | `zeiten`: korrigierte Abschnitte `[{beginn, ende, art}]` | `{gebucht: <Anzahl>, hinweise[]}` |
+| `urlaub` | `abwesenheit`: korrigierter Antrag | `{abwesenheit_id, hinweise[]}` |
+
+Was der Server macht:
+- **bestellung:** legt einen **fertigen Bestellschein** (BS-Nummer, Empfänger Gut Mollenhauer – wie BS-2) im
+  HERO-Projekt an: Katalogartikel (per IDS bestellbar), sonst freie Position. Nur fertige Belege lassen sich in HERO
+  per „Positionen übernehmen“ ins Angebot/die Rechnung holen. Dazu Projektverlauf „Material angefordert – <Name>
+  (TT.MM.JJJJ HH:MM):“ mit Liste, Hinweis und „Bestellschein BS-… liegt im Projekt.“ Fotos zur Bestellung gehen ins
+  Projekt. `ergebnis`: `{hero, hero_id, hero_nr, hinweise[]}`. Bestellt (IDS) wird weiter im Büro. Leere Liste → `422`,
+  Material mit offener `rueckfrage` → `409` „Erst die Rückfragen klären: …“ (mit `material` die Wahl mitschicken,
+  dann ist die Rückfrage erledigt). Klappt nur der Kommentar nicht, steht das in `hinweise`.
+- **meldung / bestellung ohne erkennbares Projekt** (kein Termin mit Projekt im Plan, keine `projekt_nr`) → schon
+  beim Eingang `422` „Zu welchem Projekt? …“ – App zeigt den Text, Monteur tippt den Termin an bzw. sagt die Nummer.
+- **meldung:** Kommentar im HERO-Projektverlauf (Logbuch-Typ 9210 „Kommentar von …“, wie „Waren vor Ort, Frau X hat
+  abgelehnt“): „<Titel> – <Name> (TT.MM.JJJJ HH:MM):“ + Text. Titel je Art: Kunde nicht angetroffen, Verspätung,
+  Mangel/Schaden, Nachtrag/Zusatzwunsch, Meldung. Fotos gehen über „Nach HERO hochladen“ in **wenigen Minuten ins
+  HERO-Projekt**; klappt ein Foto nicht, steht es in `hinweise`. HERO lehnt ab → `502` (Karte bleibt `offen`).
+- **zeiten:** bucht jeden Abschnitt in HERO (Status neu). `arbeit`/`material` mit dem Projekt der Karte, `lager`
+  immer ohne Projekt.
+- **urlaub:** beantragt in HERO (wie `POST /v1/monteur/abwesenheiten`). Kein Zeitraum → `422`.
+
+Antwort ist wieder die Karte, jetzt `status: "erledigt"` und `ergebnis` gefüllt. **`ergebnis.hinweise` immer
+anzeigen**, wenn nicht leer. „Passt“ ist **wiederholbar**: eine erledigte Karte wird unverändert zurückgegeben, nie
+doppelt gebucht (Zeiten/Urlaub zusätzlich mit eigener `anfrage_id` je Eintrag). Verworfene Karte → `409`.
+
+### Weitere Aufrufe
+
+- `DELETE /v1/monteur/eingang/{id}` → `204`: Karte verwerfen; bei `bericht` wird der Entwurf mit gelöscht. Schon
+  erledigt (außer `frage`) → `409`.
+- `GET /v1/monteur/eingang` → eigene Karten der letzten 7 Tage (ohne verworfene, max. 50, neueste zuerst) – nach dem
+  App-Start offene Karten (`status: "offen"`) wieder zeigen.
+- `GET /v1/monteur/eingang/{id}` → eine Karte.
+- `GET /v1/monteur/anleitung?pfad=<antwort.anleitungen[].pfad>` → PDF (inline) aus unserer Anleitungsbibliothek
+  (nur `Intern/Anleitungen`, sonst `404`). Seite `seite` im Viewer anspringen (`#page=<seite>`).
+
+### Ausgangskorb und Wiederholung
+
+`anfrage_id` = Karten-ID. Kommt dieselbe `anfrage_id` noch einmal (Netz weg, App neu gestartet), liefert der Server
+die **schon erstellte Karte** – keine zweite KI-Runde, kein zweiter Entwurf. Gehört die ID einem anderen Zugang →
+`409`. Bei `502`/`503`/Netzfehler also einfach mit derselben `anfrage_id` wiederholen; danach `…/passt` ebenso.
+
+### Nachfrage (`bezug_id`)
+
+Auf einer Antwortkarte spricht der Monteur einfach weiter („und wo sitzt der Sensor?“) → `POST /v1/monteur/eingang`
+mit `bezug_id` = ID der Antwortkarte. Die KI bekommt vorige Frage und Antwort mit; Ergebnis ist eine neue Frage-Karte.
+
+### Projektmappe: Verlauf
+
+`GET /v1/monteur/projekte/{id}` hat neu `verlauf: [{datum, titel, text}]` – die letzten 15 Kommentare im
+HERO-Projektverlauf (Büro und Monteure, neueste zuerst; `titel` oft leer, die Überschrift steht dann in der ersten
+Zeile von `text`). Eigene Meldungen und Materialanforderungen tauchen dort nach dem nächsten Abgleich des HERO-Spiegels auf.
 
 ## 6. Ablage durchblättern (Ordneransicht)
 

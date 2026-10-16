@@ -79,5 +79,9 @@
     <string name="m_hochladen_los">Hochladen</string>
     <string name="m_hochladen_gestartet">Wird hochgeladen – läuft auch ohne Netz und im Hintergrund weiter.</string>
     <string name="m_hochladen_laeuft">%1$s wird hochgeladen … %2$d %%</string>
+    <string name="m_verlauf">Verlauf</string>
+    <string name="m_mehr">%1$d weitere anzeigen</string>
+    <string name="m_weniger">Weniger anzeigen</string>
+    <string name="m_wird_uebertragen">wird übertragen</string>
     <string name="m_foto_von">Foto %1$d von %2$d</string>
 </resources>

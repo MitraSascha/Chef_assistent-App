@@ -73,6 +73,10 @@ import de.chefassistent.app.data.ApiFehler
 import de.chefassistent.app.data.FotoAufbereitung
 import de.chefassistent.app.monteur.MonteurApp
 import de.chefassistent.app.monteur.data.DateiAuftrag
+import de.chefassistent.app.monteur.data.Verlaufseintrag
+import de.chefassistent.app.monteur.ui.karte.EingangKnoepfe
+import de.chefassistent.app.monteur.ui.rememberAufnahme
+import androidx.compose.foundation.layout.height
 import de.chefassistent.app.monteur.data.Foto
 import de.chefassistent.app.monteur.data.KorbMeldung
 import de.chefassistent.app.monteur.data.MonteurRepository
@@ -205,7 +209,12 @@ fun ProjektScreen(
     beiDatei: (uuid: String, name: String) -> Unit,
     beiBericht: (berichtId: String?, projektNr: String?) -> Unit,
     beiVideo: (name: String) -> Unit = {},
+    /** Seit 1.23.0: Mikrofon/Kamera an den Eingang, mit diesem Termin als Kontext. */
+    beiEingang: (aufnahme: File?, foto: File?) -> Unit = { _, _ -> },
+    /** Lokal vorgemerkte eigene Meldungen/Bestellungen, bis sie im HERO-Verlauf stehen. */
+    vorlaeufig: List<Verlaufseintrag> = emptyList(),
 ) {
+    val aufnahme = rememberAufnahme()
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val meldungen by viewModel.meldungen.collectAsStateWithLifecycle(emptyList())
     val hochladen by viewModel.hochladenStand.collectAsStateWithLifecycle(null)
@@ -263,33 +272,37 @@ fun ProjektScreen(
                 )
                 LinearProgressIndicator(progress = { prozent / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Ein offener Entwurf bleibt erreichbar; alles Neue geht ueber den einen Eingang (1.23.0).
+            if (entwurfId != null) {
+                Button(
+                    onClick = { beiBericht(entwurfId, mappe?.nr) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.hauptflaeche, contentColor = Color.White),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                ) {
+                    Icon(Icons.Outlined.Description, null)
+                    Spacer(Modifier.size(10.dp))
+                    Text(stringResource(R.string.m_entwurf_oeffnen), style = MaterialTheme.typography.titleMedium)
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            EingangKnoepfe(
+                aufnahme = aufnahme,
+                aktiv = mappe != null,
+                groesse = 64.dp,
+                beiAufnahme = { beiEingang(it, null) },
+                beiFoto = { beiEingang(null, it) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            // Datei direkt ins Projekt, ohne KI (aus 1.22) - klein, damit es nicht mit dem Eingang konkurriert.
             HochladenKnopf(
                 aktiv = mappe != null,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                 beiDatei = { datei, name, text ->
                     viewModel.hochladen(datei, name, text)
                     bereich.launch { snackbar.showSnackbar(vorbereitet) }
                 },
             )
-            Button(
-                onClick = { beiBericht(entwurfId, mappe?.nr) },
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.hauptflaeche, contentColor = Color.White),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 56.dp),
-            ) {
-                Icon(Icons.Outlined.Description, null)
-                Spacer(Modifier.size(10.dp))
-                Text(
-                    stringResource(if (entwurfId != null) R.string.m_entwurf_oeffnen else R.string.m_bericht),
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            }
             }
             }
         },
@@ -335,6 +348,11 @@ fun ProjektScreen(
                         }
                     }
                 }
+                // Verlauf (1.23.0): Kommentare im HERO-Projektverlauf, eigene vorlaeufig grau oben.
+                val vorlaeufigOffen = vorlaeufig.filterNot { v -> mappe.verlauf.any { it.text.contains(v.text.take(40)) } }
+                if (mappe.verlauf.isNotEmpty() || vorlaeufigOffen.isNotEmpty()) {
+                    item(key = "verlauf") { VerlaufAbschnitt(mappe.verlauf, vorlaeufigOffen) }
+                }
                 item(key = "unterlagen_titel") { Ueberschrift(stringResource(R.string.m_unterlagen)) }
                 if (mappe.unterlagen.isEmpty()) {
                     item(key = "keine_unterlagen") {
@@ -374,6 +392,75 @@ fun ProjektScreen(
         FotoVollbild(mappe.fotos, index.coerceIn(0, mappe.fotos.lastIndex), viewModel) { fotoIndex = null }
     }
 }
+
+/**
+ * Verlauf: neueste zuerst, die ersten 3 sichtbar, „Mehr“ klappt auf. Ohne Titel ist die
+ * erste Zeile des Textes die Ueberschrift (fett). Eigene, noch nicht abgeglichene
+ * Eintraege stehen grau oben mit „wird übertragen“.
+ */
+@Composable
+private fun VerlaufAbschnitt(verlauf: List<Verlaufseintrag>, vorlaeufig: List<Verlaufseintrag>) {
+    var alle by rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Ueberschrift(stringResource(R.string.m_verlauf))
+        vorlaeufig.forEach { VerlaufZeile(it, vorlaeufig = true) }
+        val sichtbar = if (alle) verlauf else verlauf.take(VERLAUF_SICHTBAR)
+        sichtbar.forEach { VerlaufZeile(it, vorlaeufig = false) }
+        if (verlauf.size > VERLAUF_SICHTBAR) {
+            TextButton(onClick = { alle = !alle }) {
+                Text(stringResource(if (alle) R.string.m_weniger else R.string.m_mehr, verlauf.size - VERLAUF_SICHTBAR))
+            }
+        }
+    }
+}
+
+@Composable
+private fun VerlaufZeile(e: Verlaufseintrag, vorlaeufig: Boolean) {
+    val farben = MaterialTheme.colorScheme
+    val (titel, text) = verlaufTeilen(e)
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = farben.surfaceContainer,
+        border = BorderStroke(1.dp, farben.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val kopf = listOfNotNull(
+                datumZeit(e.datum),
+                if (vorlaeufig) stringResource(R.string.m_wird_uebertragen) else null,
+            ).joinToString(" · ")
+            if (kopf.isNotBlank()) Text(kopf, style = MaterialTheme.typography.labelMedium, color = farben.onSurfaceVariant)
+            if (titel.isNotBlank()) {
+                Text(
+                    titel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (vorlaeufig) farben.onSurfaceVariant else farben.onSurface,
+                )
+            }
+            if (text.isNotBlank()) {
+                Text(text, style = MaterialTheme.typography.bodyMedium, color = if (vorlaeufig) farben.onSurfaceVariant else farben.onSurface)
+            }
+        }
+    }
+}
+
+/** Titel und Text; ohne Titel wird die erste Zeile zur Ueberschrift. */
+fun verlaufTeilen(e: Verlaufseintrag): Pair<String, String> {
+    if (e.titel.isNotBlank()) return e.titel.trim() to e.text.trim()
+    val zeilen = e.text.trim().lines()
+    return zeilen.firstOrNull().orEmpty().trim() to zeilen.drop(1).joinToString("\n").trim()
+}
+
+/** „16.10.2026 09:12“ aus ISO; nur Datum, wenn keine Uhrzeit drin ist. */
+fun datumZeit(iso: String?): String? {
+    if (iso.isNullOrBlank()) return null
+    val datum = datumText(iso) ?: return null
+    val zeit = Regex("""T(\d{2}:\d{2})""").find(iso)?.groupValues?.get(1)
+    return if (zeit != null) "$datum $zeit" else datum
+}
+
+private const val VERLAUF_SICHTBAR = 3
 
 /** Videos bleiben auf dem Server (HERO nimmt keine) - Name, Groesse, Datum. */
 @Composable

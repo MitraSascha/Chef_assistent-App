@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.22.0"
+    "version": "1.23.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -4243,6 +4243,458 @@
         }
       }
     },
+    "/v1/monteur/eingang": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Eingang Liste",
+        "description": "Eigene Karten der letzten 7 Tage (neueste zuerst) – z. B. offene Bestätigungen nach App-Neustart.",
+        "operationId": "eingang_liste_v1_monteur_eingang_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Karte"
+                  },
+                  "type": "array",
+                  "title": "Response Eingang Liste V1 Monteur Eingang Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Eingang Neu",
+        "description": "EIN Eingang: Sprache/Text/Fotos -> die KI erkennt die Absicht (bericht | frage | bestellung | meldung |\nzeiten | urlaub) und liefert EINE Karte. Bestätigen immer mit POST …/eingang/{id}/passt (frage: nichts zu tun).",
+        "operationId": "eingang_neu_v1_monteur_eingang_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_eingang_neu_v1_monteur_eingang_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Karte"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/monteur/eingang/{eid}": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Eingang Holen",
+        "operationId": "eingang_holen_v1_monteur_eingang__eid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Eid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Karte"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Eingang Verwerfen",
+        "description": "Karte verwerfen (bei Bericht: Entwurf weg).",
+        "operationId": "eingang_verwerfen_v1_monteur_eingang__eid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Eid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/eingang/{eid}/passt": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Eingang Passt",
+        "description": "„Passt“ – je nach Art: Bericht fertig nach HERO, Bestellschein-Entwurf + Kommentar, Meldung in den\nProjektverlauf (+ Fotos), Zeiten buchen, Urlaub beantragen. Wiederholbar.",
+        "operationId": "eingang_passt_v1_monteur_eingang__eid__passt_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Eid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Passt"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Karte"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/monteur/anleitung": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Anleitung Pdf",
+        "description": "Anleitung als PDF (Seite in der App mit #page=<seite> bzw. im Viewer anspringen).",
+        "operationId": "anleitung_pdf_v1_monteur_anleitung_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pfad",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "pfad aus antwort.anleitungen",
+              "title": "Pfad"
+            },
+            "description": "pfad aus antwort.anleitungen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/monteur/berichte": {
       "post": {
         "tags": [
@@ -6687,6 +7139,30 @@
         ],
         "title": "AngebotAntwort"
       },
+      "AnleitungTreffer": {
+        "properties": {
+          "pfad": {
+            "type": "string",
+            "title": "Pfad",
+            "description": "für GET /v1/monteur/anleitung?pfad=…#page=<seite>"
+          },
+          "seite": {
+            "type": "integer",
+            "title": "Seite"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pfad",
+          "seite",
+          "titel"
+        ],
+        "title": "AnleitungTreffer"
+      },
       "AnmeldeAntwort": {
         "properties": {
           "token": {
@@ -6755,6 +7231,47 @@
           "code"
         ],
         "title": "Anmeldung"
+      },
+      "Antwort": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Antwort der KI (kurz, Schritte nummeriert)"
+          },
+          "quellen": {
+            "items": {
+              "$ref": "#/components/schemas/Quelle"
+            },
+            "type": "array",
+            "title": "Quellen",
+            "description": "Links aus dem Internet (Hersteller, YouTube …)"
+          },
+          "anleitungen": {
+            "items": {
+              "$ref": "#/components/schemas/AnleitungTreffer"
+            },
+            "type": "array",
+            "title": "Anleitungen",
+            "description": "Treffer in unserer Anleitungsbibliothek"
+          },
+          "artikel": {
+            "items": {
+              "$ref": "#/components/schemas/Artikel"
+            },
+            "type": "array",
+            "title": "Artikel",
+            "description": "Passende Katalogartikel (ohne Preise)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "quellen",
+          "anleitungen",
+          "artikel"
+        ],
+        "title": "Antwort"
       },
       "Artikel": {
         "properties": {
@@ -7371,6 +7888,27 @@
         ],
         "title": "Bestaetigung"
       },
+      "Bestellung": {
+        "properties": {
+          "material": {
+            "items": {
+              "$ref": "#/components/schemas/Material"
+            },
+            "type": "array",
+            "title": "Material"
+          },
+          "hinweis": {
+            "type": "string",
+            "title": "Hinweis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "material",
+          "hinweis"
+        ],
+        "title": "Bestellung"
+      },
       "Body_bericht_diktat_v1_monteur_berichte__bid__diktat_post": {
         "properties": {
           "audio": {
@@ -7525,6 +8063,119 @@
           "dokument"
         ],
         "title": "Body_dokument_v1_dokumente_post"
+      },
+      "Body_eingang_neu_v1_monteur_eingang_post": {
+        "properties": {
+          "audio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio",
+            "description": "Gesprochenes (jede Sprache)"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "Statt/zusätzlich zu audio: Getipptes"
+          },
+          "fotos": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Fotos",
+            "description": "0–5 Fotos (Typenschild, Schaden, Tür …)",
+            "default": []
+          },
+          "termin_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termin Id",
+            "description": "Optional; sonst erkennt der Server den Termin"
+          },
+          "projekt_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Nr"
+          },
+          "datum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datum",
+            "description": "YYYY-MM-DD, Standard heute"
+          },
+          "bericht_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bericht Id",
+            "description": "Offener Berichtsentwurf, auf dem der Monteur gerade ist"
+          },
+          "bezug_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bezug Id",
+            "description": "Nachfrage zu einer vorigen Karte (Frage)"
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id",
+            "description": "Ausgangskorb; wird die Karten-id"
+          }
+        },
+        "type": "object",
+        "title": "Body_eingang_neu_v1_monteur_eingang_post"
       },
       "Body_foto_v1_fotos_post": {
         "properties": {
@@ -10025,6 +10676,192 @@
         ],
         "title": "KalenderTermin"
       },
+      "Karte": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "bericht",
+              "frage",
+              "bestellung",
+              "meldung",
+              "zeiten",
+              "urlaub"
+            ],
+            "title": "Art"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "offen",
+              "erledigt",
+              "verworfen"
+            ],
+            "title": "Status"
+          },
+          "datum": {
+            "type": "string",
+            "title": "Datum"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Erkannter bzw. gesendeter Text"
+          },
+          "termin_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termin Id"
+          },
+          "projekt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KarteProjekt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fotos": {
+            "type": "integer",
+            "title": "Fotos"
+          },
+          "bericht": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MonteurBericht"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "antwort": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Antwort"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bestellung": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Bestellung"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meldung": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Meldung"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zeiten": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ZeitAbschnitt"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeiten"
+          },
+          "abwesenheit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AbwVorschlag"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rueckfrage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rueckfrage"
+          },
+          "ergebnis": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ergebnis",
+            "description": "Nach „Passt“: hero_nr / hero / gebucht / abwesenheit_id, hinweise[]"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "art",
+          "status",
+          "datum",
+          "text",
+          "termin_id",
+          "projekt",
+          "fotos"
+        ],
+        "title": "Karte"
+      },
+      "KarteProjekt": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nr": {
+            "type": "string",
+            "title": "Nr"
+          },
+          "kunde": {
+            "type": "string",
+            "title": "Kunde"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nr",
+          "kunde"
+        ],
+        "title": "KarteProjekt"
+      },
       "Material": {
         "properties": {
           "text": {
@@ -10145,6 +10982,32 @@
           "menge"
         ],
         "title": "MaterialAenderung"
+      },
+      "Meldung": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "nicht_angetroffen",
+              "verspaetung",
+              "mangel",
+              "nachtrag",
+              "sonstiges"
+            ],
+            "title": "Art"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Von der KI sauber formuliert – kommt so in den HERO-Projektverlauf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "text"
+        ],
+        "title": "Meldung"
       },
       "ModellAuswahl": {
         "properties": {
@@ -10893,6 +11756,95 @@
         ],
         "title": "OrdnerEintrag"
       },
+      "Passt": {
+        "properties": {
+          "unterschrift_png": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unterschrift Png",
+            "description": "bericht: Kundenunterschrift (PNG base64)"
+          },
+          "unterschrift_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unterschrift Name"
+          },
+          "zeiten_buchen": {
+            "type": "boolean",
+            "title": "Zeiten Buchen",
+            "default": true
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "meldung: korrigierter Text"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MaterialAenderung"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material",
+            "description": "bestellung: vollständige neue Liste"
+          },
+          "zeiten": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ZeitAbschnitt"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeiten",
+            "description": "zeiten: korrigierte Abschnitte"
+          },
+          "abwesenheit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AbwVorschlag"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "urlaub: korrigierter Antrag"
+          }
+        },
+        "type": "object",
+        "title": "Passt"
+      },
       "PasswortAendern": {
         "properties": {
           "neu": {
@@ -11107,6 +12059,14 @@
             "title": "Fotos",
             "description": "Projektfotos aus HERO, neueste zuerst"
           },
+          "verlauf": {
+            "items": {
+              "$ref": "#/components/schemas/Verlaufseintrag"
+            },
+            "type": "array",
+            "title": "Verlauf",
+            "description": "Kommentare im HERO-Projektverlauf (Büro und Monteure), neueste zuerst"
+          },
           "videos": {
             "items": {
               "$ref": "#/components/schemas/Video"
@@ -11253,6 +12213,7 @@
             "type": "string",
             "enum": [
               "arbeit",
+              "lager",
               "fahrt",
               "pause",
               "material",
@@ -11974,6 +12935,36 @@
         ],
         "title": "ValidationError"
       },
+      "Verlaufseintrag": {
+        "properties": {
+          "datum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datum"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datum",
+          "titel",
+          "text"
+        ],
+        "title": "Verlaufseintrag"
+      },
       "Verstanden": {
         "properties": {
           "text": {
@@ -12146,12 +13137,14 @@
           "art": {
             "type": "string",
             "enum": [
-              "arbeit",
+              "lager",
               "fahrt",
-              "pause",
-              "material"
+              "arbeit",
+              "material",
+              "pause"
             ],
-            "title": "Art"
+            "title": "Art",
+            "description": "lager = Arbeit ohne Projekt (Laden, Firma); fahrt = zum Kunden (nicht berechnet); arbeit = beim Kunden; material = während des Einsatzes zum Händler (zählt für den Kunden)"
           }
         },
         "type": "object",
@@ -12194,6 +13187,7 @@
                 "type": "string",
                 "enum": [
                   "arbeit",
+                  "lager",
                   "fahrt",
                   "pause",
                   "material",
@@ -12251,6 +13245,7 @@
             "type": "string",
             "enum": [
               "arbeit",
+              "lager",
               "fahrt",
               "pause",
               "material",
@@ -12326,7 +13321,7 @@
           "art": {
             "type": "string",
             "title": "Art",
-            "description": "arbeit | fahrt | pause | material | buero | vor_ort | sonstige"
+            "description": "arbeit (mit Projekt) | lager (Arbeit ohne Projekt) | fahrt | pause | material | buero | vor_ort | sonstige"
           },
           "status": {
             "type": "string",

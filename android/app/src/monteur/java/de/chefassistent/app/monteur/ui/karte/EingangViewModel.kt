@@ -1,0 +1,393 @@
+package de.chefassistent.app.monteur.ui.karte
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import de.chefassistent.app.data.ApiFehler
+import de.chefassistent.app.monteur.MonteurApp
+import de.chefassistent.app.monteur.data.AbwVorschlag
+import de.chefassistent.app.monteur.data.EingangAuftrag
+import de.chefassistent.app.monteur.data.Karte
+import de.chefassistent.app.monteur.data.MaterialAenderung
+import de.chefassistent.app.monteur.data.MonteurRepository
+import de.chefassistent.app.monteur.data.MonteurVersand
+import de.chefassistent.app.monteur.data.Passt
+import de.chefassistent.app.monteur.data.PasstAuftrag
+import de.chefassistent.app.monteur.data.ZeitAbschnitt
+import de.chefassistent.app.monteur.data.materialJson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+
+/** Wo der Monteur gerade ist - geht automatisch mit, gefragt wird nie (Auftrag 1.23, 1.). */
+data class EingangKontext(
+    val terminId: String? = null,
+    val projektNr: String? = null,
+    /** `YYYY-MM-DD`, wenn auf Heute/Zeiten ein anderer Tag gewaehlt ist. */
+    val datum: String? = null,
+    /** Fuer die Anzeige („SAN-1243 · Böse“). */
+    val titel: String? = null,
+)
+
+enum class EingangPhase {
+    /** Fotos gesammelt bzw. aus der Projektmappe: Sprechen, Tippen, Senden. */
+    EINGABE,
+
+    /** „KI denkt mit …“. */
+    LAEUFT,
+
+    /** Im Ausgangskorb, kommt nach dem naechsten Netz. */
+    WARTET,
+
+    /** Eine Karte ist da (offen oder erledigt). */
+    KARTE,
+}
+
+data class EingangZustand(
+    val phase: EingangPhase = EingangPhase.EINGABE,
+    val kontext: EingangKontext = EingangKontext(),
+    /** Gesammelte Fotos (bis 5), lokale Pfade. */
+    val fotos: List<String> = emptyList(),
+    val text: String = "",
+    val beginn: Long = 0L,
+    val karte: Karte? = null,
+    /**
+     * Fruehere Karten derselben Frage (Nachfragen mit `bezug_id`), aelteste zuerst -
+     * erscheinen ueber der aktuellen Antwort wie ein kurzer Verlauf.
+     */
+    val verlauf: List<Karte> = emptyList(),
+    /** Lokale Fotos zur aktuellen Karte (Meldung zeigt sie als Vorschau). */
+    val kartenFotos: List<String> = emptyList(),
+    /** `409`/`422` beim „Passt“ - Karte bleibt offen, Text steht darueber. */
+    val passtFehler: String? = null,
+    val sendet: Boolean = false,
+    /** Offene Karten der letzten 7 Tage („Noch zu bestaetigen“ auf Heute). */
+    val offene: List<Karte> = emptyList(),
+)
+
+/**
+ * Was der Monteur auf einer Karte geaendert hat - geht bei „Passt“ mit, und nur das
+ * (Auftrag 1.23, 3.). `null` heisst unveraendert. Die Karteninhalte schreiben hier hinein.
+ */
+class KartenEingabe {
+    /** Bestellung: die vollstaendige Liste, sobald irgendetwas geaendert wurde. */
+    var material by mutableStateOf<List<MaterialAenderung>?>(null)
+
+    /** Meldung: korrigierter Text. */
+    var text by mutableStateOf<String?>(null)
+
+    /** Zeiten: korrigierte Abschnitte. */
+    var zeiten by mutableStateOf<List<ZeitAbschnitt>?>(null)
+
+    /** Urlaub: korrigierter Antrag. */
+    var abwesenheit by mutableStateOf<AbwVorschlag?>(null)
+
+    fun passt(): Passt = Passt(
+        text = text,
+        material = material?.let(::materialJson),
+        zeiten = zeiten,
+        abwesenheit = abwesenheit,
+    )
+
+    fun zuruecksetzen() {
+        material = null
+        text = null
+        zeiten = null
+        abwesenheit = null
+    }
+}
+
+/**
+ * Ein Eingang fuer alles (Auftrag 1.23): Mikrofon, Kamera oder Text an
+ * `POST /v1/monteur/eingang`, die KI erkennt die Absicht, zurueck kommt **eine Karte**,
+ * bestaetigt wird mit „Passt“. Lebt auf Ebene der Activity, damit alle Reiter und die
+ * Projektmappe denselben Eingang teilen. Senden und „Passt“ gehen bei Netzproblemen in
+ * den Ausgangskorb - gleiche `anfrage_id` = gleiche Karte, nie doppelt.
+ */
+class EingangViewModel(private val app: MonteurApp) : ViewModel() {
+
+    private val repository = app.repository
+
+    private val _zustand = MutableStateFlow(EingangZustand())
+    val zustand: StateFlow<EingangZustand> = _zustand.asStateFlow()
+
+    private val _abgemeldet = MutableStateFlow(false)
+    val abgemeldet: StateFlow<Boolean> = _abgemeldet.asStateFlow()
+
+    private val _meldungen = Channel<String>(Channel.BUFFERED)
+    val meldungen: Flow<String> = _meldungen.receiveAsFlow()
+
+    /** Aenderungen auf der offenen Karte; je Karte neu. */
+    val eingabe = KartenEingabe()
+
+    init {
+        // Kam eine Karte aus dem Korb an, steht sie in den offenen Karten.
+        viewModelScope.launch {
+            app.korb.gemeldet.collect { liste -> if (liste.any { it.karteId != null }) offeneLaden() }
+        }
+    }
+
+    // --- Eingabe -------------------------------------------------------------------------
+
+    /** Neue Eingabe in [kontext] beginnen (z. B. aus der Projektmappe) - verwirft nichts Gesendetes. */
+    fun beginnen(kontext: EingangKontext) {
+        fotosVerwerfen()
+        eingabe.zuruecksetzen()
+        _zustand.update {
+            it.copy(phase = EingangPhase.EINGABE, kontext = kontext, text = "", karte = null, verlauf = emptyList(), kartenFotos = emptyList(), passtFehler = null)
+        }
+    }
+
+    fun textAendern(text: String) = _zustand.update { it.copy(text = text) }
+
+    /** Foto aus der Kamera dazu (bis 5). Danach optional sprechen/tippen, dann senden. */
+    fun fotoHinzu(datei: File, kontext: EingangKontext? = null) {
+        _zustand.update { z ->
+            val neu = if (z.phase == EingangPhase.EINGABE) z else z.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), text = "")
+            neu.copy(
+                fotos = (neu.fotos + datei.absolutePath).takeLast(MAX_FOTOS),
+                kontext = kontext ?: neu.kontext,
+            )
+        }
+    }
+
+    fun fotoEntfernen(pfad: String) {
+        File(pfad).delete()
+        _zustand.update { it.copy(fotos = it.fotos - pfad) }
+    }
+
+    /**
+     * Senden. Kontext geht automatisch mit: offener Bericht (`bericht_id`), offene
+     * Antwort (`bezug_id`), Termin/Projekt/Datum aus [EingangKontext].
+     */
+    fun senden(aufnahme: File? = null, text: String? = null, kontext: EingangKontext? = null) {
+        val z = _zustand.value
+        if (z.phase == EingangPhase.LAEUFT) {
+            aufnahme?.delete()
+            return
+        }
+        val k = kontext ?: z.kontext
+        val getippt = (text ?: z.text).trim().takeIf { it.isNotEmpty() }
+        val fotos = z.fotos.map(::File).filter { it.exists() }
+        if (aufnahme == null && getippt == null && fotos.isEmpty()) return
+        val offen = z.karte?.takeIf { it.istOffen || it.art == Karte.ART_FRAGE }
+        val bezug = offen?.takeIf { it.art == Karte.ART_FRAGE }?.id
+        val berichtId = offen?.takeIf { it.art == Karte.ART_BERICHT }?.bericht?.id
+        val anfrage = MonteurRepository.neueAnfrageId()
+        val vorherigeKarte = z.karte
+        _zustand.update {
+            it.copy(
+                phase = EingangPhase.LAEUFT, kontext = k, beginn = System.currentTimeMillis(),
+                passtFehler = null, kartenFotos = fotos.map(File::getAbsolutePath),
+            )
+        }
+        viewModelScope.launch {
+            try {
+                val karte = repository.eingang(
+                    anfrageId = anfrage,
+                    aufnahme = aufnahme,
+                    text = getippt,
+                    fotos = fotos,
+                    terminId = k.terminId,
+                    projektNr = k.projektNr,
+                    datum = k.datum,
+                    berichtId = berichtId,
+                    bezugId = bezug,
+                )
+                aufnahme?.delete()
+                // Fotos bleiben fuer die Meldungs-Vorschau, bis die Karte geschlossen wird.
+                _zustand.update {
+                    it.copy(
+                        fotos = emptyList(),
+                        text = "",
+                        // Nachfrage: vorige Antwort wandert in den Verlauf.
+                        verlauf = if (bezug != null && vorherigeKarte != null) it.verlauf + vorherigeKarte else emptyList(),
+                    )
+                }
+                zeigen(karte)
+            } catch (fehler: ApiFehler) {
+                when {
+                    fehler is ApiFehler.NichtAngemeldet || fehler.istVoruebergehend -> {
+                        einreihen(anfrage, aufnahme, getippt, fotos, k, berichtId, bezug)
+                        if (fehler is ApiFehler.NichtAngemeldet) abmelden()
+                    }
+                    else -> {
+                        // 422 („Zu welchem Projekt?“), 413, 415: Eingabe bleibt, Text zeigen.
+                        _zustand.update {
+                            it.copy(phase = if (vorherigeKarte != null) EingangPhase.KARTE else EingangPhase.EINGABE, text = getippt.orEmpty())
+                        }
+                        aufnahme?.delete()
+                        _meldungen.trySend(fehler.anzeigetext)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun einreihen(
+        anfrage: String,
+        aufnahme: File?,
+        text: String?,
+        fotos: List<File>,
+        k: EingangKontext,
+        berichtId: String?,
+        bezug: String?,
+    ) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    app.korb.eingangEinreihen(
+                        EingangAuftrag(
+                            anfrage_id = anfrage, text = text, termin_id = k.terminId, projekt_nr = k.projektNr,
+                            datum = k.datum, bericht_id = berichtId, bezug_id = bezug,
+                            titel = k.titel ?: text?.take(40) ?: "Eingabe",
+                        ),
+                        aufnahme,
+                        fotos,
+                    )
+                }
+                MonteurVersand.anstossen(app)
+                _zustand.update { it.copy(phase = EingangPhase.WARTET, fotos = emptyList(), text = "") }
+            } catch (_: Exception) {
+                _zustand.update { it.copy(phase = EingangPhase.EINGABE) }
+                _meldungen.trySend(KORB_FEHLER)
+            }
+        }
+    }
+
+    // --- Karte ---------------------------------------------------------------------------
+
+    /** Karte aus „Noch zu bestaetigen“ oder aus einer Korb-Meldung oeffnen. */
+    fun oeffnen(karte: Karte) {
+        eingabe.zuruecksetzen()
+        _zustand.update { it.copy(phase = EingangPhase.KARTE, karte = karte, verlauf = emptyList(), kartenFotos = emptyList(), passtFehler = null) }
+    }
+
+    fun oeffnen(id: String) {
+        viewModelScope.launch {
+            try {
+                oeffnen(repository.karte(id))
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) abmelden() else _meldungen.trySend(fehler.anzeigetext)
+            }
+        }
+    }
+
+    private fun zeigen(karte: Karte) {
+        eingabe.zuruecksetzen()
+        _zustand.update { it.copy(phase = EingangPhase.KARTE, karte = karte, passtFehler = null) }
+        offeneLaden()
+    }
+
+    /**
+     * „Passt“ mit nur den geaenderten Feldern. 409/422 → Karte bleibt offen, Text zeigen.
+     * Netz/502/5xx → Korb, gleiches Ergebnis spaeter.
+     */
+    fun passt() {
+        val karte = _zustand.value.karte ?: return
+        if (_zustand.value.sendet) return
+        val daten = eingabe.passt()
+        _zustand.update { it.copy(sendet = true, passtFehler = null) }
+        viewModelScope.launch {
+            try {
+                zeigen(repository.passt(karte.id, daten))
+            } catch (fehler: ApiFehler) {
+                when {
+                    fehler is ApiFehler.Beschaeftigt || fehler is ApiFehler.Ungueltig ->
+                        _zustand.update { it.copy(passtFehler = fehler.anzeigetext) }
+                    fehler is ApiFehler.NichtAngemeldet || fehler.istVoruebergehend -> {
+                        app.korb.passtEinreihen(PasstAuftrag(karte.id, daten, kartenTitel(karte)))
+                        MonteurVersand.anstossen(app)
+                        _zustand.update { it.copy(phase = EingangPhase.WARTET) }
+                        if (fehler is ApiFehler.NichtAngemeldet) abmelden()
+                    }
+                    else -> _zustand.update { it.copy(passtFehler = fehler.anzeigetext) }
+                }
+            } finally {
+                _zustand.update { it.copy(sendet = false) }
+            }
+        }
+    }
+
+    /** `DELETE` - die Oberflaeche fragt bei Berichten vorher nach. */
+    fun verwerfen(beiFertig: () -> Unit) {
+        val karte = _zustand.value.karte ?: return beiFertig()
+        _zustand.update { it.copy(sendet = true) }
+        viewModelScope.launch {
+            try {
+                repository.karteVerwerfen(karte.id)
+                schliessen()
+                beiFertig()
+            } catch (fehler: ApiFehler) {
+                when (fehler) {
+                    is ApiFehler.NichtGefunden -> {
+                        schliessen()
+                        beiFertig()
+                    }
+                    is ApiFehler.NichtAngemeldet -> abmelden()
+                    else -> _meldungen.trySend(fehler.anzeigetext)
+                }
+            } finally {
+                _zustand.update { it.copy(sendet = false) }
+            }
+        }
+    }
+
+    /** Karte zu, lokale Fotos weg. */
+    fun schliessen() {
+        _zustand.value.kartenFotos.forEach { File(it).delete() }
+        fotosVerwerfen()
+        eingabe.zuruecksetzen()
+        _zustand.update { it.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), kartenFotos = emptyList(), text = "", passtFehler = null) }
+        offeneLaden()
+    }
+
+    private fun fotosVerwerfen() {
+        _zustand.value.fotos.forEach { File(it).delete() }
+        _zustand.update { it.copy(fotos = emptyList()) }
+    }
+
+    /** `GET /v1/monteur/eingang`, offene Karten als Erinnerung auf „Heute“. Fehler bleiben still. */
+    fun offeneLaden() {
+        viewModelScope.launch {
+            try {
+                val liste = repository.karten()
+                _zustand.update { it.copy(offene = liste.filter(Karte::istOffen)) }
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) abmelden()
+            }
+        }
+    }
+
+    private fun abmelden() {
+        repository.lokalAbmelden()
+        _abgemeldet.value = true
+    }
+
+    override fun onCleared() {
+        // Nicht gesendete Fotos sind beim Beenden verloren - wie eine nicht gesendete Nachricht.
+        _zustand.value.fotos.forEach { File(it).delete() }
+    }
+
+    companion object {
+        const val MAX_FOTOS = 5
+        private const val KORB_FEHLER = "Konnte nicht zwischengespeichert werden. Bitte nochmal senden."
+
+        fun factory(app: MonteurApp) = viewModelFactory { initializer { EingangViewModel(app) } }
+
+        fun kartenTitel(karte: Karte): String =
+            listOfNotNull(karte.projekt?.nr?.ifBlank { null }, karte.projekt?.kunde?.ifBlank { null }).joinToString(" · ").ifBlank { karte.art }
+    }
+}

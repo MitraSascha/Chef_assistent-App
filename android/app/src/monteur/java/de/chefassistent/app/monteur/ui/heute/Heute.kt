@@ -66,6 +66,7 @@ import de.chefassistent.app.R
 import de.chefassistent.app.data.ApiFehler
 import de.chefassistent.app.monteur.MonteurApp
 import de.chefassistent.app.monteur.data.Geo
+import de.chefassistent.app.monteur.data.Karte
 import de.chefassistent.app.monteur.data.KorbMeldung
 import de.chefassistent.app.monteur.data.MonteurBericht
 import de.chefassistent.app.monteur.data.MonteurTag
@@ -179,6 +180,10 @@ fun HeuteReiter(
     innen: PaddingValues,
     beiTermin: (pid: Int, termin: String?, titel: String?, entwurf: String?) -> Unit,
     beiBericht: (BerichtStart) -> Unit,
+    /** Seit 1.23.0: offene Karten aus dem Eingang - eine Erinnerung, kein neuer Knopf. */
+    offene: List<Karte> = emptyList(),
+    beiKarte: (Karte) -> Unit = {},
+    beiKarteId: (String) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val wartend by viewModel.wartend.collectAsStateWithLifecycle()
@@ -223,13 +228,17 @@ fun HeuteReiter(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    if (offene.isNotEmpty()) {
+                        item(key = "offene") { OffeneKarten(offene, beiKarte) }
+                    }
                     if (wartend > 0) {
                         item(key = "wartend") { WartetKarte(wartend, viewModel::jetztSenden) }
                     }
                     items(meldungen, key = { "meldung_${it.schluessel}" }) { m ->
                         MeldungKarte(
                             meldung = m,
-                            beiOeffnen = m.berichtId?.let { id -> { viewModel.meldungErledigt(m); beiBericht(BerichtStart(berichtId = id, titel = m.titel)) } },
+                            beiOeffnen = m.karteId?.let { id -> { viewModel.meldungErledigt(m); beiKarteId(id) } }
+                                ?: m.berichtId?.let { id -> { viewModel.meldungErledigt(m); beiBericht(BerichtStart(berichtId = id, titel = m.titel)) } },
                             beiOk = { viewModel.meldungErledigt(m) },
                         )
                     }
@@ -423,6 +432,57 @@ private fun BerichtChip(termin: TagTermin) {
         Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = schrift)
     }
 }
+
+/** „Noch zu bestätigen (2)“ - antippen oeffnet die erste offene Karte, weitere darunter. */
+@Composable
+private fun OffeneKarten(offene: List<Karte>, beiKarte: (Karte) -> Unit) {
+    val farben = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = farben.secondaryContainer,
+        contentColor = farben.onSecondaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(vertical = 6.dp)) {
+            Text(
+                stringResource(R.string.k_offen, offene.size),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+            offene.take(3).forEach { k ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { beiKarte(k) }.padding(horizontal = 14.dp),
+                ) {
+                    Text(
+                        listOfNotNull(
+                            kartenArt(k.art),
+                            k.projekt?.let { p -> listOf(p.nr, p.kunde).filter { it.isNotBlank() }.joinToString(" · ") },
+                        ).filter { it.isNotBlank() }.joinToString(" – "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun kartenArt(art: String): String = stringResource(
+    when (art) {
+        Karte.ART_BERICHT -> R.string.k_art_bericht
+        Karte.ART_FRAGE -> R.string.k_art_frage
+        Karte.ART_BESTELLUNG -> R.string.k_art_bestellung
+        Karte.ART_MELDUNG -> R.string.k_art_meldung
+        Karte.ART_ZEITEN -> R.string.k_art_zeiten
+        Karte.ART_URLAUB -> R.string.k_art_urlaub
+        else -> R.string.k_titel
+    }
+)
 
 @Composable
 private fun WartetKarte(anzahl: Int, beiSenden: () -> Unit) {

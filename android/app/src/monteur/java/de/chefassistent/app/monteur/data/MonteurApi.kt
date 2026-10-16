@@ -53,6 +53,39 @@ interface MonteurApi {
     @GET("v1/monteur/artikel")
     suspend fun artikel(@Query("q") q: String, @Query("max") max: Int? = null): List<Artikel>
 
+    // --- Eingang: eine Karte fuer alles (1.23.0) ---
+
+    @Multipart
+    @POST("v1/monteur/eingang")
+    suspend fun eingang(
+        @Part audio: MultipartBody.Part? = null,
+        @Part("text") text: RequestBody? = null,
+        @Part fotos: List<MultipartBody.Part> = emptyList(),
+        @Part("termin_id") terminId: RequestBody? = null,
+        @Part("projekt_nr") projektNr: RequestBody? = null,
+        @Part("datum") datum: RequestBody? = null,
+        @Part("bericht_id") berichtId: RequestBody? = null,
+        @Part("bezug_id") bezugId: RequestBody? = null,
+        @Part("anfrage_id") anfrageId: RequestBody? = null,
+    ): Karte
+
+    @GET("v1/monteur/eingang")
+    suspend fun karten(): List<Karte>
+
+    @GET("v1/monteur/eingang/{eid}")
+    suspend fun karte(@Path("eid") id: String): Karte
+
+    @POST("v1/monteur/eingang/{eid}/passt")
+    suspend fun passt(@Path("eid") id: String, @Body passt: Passt): Karte
+
+    @DELETE("v1/monteur/eingang/{eid}")
+    suspend fun karteVerwerfen(@Path("eid") id: String): Response<Unit>
+
+    /** Herstelleranleitung (PDF) aus unserer Bibliothek. */
+    @Streaming
+    @GET("v1/monteur/anleitung")
+    suspend fun anleitung(@Query("pfad") pfad: String): Response<ResponseBody>
+
     // --- Bericht ---
 
     @Multipart

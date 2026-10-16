@@ -97,6 +97,8 @@ data class Projektmappe(
     val fotos: List<Foto> = emptyList(),
     /** Seit 1.22.0: Videos bleiben auf dem Server (HERO nimmt keine). */
     val videos: List<Video> = emptyList(),
+    /** Seit 1.23.0: Kommentare im HERO-Projektverlauf, neueste zuerst. */
+    val verlauf: List<Verlaufseintrag> = emptyList(),
 )
 
 @Serializable
@@ -359,9 +361,13 @@ data class Stundenkonto(
     val saldo_minuten: Int = 0,
 )
 
-/** Arten aus `ZeitAenderung.art` (enum im Vertrag). */
+/** Arten aus `ZeitAenderung.art` (enum im Vertrag). Seit 1.23.0 mit `lager` (Arbeit ohne Projekt). */
 const val ART_ARBEIT = "arbeit"
-val ZEIT_ARTEN = listOf("arbeit", "fahrt", "pause", "material", "buero", "vor_ort")
+const val ART_LAGER = "lager"
+val ZEIT_ARTEN = listOf("arbeit", "lager", "fahrt", "pause", "material", "buero", "vor_ort")
+
+/** Was der Monteur selbst anlegen darf (Auftrag 1.23, 6.); `buero`, `vor_ort` nur anzeigen. */
+val ZEIT_ARTEN_ANLEGEN = listOf("lager", "fahrt", "arbeit", "material", "pause")
 
 // --- Urlaub --------------------------------------------------------------------
 
@@ -429,4 +435,128 @@ data class AbwVorschlag(
     val halber_tag_anfang: Boolean = false,
     val halber_tag_ende: Boolean = false,
     val kommentar: String = "",
+)
+
+// --- Eingang: eine Karte fuer alles (seit 1.23.0, API.md 5d) ------------------------
+
+/**
+ * Antwort von `POST /v1/monteur/eingang`: die KI erkennt die Absicht ([art]) und
+ * fuellt **genau eines** der Felder [bericht], [antwort], [bestellung], [meldung],
+ * [zeiten], [abwesenheit]. Bestaetigt wird immer ueber `…/passt`.
+ */
+@Serializable
+data class Karte(
+    val id: String,
+    /** bericht | frage | bestellung | meldung | zeiten | urlaub */
+    val art: String,
+    /** offen | erledigt | verworfen */
+    val status: String = KARTE_OFFEN,
+    val datum: String = "",
+    /** Erkannter bzw. gesendeter Text. */
+    val text: String = "",
+    val termin_id: String? = null,
+    val projekt: KarteProjekt? = null,
+    /** Anzahl mitgeschickter Fotos. */
+    val fotos: Int = 0,
+    val bericht: MonteurBericht? = null,
+    val antwort: Antwort? = null,
+    val bestellung: Bestellung? = null,
+    val meldung: Meldung? = null,
+    val zeiten: List<ZeitAbschnitt>? = null,
+    val abwesenheit: AbwVorschlag? = null,
+    /** Frage der KI an den Monteur, gold markiert. */
+    val rueckfrage: String? = null,
+    /** Nach „Passt“: hero_nr / hero / gebucht / abwesenheit_id, hinweise[]. Frei geformt. */
+    val ergebnis: kotlinx.serialization.json.JsonObject? = null,
+) {
+    val istOffen: Boolean get() = status == KARTE_OFFEN
+    val istErledigt: Boolean get() = status == KARTE_ERLEDIGT
+
+    /** `ergebnis.hinweise` - immer anzeigen, wenn nicht leer. */
+    val hinweise: List<String>
+        get() = (ergebnis?.get("hinweise") as? kotlinx.serialization.json.JsonArray)
+            ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.orEmpty()
+
+    /** Ein Textfeld aus [ergebnis], z. B. `hero_nr` oder `hero`. */
+    fun ergebnisText(feld: String): String? =
+        (ergebnis?.get(feld) as? kotlinx.serialization.json.JsonPrimitive)?.content?.takeIf { it.isNotBlank() && it != "null" }
+
+    companion object {
+        const val ART_BERICHT = "bericht"
+        const val ART_FRAGE = "frage"
+        const val ART_BESTELLUNG = "bestellung"
+        const val ART_MELDUNG = "meldung"
+        const val ART_ZEITEN = "zeiten"
+        const val ART_URLAUB = "urlaub"
+    }
+}
+
+const val KARTE_OFFEN = "offen"
+const val KARTE_ERLEDIGT = "erledigt"
+const val KARTE_VERWORFEN = "verworfen"
+
+@Serializable
+data class KarteProjekt(
+    val id: Int,
+    val nr: String = "",
+    val kunde: String = "",
+)
+
+@Serializable
+data class Antwort(
+    val text: String = "",
+    val quellen: List<Quelle> = emptyList(),
+    val anleitungen: List<AnleitungTreffer> = emptyList(),
+    /** Katalogartikel, ohne Preise. */
+    val artikel: List<Artikel> = emptyList(),
+)
+
+@Serializable
+data class Quelle(val titel: String = "", val url: String)
+
+@Serializable
+data class AnleitungTreffer(
+    /** Fuer `GET /v1/monteur/anleitung?pfad=`. */
+    val pfad: String,
+    val seite: Int = 1,
+    val titel: String = "",
+)
+
+@Serializable
+data class Bestellung(
+    val material: List<Material> = emptyList(),
+    /** Termin, Dringlichkeit, Lieferort, wenn gesagt. */
+    val hinweis: String = "",
+)
+
+@Serializable
+data class Meldung(
+    /** nicht_angetroffen | verspaetung | mangel | nachtrag | sonstiges */
+    val art: String = "sonstiges",
+    /** Von der KI formuliert, kommt so in den HERO-Projektverlauf. */
+    val text: String = "",
+)
+
+/**
+ * `POST /v1/monteur/eingang/{id}/passt`. Nur Geaendertes schicken
+ * (`explicitNulls = false`). [material] wie beim Bericht ueber [materialJson].
+ */
+@Serializable
+data class Passt(
+    val unterschrift_png: String? = null,
+    val unterschrift_name: String? = null,
+    val zeiten_buchen: Boolean? = null,
+    val text: String? = null,
+    val material: kotlinx.serialization.json.JsonArray? = null,
+    val zeiten: List<ZeitAbschnitt>? = null,
+    val abwesenheit: AbwVorschlag? = null,
+)
+
+/** Eintrag im HERO-Projektverlauf (Kommentare von Buero und Monteuren). */
+@Serializable
+data class Verlaufseintrag(
+    val datum: String? = null,
+    /** Oft leer - dann ist die erste Zeile von [text] die Ueberschrift. */
+    val titel: String = "",
+    val text: String = "",
 )

@@ -96,6 +96,8 @@ fun AnsehenScreen(
     viewModel: AnsehenViewModel,
     beiZurueck: () -> Unit,
     beiAbmeldung: () -> Unit,
+    /** PDF: auf dieser Seite (0-basiert) oeffnen, z. B. Treffer in einer Anleitung (Monteur-App 1.23). */
+    startSeite: Int = 0,
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val kontext = LocalContext.current

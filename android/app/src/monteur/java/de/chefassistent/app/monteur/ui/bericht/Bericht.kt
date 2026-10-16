@@ -75,6 +75,12 @@ data class BerichtStart(
     /** Fuer die Anzeige, z. B. „SAN-1243 · Böse“. */
     val titel: String? = null,
     val aufnahme: String? = null,
+    /**
+     * Seit 1.23.0: Karte aus dem Eingang, zu der dieser Bericht gehoert. Dann laufen
+     * „Passt“, Verwerfen und Ergaenzen ueber `/v1/monteur/eingang` statt ueber die
+     * Bericht-Endpunkte aus 1.22.
+     */
+    val karteId: String? = null,
 )
 
 /**

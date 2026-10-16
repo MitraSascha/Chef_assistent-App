@@ -173,6 +173,75 @@ class MonteurRepository(
         }
     }
 
+    // --- Eingang (1.23.0) ---------------------------------------------------------
+
+    /**
+     * Sprache, Text und/oder bis zu 5 Fotos an den Eingang - die KI erkennt die
+     * Absicht und liefert eine [Karte]. [anfrageId] wird die Karten-ID (Ausgangskorb,
+     * nie doppelt). Fotos werden **nicht** verkleinert, das macht der Server.
+     */
+    suspend fun eingang(
+        anfrageId: String,
+        aufnahme: File? = null,
+        text: String? = null,
+        fotos: List<File> = emptyList(),
+        terminId: String? = null,
+        projektNr: String? = null,
+        datum: String? = null,
+        berichtId: String? = null,
+        bezugId: String? = null,
+    ): Karte {
+        aufnahme?.let(::groessePruefenFuer)
+        val fotoTeile = fotos.map { f ->
+            val typ = (android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(f.extension.lowercase()) ?: "image/jpeg").toMediaType()
+            MultipartBody.Part.createFormData("fotos", f.name, f.asRequestBody(typ))
+        }
+        return ruf {
+            it.eingang(
+                audio = aufnahme?.let(::audioTeil),
+                text = text?.takeIf { t -> t.isNotBlank() }?.toTextTeil(),
+                fotos = fotoTeile,
+                terminId = terminId?.toTextTeil(),
+                projektNr = projektNr?.toTextTeil(),
+                datum = datum?.toTextTeil(),
+                berichtId = berichtId?.toTextTeil(),
+                bezugId = bezugId?.toTextTeil(),
+                anfrageId = anfrageId.toTextTeil(),
+            )
+        }
+    }
+
+    suspend fun karten(): List<Karte> = ruf { it.karten() }
+
+    suspend fun karte(id: String): Karte = ruf { it.karte(id) }
+
+    /** Einziger Bestaetigungsweg, wiederholbar (erledigte Karte kommt unveraendert zurueck). */
+    suspend fun passt(id: String, passt: Passt = Passt()): Karte = ruf { it.passt(id, passt) }
+
+    suspend fun karteVerwerfen(id: String) {
+        ruf { it.karteVerwerfen(id) }
+    }
+
+    /** Anleitung in den Cache, je Pfad eine Datei (aendert sich nicht). */
+    suspend fun anleitung(pfad: String): File = withContext(Dispatchers.IO) {
+        val ordner = File(context.cacheDir, "anleitungen").apply { mkdirs() }
+        val ziel = File(ordner, "${pfad.hashCode().toUInt()}_${pfad.substringAfterLast('/').ifBlank { "anleitung.pdf" }}")
+        if (ziel.length() > 0) return@withContext ziel
+        val koerper = ruf { it.anleitung(pfad) }.body() ?: throw ApiFehler.UnlesbareAntwort(IOException("leere Antwort"))
+        val teil = File(ordner, "${ziel.name}.teil")
+        try {
+            koerper.use { k -> k.byteStream().use { ein -> teil.outputStream().use { aus -> ein.copyTo(aus) } } }
+        } catch (fehler: IOException) {
+            teil.delete()
+            throw ApiFehler.KeineVerbindung(fehler)
+        }
+        if (!teil.renameTo(ziel)) {
+            teil.delete()
+            throw ApiFehler.KeineVerbindung(IOException("Anleitung ließ sich nicht speichern"))
+        }
+        ziel
+    }
+
     /** „+ Material“: Artikelstamm durchsuchen, oft genutzte zuerst (API.md 5c). */
     suspend fun artikelSuchen(q: String, max: Int = 20): List<Artikel> = ruf { it.artikel(q, max) }
 

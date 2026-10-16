@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App: ein Eingang fuer alles (Auftrag 1.23). -->
+<resources>
+    <string name="k_mikro">Sag einfach, was ist</string>
+    <string name="k_mikro_hinweis">Bericht, Frage, Material, Info ans Büro, Zeiten, Urlaub – sprechen, tippen oder fotografieren.</string>
+    <string name="k_foto">Foto aufnehmen</string>
+    <string name="k_foto_entfernen">Foto entfernen</string>
+    <string name="k_fotos_hinweis">%1$d von %2$d Fotos. Dazu sprechen oder tippen – oder einfach senden.</string>
+    <string name="k_titel">Eingabe</string>
+    <string name="k_tippen">Oder tippen …</string>
+    <string name="k_senden">Senden</string>
+    <string name="k_denkt">KI denkt mit …</string>
+    <string name="k_denkt_hinweis">Meist 5–30 Sekunden, eine Frage mit Internetsuche bis etwa eine Minute. %1$d s\nDu kannst die App verlassen – das Ergebnis kommt trotzdem.</string>
+    <string name="k_wartet">Wartet auf Netz</string>
+    <string name="k_wartet_text">Ist gespeichert und geht automatisch raus. Die Karte erscheint dann auf „Heute“ unter „Noch zu bestätigen“.</string>
+    <string name="k_passt">Passt</string>
+    <string name="k_verwerfen">Verwerfen</string>
+    <string name="k_verwerfen_frage">Wirklich verwerfen? Was die KI daraus gemacht hat, ist dann weg.</string>
+    <string name="k_fertig">Fertig</string>
+    <string name="k_nachfragen">Nachfragen</string>
+    <string name="k_erledigt">Erledigt.</string>
+    <string name="k_erg_bestellung">Bestellschein %1$s liegt im Projekt, das Büro bestellt.</string>
+    <string name="k_erg_meldung">Steht im Projektverlauf.</string>
+    <string name="k_erg_zeiten">%1$s Zeiten gebucht.</string>
+    <string name="k_erg_urlaub">Beantragt.</string>
+    <string name="k_art_bericht">Bericht</string>
+    <string name="k_art_frage">Antwort</string>
+    <string name="k_art_bestellung">Material bestellen</string>
+    <string name="k_art_meldung">Info ans Büro</string>
+    <string name="k_art_zeiten">Zeiten</string>
+    <string name="k_art_urlaub">Urlaub</string>
+    <string name="k_offen">Noch zu bestätigen (%1$d)</string>
+</resources>

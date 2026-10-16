@@ -54,7 +54,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import de.chefassistent.app.R
 import de.chefassistent.app.monteur.data.MonteurVersand
-import de.chefassistent.app.monteur.ui.MikrofonKnopf
+import de.chefassistent.app.monteur.data.Karte
+import de.chefassistent.app.monteur.ui.karte.EingangKnoepfe
+import de.chefassistent.app.monteur.ui.karte.EingangKontext
+import de.chefassistent.app.monteur.ui.karte.EingangPhase
+import de.chefassistent.app.monteur.ui.karte.EingangViewModel
+import de.chefassistent.app.monteur.ui.karte.KarteScreen
 import de.chefassistent.app.monteur.ui.bericht.BerichtScreen
 import de.chefassistent.app.monteur.ui.bericht.BerichtStart
 import de.chefassistent.app.monteur.ui.bericht.BerichtViewModel
@@ -81,9 +86,11 @@ import kotlinx.coroutines.launch
 private const val ZIEL_EINRICHTUNG = "einrichtung"
 private const val ZIEL_START = "start"
 private const val ZIEL_PROJEKT = "projekt/{pid}?termin={termin}&titel={titel}&entwurf={entwurf}"
-private const val ZIEL_BERICHT = "bericht?id={id}&termin={termin}&projekt={projekt}&titel={titel}&aufnahme={aufnahme}"
+private const val ZIEL_BERICHT = "bericht?id={id}&termin={termin}&projekt={projekt}&titel={titel}&aufnahme={aufnahme}&karte={karte}"
 private const val ZIEL_DATEI = "datei/{uuid}?name={name}"
 private const val ZIEL_VIDEO = "video/{pid}?name={name}"
+private const val ZIEL_KARTE = "karte"
+private const val ZIEL_ANLEITUNG = "anleitung?pfad={pfad}&seite={seite}&titel={titel}"
 
 /**
  * Monteur-App (Auftrag 1.22): Einrichtung per QR-Code, dann unten drei Reiter
@@ -115,6 +122,26 @@ private fun MonteurNavigation(app: MonteurApp) {
         )
     }
 
+    // Ein Eingang fuer alle Reiter und die Projektmappe (1.23.0).
+    val eingang: EingangViewModel = viewModel(factory = EingangViewModel.factory(app))
+    val eingangZustand by eingang.zustand.collectAsState()
+    val eingangAbgemeldet by eingang.abgemeldet.collectAsState()
+    LaunchedEffect(eingangAbgemeldet) { if (eingangAbgemeldet) zurEinrichtung() }
+    LaunchedEffect(Unit) { if (app.einstellungen.istAngemeldet) eingang.offeneLaden() }
+    // Ein Bericht wird in der Bestaetigungskarte aus 1.22 gezeigt, alles andere auf der Karte.
+    val karte = eingangZustand.karte
+    LaunchedEffect(karte?.id, eingangZustand.phase) {
+        val b = karte?.bericht
+        if (eingangZustand.phase == EingangPhase.KARTE && karte != null && karte.art == Karte.ART_BERICHT && b != null) {
+            val titel = karte.projekt?.let { listOf(it.nr, it.kunde).filter(String::isNotBlank).joinToString(" · ") }
+            eingang.schliessen()
+            nav.navigate("bericht?id=${b.id.q()}&termin=${karte.termin_id.q()}&projekt=&titel=${titel.q()}&aufnahme=&karte=${karte.id.q()}") {
+                popUpTo(ZIEL_KARTE) { inclusive = true }
+            }
+        }
+    }
+    val zurKarte: () -> Unit = { nav.navigate(ZIEL_KARTE) { launchSingleTop = true } }
+
     NavHost(navController = nav, startDestination = start) {
         composable(ZIEL_EINRICHTUNG) {
             val vm: EinrichtungViewModel = viewModel(factory = EinrichtungViewModel.factory(app))
@@ -132,7 +159,38 @@ private fun MonteurNavigation(app: MonteurApp) {
                     nav.navigate("projekt/$pid?termin=${termin.q()}&titel=${titel.q()}&entwurf=${entwurf.q()}")
                 },
                 beiBericht = zuBericht,
+                eingang = eingang,
+                zurKarte = zurKarte,
             )
+        }
+
+        composable(ZIEL_KARTE) {
+            KarteScreen(
+                viewModel = eingang,
+                app = app,
+                beiZurueck = { nav.popBackStack() },
+                beiAnleitung = { t ->
+                    nav.navigate("anleitung?pfad=${t.pfad.q()}&seite=${t.seite}&titel=${t.titel.q()}")
+                },
+            )
+        }
+
+        composable(
+            ZIEL_ANLEITUNG,
+            arguments = listOf(
+                textArgument("pfad"),
+                navArgument("seite") { type = NavType.IntType; defaultValue = 1 },
+                textArgument("titel"),
+            ),
+        ) { e ->
+            val pfad = e.arguments?.getString("pfad").leerAlsNull() ?: return@composable
+            val seite = e.arguments?.getInt("seite") ?: 1
+            val name = e.arguments?.getString("titel").leerAlsNull()?.let { "$it.pdf" } ?: pfad.substringAfterLast('/')
+            val vm: AnsehenViewModel = viewModel(
+                factory = AnsehenViewModel.factory(name, { app.repository.anleitung(pfad) }, app.repository::lokalAbmelden)
+            )
+            // `seite` ist 1-basiert (Vertrag), der Betrachter zaehlt ab 0.
+            AnsehenScreen(vm, beiZurueck = { nav.popBackStack() }, beiAbmeldung = zurEinrichtung, startSeite = (seite - 1).coerceAtLeast(0))
         }
 
         composable(
@@ -153,6 +211,17 @@ private fun MonteurNavigation(app: MonteurApp) {
                 beiAbmeldung = zurEinrichtung,
                 beiDatei = { uuid, name -> nav.navigate("datei/${Uri.encode(uuid)}?name=${Uri.encode(name)}") },
                 beiVideo = { name -> nav.navigate("video/$pid?name=${Uri.encode(name)}") },
+                beiEingang = { aufnahme, foto ->
+                    val k = EingangKontext(terminId = termin, titel = a.getString("titel").leerAlsNull())
+                    if (foto != null) {
+                        eingang.beginnen(k)
+                        eingang.fotoHinzu(foto, k)
+                    } else if (aufnahme != null) {
+                        eingang.beginnen(k)
+                        eingang.senden(aufnahme = aufnahme, kontext = k)
+                    }
+                    zurKarte()
+                },
                 beiBericht = { berichtId, projektNr ->
                     zuBericht(
                         BerichtStart(
@@ -170,7 +239,7 @@ private fun MonteurNavigation(app: MonteurApp) {
             ZIEL_BERICHT,
             arguments = listOf(
                 textArgument("id"), textArgument("termin"), textArgument("projekt"),
-                textArgument("titel"), textArgument("aufnahme"),
+                textArgument("titel"), textArgument("aufnahme"), textArgument("karte"),
             ),
         ) { e ->
             val a = e.arguments
@@ -180,6 +249,7 @@ private fun MonteurNavigation(app: MonteurApp) {
                 projektNr = a?.getString("projekt").leerAlsNull(),
                 titel = a?.getString("titel").leerAlsNull(),
                 aufnahme = a?.getString("aufnahme").leerAlsNull(),
+                karteId = a?.getString("karte").leerAlsNull(),
             )
             val vm: BerichtViewModel = viewModel(factory = BerichtViewModel.factory(app, start))
             BerichtScreen(vm, beiZurueck = { nav.popBackStack() }, beiAbmeldung = zurEinrichtung)
@@ -224,8 +294,11 @@ private fun StartReiter(
     beiAbmeldung: () -> Unit,
     beiProjekt: (pid: Int, termin: String?, titel: String?, entwurf: String?) -> Unit,
     beiBericht: (BerichtStart) -> Unit,
+    eingang: EingangViewModel,
+    zurKarte: () -> Unit,
 ) {
     var reiter by rememberSaveable { mutableStateOf(Reiter.HEUTE) }
+    val eingangZustand by eingang.zustand.collectAsState()
     val heute: HeuteViewModel = viewModel(factory = HeuteViewModel.factory(app))
     val zeiten: ZeitenViewModel = viewModel(factory = ZeitenViewModel.factory(app))
     val urlaub: UrlaubViewModel = viewModel(factory = UrlaubViewModel.factory(app))
@@ -309,6 +382,15 @@ private fun StartReiter(
                     innen = inhalt,
                     beiTermin = beiProjekt,
                     beiBericht = beiBericht,
+                    offene = eingangZustand.offene,
+                    beiKarte = { k ->
+                        eingang.oeffnen(k)
+                        zurKarte()
+                    },
+                    beiKarteId = { id ->
+                        eingang.oeffnen(id)
+                        zurKarte()
+                    },
                 )
                 Reiter.ZEITEN -> ZeitenReiter(zeiten, inhalt)
                 Reiter.URLAUB -> UrlaubReiter(urlaub, inhalt)
@@ -349,30 +431,26 @@ private fun StartReiter(
                     .height(innen.calculateBottomPadding() + MIKRO_PLATZ + 24.dp)
                     .background(Brush.verticalGradient(0f to grund.copy(alpha = 0f), 0.25f to grund, 1f to grund)),
             )
-            MikrofonKnopf(
-                steuerung = aufnahme,
-                // Je Reiter eine eigene Frage: Bericht, Zeiten oder Urlaub.
-                beschriftung = stringResource(
-                    when (reiter) {
-                        Reiter.HEUTE -> R.string.m_mikro_frage
-                        Reiter.ZEITEN -> R.string.m_mikro_zeiten
-                        Reiter.URLAUB -> R.string.m_mikro_urlaub
-                    }
-                ),
-                hinweis = stringResource(
-                    when (reiter) {
-                        Reiter.HEUTE -> R.string.m_mikro_hinweis
-                        Reiter.ZEITEN -> R.string.m_mikro_zeiten_hinweis
-                        Reiter.URLAUB -> R.string.m_mikro_urlaub_hinweis
-                    }
-                ),
-                beiFertig = { datei ->
-                    when (reiter) {
-                        // Ohne Termin: der Server findet ihn selbst (Uhrzeit + Plan).
-                        Reiter.HEUTE -> beiBericht(BerichtStart(aufnahme = datei.absolutePath))
-                        Reiter.ZEITEN -> zeiten.verstehen(datei, null)
-                        Reiter.URLAUB -> urlaub.verstehen(datei, null)
-                    }
+            // Seit 1.23.0 derselbe Eingang auf allen Reitern: die KI erkennt, was gemeint ist.
+            // Ohne Termin findet der Server ihn selbst (Uhrzeit + Plan); ein anderer Tag geht als `datum` mit.
+            val kontext = EingangKontext(
+                datum = when (reiter) {
+                    Reiter.HEUTE -> heute.zustand.value.anker.takeIf { it != java.time.LocalDate.now() }?.toString()
+                    Reiter.ZEITEN -> zeiten.zustand.value.datum.takeIf { it != java.time.LocalDate.now() }?.toString()
+                    Reiter.URLAUB -> null
+                },
+            )
+            EingangKnoepfe(
+                aufnahme = aufnahme,
+                beiAufnahme = { datei ->
+                    eingang.beginnen(kontext)
+                    eingang.senden(aufnahme = datei, kontext = kontext)
+                    zurKarte()
+                },
+                beiFoto = { datei ->
+                    eingang.beginnen(kontext)
+                    eingang.fotoHinzu(datei, kontext)
+                    zurKarte()
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
