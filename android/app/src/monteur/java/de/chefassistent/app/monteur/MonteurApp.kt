@@ -64,6 +64,21 @@ class MonteurApp : Application() {
     override fun onCreate() {
         super.onCreate()
         de.chefassistent.app.monteur.push.Benachrichtigungen.kanaeleAnlegen(this)
+        fotoResteAufraeumen()
+    }
+
+    /**
+     * Fotos aus nie gesendeten Eingaben (App beendet, Zurueck statt Senden) bleiben im Cache
+     * liegen. Was dort aelter als ein Tag ist, ist kein Entwurf mehr. Der Korb liegt in
+     * `filesDir` und ist davon nicht betroffen.
+     */
+    private fun fotoResteAufraeumen() {
+        Thread {
+            val grenze = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+            java.io.File(cacheDir, "fotos").walkBottomUp().forEach { f ->
+                if (f.lastModified() < grenze && (f.isFile || f.list().isNullOrEmpty())) f.delete()
+            }
+        }.start()
     }
 
     /** Abmelden (1.24.0): Push-Token beim Server entfernen, abmelden, Token loeschen, Abholen stoppen. */
