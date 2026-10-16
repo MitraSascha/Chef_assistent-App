@@ -249,7 +249,7 @@ fun ProjektScreen(
     beiBericht: (berichtId: String?, projektNr: String?) -> Unit,
     beiVideo: (name: String) -> Unit = {},
     /** Seit 1.23.0: Mikrofon/Kamera an den Eingang, mit diesem Termin als Kontext. */
-    beiEingang: (aufnahme: File?, foto: File?) -> Unit = { _, _ -> },
+    beiEingang: (aufnahme: File?, fotos: List<File>) -> Unit = { _, _ -> },
     /** Lokal vorgemerkte eigene Meldungen/Bestellungen, bis sie im HERO-Verlauf stehen. */
     vorlaeufig: List<Verlaufseintrag> = emptyList(),
 ) {
@@ -329,8 +329,8 @@ fun ProjektScreen(
                 aufnahme = aufnahme,
                 aktiv = mappe != null,
                 groesse = 64.dp,
-                beiAufnahme = { beiEingang(it, null) },
-                beiFoto = { beiEingang(null, it) },
+                beiAufnahme = { beiEingang(it, emptyList()) },
+                beiFotos = { beiEingang(null, it) },
                 modifier = Modifier.fillMaxWidth(),
             )
             // Datei direkt ins Projekt, ohne KI (aus 1.22) - klein, damit es nicht mit dem Eingang konkurriert.

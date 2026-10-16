@@ -19,6 +19,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.activity.result.PickVisualMediaRequest
+import de.chefassistent.app.monteur.ui.karte.GALERIE_MAX
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -59,20 +62,33 @@ fun HochladenKnopf(aktiv: Boolean, beiDatei: (datei: File, name: String, text: S
     var menue by remember { mutableStateOf(false) }
     // Ueberlebt, dass Android die App waehrend der Kamera beendet.
     var kameraPfad by rememberSaveable { mutableStateOf<String?>(null) }
-    var gewaehlt by rememberSaveable { mutableStateOf<String?>(null) }
+    // Mehrere auf einmal (Galerie) - ein Dialog, eine Beschreibung fuer alle.
+    var gewaehlt by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+    // Kam das Foto aus der Kamera, bietet der Dialog „+ naechstes Foto“ an (Serienaufnahme).
+    var ausKamera by rememberSaveable { mutableStateOf(false) }
     val keineKamera = stringResource(R.string.m_keine_app)
 
     val aufgenommen: (Boolean) -> Unit = { ok ->
         val datei = kameraPfad?.let(::File)
         kameraPfad = null
         if (datei != null) {
-            if (ok && datei.length() > 0) gewaehlt = datei.path else datei.delete()
+            if (ok && datei.length() > 0) gewaehlt = listOf(datei.path) else datei.delete()
         }
     }
     val foto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture(), aufgenommen)
     val video = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo(), aufgenommen)
     val auswahl = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { kopieren(kontext, it) }?.let { gewaehlt = it.path }
+        uri?.let { kopieren(kontext, it) }?.let {
+            ausKamera = false
+            gewaehlt = listOf(it.path)
+        }
+    }
+    val galerie = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(GALERIE_MAX)) { uris ->
+        val dateien = uris.mapNotNull { kopieren(kontext, it) }
+        if (dateien.isNotEmpty()) {
+            ausKamera = false
+            gewaehlt = dateien.map(File::getPath)
+        }
     }
 
     fun kamera(istVideo: Boolean) {
@@ -81,6 +97,7 @@ fun HochladenKnopf(aktiv: Boolean, beiDatei: (datei: File, name: String, text: S
         val datei = File(ordner, if (istVideo) "Video_$stempel.mp4" else "Foto_$stempel.jpg")
         val uri = FileProvider.getUriForFile(kontext, "${kontext.packageName}.dateien", datei)
         kameraPfad = datei.path
+        ausKamera = !istVideo
         try {
             if (istVideo) video.launch(uri) else foto.launch(uri)
         } catch (_: ActivityNotFoundException) {
@@ -118,6 +135,18 @@ fun HochladenKnopf(aktiv: Boolean, beiDatei: (datei: File, name: String, text: S
                 onClick = { menue = false; kamera(true) },
             )
             DropdownMenuItem(
+                text = { Text(stringResource(R.string.m_hochladen_galerie)) },
+                leadingIcon = { Icon(Icons.Outlined.PhotoLibrary, null) },
+                onClick = {
+                    menue = false
+                    try {
+                        galerie.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+                    } catch (_: ActivityNotFoundException) {
+                        Toast.makeText(kontext, keineKamera, Toast.LENGTH_LONG).show()
+                    }
+                },
+            )
+            DropdownMenuItem(
                 text = { Text(stringResource(R.string.m_hochladen_datei)) },
                 leadingIcon = { Icon(Icons.Outlined.AttachFile, null) },
                 onClick = {
@@ -132,16 +161,22 @@ fun HochladenKnopf(aktiv: Boolean, beiDatei: (datei: File, name: String, text: S
         }
     }
 
-    gewaehlt?.let { pfad ->
-        val datei = File(pfad)
-        var text by rememberSaveable(pfad) { mutableStateOf("") }
+    if (gewaehlt.isNotEmpty()) {
+        val dateien = gewaehlt.map(::File)
+        var text by rememberSaveable(gewaehlt) { mutableStateOf("") }
+        val hochladen = {
+            gewaehlt = emptyList()
+            // Bei mehreren: Name bleibt je Datei, die Beschreibung gilt fuer alle.
+            dateien.forEach { beiDatei(it, it.name, text) }
+        }
         AlertDialog(
             onDismissRequest = {},
             title = { Text(stringResource(R.string.m_hochladen_titel)) },
             text = {
                 Column {
                     Text(
-                        "${datei.name} · ${groesseText(datei.length())}",
+                        if (dateien.size == 1) "${dateien[0].name} · ${groesseText(dateien[0].length())}"
+                        else kontext.getString(R.string.m_hochladen_mehrere, dateien.size, groesseText(dateien.sumOf(File::length))),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -155,15 +190,21 @@ fun HochladenKnopf(aktiv: Boolean, beiDatei: (datei: File, name: String, text: S
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    gewaehlt = null
-                    beiDatei(datei, datei.name, text)
-                }) { Text(stringResource(R.string.m_hochladen_los)) }
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                    TextButton(onClick = hochladen) { Text(stringResource(R.string.m_hochladen_los)) }
+                    if (ausKamera) {
+                        // Serienaufnahme: hochladen (ueber den Korb) und gleich wieder die Kamera.
+                        TextButton(onClick = {
+                            hochladen()
+                            kamera(false)
+                        }) { Text(stringResource(R.string.m_hochladen_naechstes)) }
+                    }
+                }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    gewaehlt = null
-                    datei.delete()
+                    gewaehlt = emptyList()
+                    dateien.forEach(File::delete)
                 }) { Text(stringResource(R.string.m_abbrechen)) }
             },
         )
@@ -184,7 +225,7 @@ private fun kopieren(kontext: Context, uri: Uri): File? = try {
         if (c.moveToFirst()) c.getString(0) else null
     }?.substringAfterLast('/')?.takeIf { it.isNotBlank() } ?: "Datei_${System.currentTimeMillis()}"
     val ordner = File(kontext.cacheDir, "monteur_hochladen").apply { mkdirs() }
-    val ziel = File(ordner, name)
+    val ziel = File(ordner, name).let { f -> if (f.exists()) File(ordner, "${System.nanoTime()}_$name") else f }
     kontext.contentResolver.openInputStream(uri)?.use { ein -> ziel.outputStream().use { ein.copyTo(it) } }
     ziel.takeIf { it.length() > 0 }
 } catch (_: Exception) {

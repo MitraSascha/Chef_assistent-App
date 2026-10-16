@@ -151,7 +151,7 @@ fun KarteScreen(
                         EingangPhase.EINGABE -> EingangKnoepfe(
                             aufnahme = aufnahme,
                             beiAufnahme = { viewModel.senden(aufnahme = it) },
-                            beiFoto = { viewModel.fotoHinzu(it) },
+                            beiFotos = { viewModel.fotosHinzu(it) },
                             modifier = Modifier.align(Alignment.CenterHorizontally),
                         )
                         EingangPhase.KARTE -> if (karte != null) KartenKnoepfe(
@@ -162,7 +162,7 @@ fun KarteScreen(
                             beiVerwerfen = { verwerfenFrage = true },
                             beiFertig = schliessen,
                             beiAufnahme = { viewModel.senden(aufnahme = it) },
-                            beiFoto = { viewModel.fotoHinzu(it) },
+                            beiFotos = { viewModel.fotosHinzu(it) },
                         )
                         else -> Unit
                     }
@@ -403,7 +403,7 @@ private fun KartenKnoepfe(
     beiVerwerfen: () -> Unit,
     beiFertig: () -> Unit,
     beiAufnahme: (File) -> Unit,
-    beiFoto: (File) -> Unit,
+    beiFotos: (List<File>) -> Unit,
 ) {
     val navy = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.hauptflaeche, contentColor = Color.White)
     when {
@@ -411,7 +411,7 @@ private fun KartenKnoepfe(
             EingangKnoepfe(
                 aufnahme = aufnahme,
                 beiAufnahme = beiAufnahme,
-                beiFoto = beiFoto,
+                beiFotos = beiFotos,
                 groesse = 60.dp,
                 beschriftung = stringResource(R.string.k_nachfragen),
                 hinweis = null,

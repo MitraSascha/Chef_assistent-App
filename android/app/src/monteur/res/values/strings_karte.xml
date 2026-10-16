@@ -4,6 +4,7 @@
     <string name="k_mikro">Sag einfach, was ist</string>
     <string name="k_mikro_hinweis">Bericht, Frage, Material, Info ans Büro, Zeiten, Urlaub – sprechen, tippen oder fotografieren.</string>
     <string name="k_foto">Foto aufnehmen</string>
+    <string name="k_galerie">Fotos aus der Galerie</string>
     <string name="k_foto_entfernen">Foto entfernen</string>
     <string name="k_fotos_hinweis">%1$d von %2$d Fotos. Dazu sprechen oder tippen – oder einfach senden.</string>
     <string name="k_titel">Eingabe</string>

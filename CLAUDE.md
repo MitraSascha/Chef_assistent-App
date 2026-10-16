@@ -805,6 +805,16 @@ Auftrag `AUFTRAG-APP-1.25.md`. Druckproben, Gasleitung, Inbetriebnahme, Wartung 
 
 Am Gerät geprüft (2026-10-16), als Sascha an `UNB-795`, **nichts nach HERO**: getippt „Druckprobe Trinkwasser 10 bar, 30 Minuten, dicht“ → Karte Trinkwasser mit 10 bar/30 min, fehlend Werkstoff/Prüfmedium/Druckabfall hervorgehoben. Werkstoff gewählt, „Passt“ → 409, Metall gespeichert, nur noch Prüfmedium/Druckabfall. Vorlage auf Gasleitung gewechselt, `abschnitt` übernommen. „ja“ gesetzt, Vorschau zeigt PDF mit Briefkopf und dem „ja“. Karte danach verworfen. **Ungeprüft:** Unterschrift, „Passt“ bis HERO, 502, Foto vom Manometer, Korb. **Ans Backend:** im PDF steht beim Projekt „UNB-795 – -795 | --, --, --“.
 
+### Monteur: mehrere Fotos, Galerie (2026-10-16, ohne Vertragsänderung)
+
+Anlass: Fragen zu Bildern und Baustellendoku mit 10+ Fotos. Ein Wunsch ans Backend (mehr als 5 Fotos im Eingang, `foto_ids` für schon hochgeladene Fotos, Fragen zu Fotos aus der Projektmappe) ist beim Server in Arbeit.
+
+- **Eingang:** links neben dem Mikrofon ein Galerie-Knopf (`GalerieKnopf`, Fotoauswahl mit Mehrfachauswahl, ohne Speicher-Berechtigung), rechts die Kamera. Beide liefern eine Liste an `EingangViewModel.fotosHinzu`. Weitere Fotos: in der Eingabe einfach erneut Kamera oder Galerie.
+- **Grenze 5** (`MAX_FOTOS`, Vertrag). Was darüber hinausgeht, meldet die App („Höchstens 5 Fotos auf einmal – N nicht übernommen.“). Vorher flog still das älteste Foto raus.
+- **Projektmappe** („Foto/Video/Datei“): neu „Fotos aus der Galerie“ (Fotos und Videos, mehrere, eine Beschreibung für alle, jede Datei einzeln über den Korb) und nach einem Kamerafoto „Hochladen + nächstes Foto“ (Serienaufnahme). Keine Grenze.
+
+**Am Gerät ungeprüft** (Handy war beim Bauen nicht angeschlossen).
+
 ### Monteur: Vorgeschichte (seit v1.26.0)
 
 Auftrag `AUFTRAG-APP-1.26.md`. Was an der Baustelle schon war, **ohne Knopf**. Code: `ui/projekt/Vorgeschichte.kt` (Block und testbare Helfer `geraetZeile`, `quellenText`, `hatInhalt`).

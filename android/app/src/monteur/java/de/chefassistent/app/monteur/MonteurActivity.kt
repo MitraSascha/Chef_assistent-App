@@ -271,11 +271,11 @@ private fun MonteurNavigation(app: MonteurApp, terminAnfrage: TerminAnfrage?, an
                 beiAbmeldung = zurEinrichtung,
                 beiDatei = { uuid, name -> nav.navigate("datei/${Uri.encode(uuid)}?name=${Uri.encode(name)}") },
                 beiVideo = { name -> nav.navigate("video/$pid?name=${Uri.encode(name)}") },
-                beiEingang = { aufnahme, foto ->
+                beiEingang = { aufnahme, fotos ->
                     val k = EingangKontext(terminId = termin, titel = a.getString("titel").leerAlsNull())
-                    if (foto != null) {
+                    if (fotos.isNotEmpty()) {
                         eingang.beginnen(k)
-                        eingang.fotoHinzu(foto, k)
+                        eingang.fotosHinzu(fotos, k)
                     } else if (aufnahme != null) {
                         eingang.beginnen(k)
                         eingang.senden(aufnahme = aufnahme, kontext = k)
@@ -574,9 +574,9 @@ private fun StartReiter(
                     eingang.senden(aufnahme = datei, kontext = kontext)
                     zurKarte()
                 },
-                beiFoto = { datei ->
+                beiFotos = { dateien ->
                     eingang.beginnen(kontext)
-                    eingang.fotoHinzu(datei, kontext)
+                    eingang.fotosHinzu(dateien, kontext)
                     zurKarte()
                 },
                 modifier = Modifier

@@ -73,6 +73,9 @@
     <string name="m_hochladen_knopf">Foto/Video/Datei</string>
     <string name="m_hochladen_foto">Foto aufnehmen</string>
     <string name="m_hochladen_video">Video aufnehmen</string>
+    <string name="m_hochladen_galerie">Fotos aus der Galerie</string>
+    <string name="m_hochladen_mehrere">%1$d Dateien · %2$s</string>
+    <string name="m_hochladen_naechstes">Hochladen + nächstes Foto</string>
     <string name="m_hochladen_datei">Datei wählen</string>
     <string name="m_hochladen_titel">Ins Projekt hochladen</string>
     <string name="m_hochladen_beschreibung">Kurze Beschreibung (optional)</string>

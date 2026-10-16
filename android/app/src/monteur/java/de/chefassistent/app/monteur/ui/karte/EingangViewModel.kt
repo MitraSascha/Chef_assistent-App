@@ -176,14 +176,27 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
 
     fun textAendern(text: String) = _zustand.update { it.copy(text = text) }
 
-    /** Foto aus der Kamera dazu (bis 5). Danach optional sprechen/tippen, dann senden. */
-    fun fotoHinzu(datei: File, kontext: EingangKontext? = null) {
+    /** Foto aus der Kamera dazu. Danach optional sprechen/tippen, dann senden. */
+    fun fotoHinzu(datei: File, kontext: EingangKontext? = null) = fotosHinzu(listOf(datei), kontext)
+
+    /**
+     * Fotos aus Kamera oder Galerie dazu, hoechstens [MAX_FOTOS] (Vertrag). Was darueber
+     * hinausgeht, wird **nicht** still verworfen, sondern gemeldet. Frueher flog dabei
+     * unbemerkt das aelteste Foto raus.
+     */
+    fun fotosHinzu(dateien: List<File>, kontext: EingangKontext? = null) {
+        if (dateien.isEmpty()) return
+        var zuviel = 0
         _zustand.update { z ->
             val neu = if (z.phase == EingangPhase.EINGABE) z else z.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), text = "")
-            neu.copy(
-                fotos = (neu.fotos + datei.absolutePath).takeLast(MAX_FOTOS),
-                kontext = kontext ?: neu.kontext,
-            )
+            val frei = (MAX_FOTOS - neu.fotos.size).coerceAtLeast(0)
+            val rein = dateien.take(frei)
+            zuviel = dateien.size - rein.size
+            neu.copy(fotos = neu.fotos + rein.map(File::getAbsolutePath), kontext = kontext ?: neu.kontext)
+        }
+        if (zuviel > 0) {
+            dateien.takeLast(zuviel).forEach(File::delete)
+            _meldungen.trySend(ZU_VIELE_FOTOS.format(MAX_FOTOS, zuviel))
         }
     }
 
@@ -486,6 +499,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
 
     companion object {
         const val MAX_FOTOS = 5
+        private const val ZU_VIELE_FOTOS = "Höchstens %d Fotos auf einmal – %d nicht übernommen."
         private const val KORB_FEHLER = "Konnte nicht zwischengespeichert werden. Bitte nochmal senden."
 
         fun factory(app: MonteurApp) = viewModelFactory { initializer { EingangViewModel(app) } }
