@@ -85,6 +85,8 @@ import de.chefassistent.app.ui.komponenten.GruppenBlock
 import de.chefassistent.app.ui.komponenten.GruppenKarte
 import de.chefassistent.app.ui.komponenten.GruppenTitel
 import de.chefassistent.app.ui.komponenten.LeerHinweis
+import de.chefassistent.app.ui.theme.aufErfolg
+import de.chefassistent.app.ui.theme.erfolg
 import de.chefassistent.app.ui.theme.gold
 import de.chefassistent.app.ui.theme.hauptflaeche
 
@@ -93,8 +95,6 @@ import de.chefassistent.app.ui.theme.hauptflaeche
  * [UrlaubLogik], hier wird nur gezeichnet.
  */
 
-/** Gruen fuer „genehmigt“: Material 3 hat keine Erfolgsfarbe, `primary` ist hier Navy. */
-private val Gruen = Color(0xFF2E7D32)
 
 /** Dunkle Schrift auf Gold (Gold nie als Schrift auf Weiss, nur als Flaeche). */
 private val SchriftAufGold = Color(0xFF1F1A12)
@@ -599,7 +599,7 @@ private fun StatusChip(status: String) {
     val name = statusName(status)?.let { stringResource(it) } ?: status
     val (flaeche, schrift) = when (status) {
         STATUS_BEANTRAGT -> MaterialTheme.colorScheme.gold to SchriftAufGold
-        STATUS_GENEHMIGT -> Gruen to Color.White
+        STATUS_GENEHMIGT -> MaterialTheme.colorScheme.erfolg to MaterialTheme.colorScheme.aufErfolg
         STATUS_ABGELEHNT -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
         else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }

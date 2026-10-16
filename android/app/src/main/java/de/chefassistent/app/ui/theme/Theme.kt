@@ -123,6 +123,15 @@ val ColorScheme.auswahl: Color get() = if (istDunkel) Color(0xFF26323C) else Col
 /** Untere Navigationsleiste (Seitenleiste im Web). */
 val ColorScheme.navigationsflaeche: Color get() = if (istDunkel) Color(0xFF0F1418) else Color(0xFFEFEDE8)
 
+/**
+ * Erfolg, z. B. „fertig“, „genehmigt“, „BER-1330“. Material 3 kennt keine
+ * Erfolgsfarbe, und `primary` ist hier Navy. Hell etwa 5:1 auf Weiss.
+ */
+val ColorScheme.erfolg: Color get() = if (istDunkel) Color(0xFF81C784) else Color(0xFF2E7D32)
+
+/** Schrift auf einer Flaeche in [erfolg]. */
+val ColorScheme.aufErfolg: Color get() = if (istDunkel) Color(0xFF0F1418) else Color.White
+
 /** Links im Fliesstext. */
 val ColorScheme.link: Color get() = if (istDunkel) Color(0xFF8CC0EA) else Color(0xFF2A5F86)
 

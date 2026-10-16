@@ -58,6 +58,7 @@ import de.chefassistent.app.monteur.ui.rememberAufnahme
 import de.chefassistent.app.R
 import de.chefassistent.app.ui.komponenten.FehlerSnackbar
 import de.chefassistent.app.ui.komponenten.GruppenKarte
+import de.chefassistent.app.ui.theme.erfolg
 import de.chefassistent.app.ui.theme.hauptflaeche
 import kotlinx.coroutines.delay
 
@@ -349,7 +350,6 @@ internal fun navyKnopf() = ButtonDefaults.buttonColors(
     contentColor = Color.White,
 )
 
-/** Gruen fuer „fertig“; das Farbschema hat keins. Im Dunkeln heller, damit es lesbar bleibt. */
+/** Gruen fuer „fertig“ aus dem Theme ([erfolg]). */
 @Composable
-internal fun gruen(): Color =
-    if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color(0xFF81C784) else Color(0xFF2E7D32)
+internal fun gruen(): Color = MaterialTheme.colorScheme.erfolg

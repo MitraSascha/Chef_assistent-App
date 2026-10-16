@@ -75,6 +75,7 @@ import de.chefassistent.app.monteur.data.TagProjekt
 import de.chefassistent.app.monteur.ui.bericht.BerichtStart
 import de.chefassistent.app.ui.komponenten.FehlerSnackbar
 import de.chefassistent.app.ui.komponenten.LeerHinweis
+import de.chefassistent.app.ui.theme.erfolg
 import de.chefassistent.app.ui.theme.gold
 import de.chefassistent.app.ui.theme.link
 import kotlinx.coroutines.Job
@@ -408,8 +409,7 @@ internal fun Zeile(symbol: androidx.compose.ui.graphics.vector.ImageVector, text
 @Composable
 private fun BerichtChip(termin: TagTermin) {
     val fertig = termin.berichte.firstOrNull { it.status == MonteurBericht.STATUS_FERTIG }
-    val dunkel = MaterialTheme.colorScheme.background.let { (it.red + it.green + it.blue) / 3f < 0.5f }
-    val gruen = if (dunkel) Color(0xFF7FD3A8) else Color(0xFF1E7A4C)
+    val gruen = MaterialTheme.colorScheme.erfolg
     val (text, grund, schrift) = when {
         termin.berichte.isEmpty() -> Triple(stringResource(R.string.m_bericht_fehlt), MaterialTheme.colorScheme.gold, MaterialTheme.colorScheme.onSecondary)
         fertig != null -> Triple(fertig.hero_nr ?: "✓", gruen.copy(alpha = 0.18f), gruen)

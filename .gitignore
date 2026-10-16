@@ -18,3 +18,6 @@ android/**/build/
 # Bildschirmfotos vom Testen am Geraet
 *.png
 !android/**/res/**/*.png
+
+# Arbeitskopien der Subagenten
+.claude/worktrees/

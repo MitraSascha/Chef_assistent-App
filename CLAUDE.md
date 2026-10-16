@@ -17,7 +17,7 @@ Antworten und Kommunikation auf **Deutsch**. Code und Commit-Messages auf Englis
 
 | Datei | Rolle |
 |---|---|
-| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.21.0 |
+| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.22.0 |
 | `API.md` | Erläuterung + Kotlin/Retrofit-Gerüst, für Android geschrieben |
 | `WINDOWS-HUELLE.md` | Auftrag für die Windows-App (WebView2-Hülle, Nachrichten `hallo`/`zeigen`/`oeffnen`/`ergebnis`/`sprechen`) |
 
@@ -116,10 +116,13 @@ Bauen (PowerShell, aus `android/`):
 
 ```powershell
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-.\gradlew assembleDebug
+.\gradlew assembleBueroDebug      # Chef-Assistent
+.\gradlew assembleMonteurDebug    # Mitra Monteur
 ```
 
-Die APK landet unter `android/app/build/outputs/apk/debug/app-debug.apk`.
+**Zwei Apps aus einem Projekt (seit 2026-10-16, Auftrag 1.22):** Flavor `buero` (`de.chefassistent.app`, „Chef-Assistent“) und `monteur` (`de.mitra.monteur`, „Mitra Monteur“, eigenes Symbol). `src/main` hält Datenschicht (`data/`), Theme, `ui/komponenten`, `ui/antwort`, `ui/ansehen`, Markdown und das gemeinsame Manifest (Rechte, FileProvider, WorkManager). `src/buero` hält `ChefAssistentApp`, `MainActivity`, Freihand-Kachel und alle Büro-Bildschirme, `src/monteur` die Monteur-App (Paket `de.chefassistent.app.monteur`, siehe „Monteur-App“ unten). Tests der Büro-Bildschirme liegen in `src/testBuero`, der Monteur-App in `src/testMonteur`, der Datenschicht in `src/test`. Der `VersandArbeiter` kennt die App nur über die Schnittstelle `Koerbe`.
+
+Die APKs landen unter `android/app/build/outputs/apk/buero/debug/app-buero-debug.apk` bzw. `…/monteur/debug/app-monteur-debug.apk`.
 
 **AGP 9 bringt Kotlin selbst mit.** Das Plugin `org.jetbrains.kotlin.android` darf **nicht** in `app/build.gradle.kts` stehen — der Build bricht sonst ab. `kotlin.plugin.compose` und `kotlin.plugin.serialization` bleiben.
 
@@ -170,7 +173,7 @@ Auf dem Galaxy S25 installiert und mit echtem Token gegen den Server gefahren:
 
 Nebenbei belegt: `shared_prefs/chef_assistent_zugang.xml` enthält nur verschlüsselte Schlüssel und Werte — das Token liegt nicht im Klartext.
 
-149 Unit-Tests laufen (`./gradlew testDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
+149 Unit-Tests laufen (`./gradlew testBueroDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
 
 ### Anmeldung (`ui/anmeldung/`, `ui/geraete/`, seit v1.10.0)
 
@@ -676,18 +679,48 @@ Am 2026-09-28 abgeglichen mit Einstellungen, Eigene Dateien und Reminder (Samsun
 
 ### Fehlt noch
 
-`POST /v1/vorlesen` (Server-Stimme; im Repository vorhanden, in der Oberfläche nicht verdrahtet — es läuft Android-TTS) · Widget „Heute“ (optional laut Auftrag 1.16) · Release-Signierung · UI-Tests · Monteur-App (Auftrag 1.22, Server 1.22.0, noch nicht begonnen).
+`POST /v1/vorlesen` (Server-Stimme; im Repository vorhanden, in der Oberfläche nicht verdrahtet — es läuft Android-TTS) · Widget „Heute“ (optional laut Auftrag 1.16) · Release-Signierung · UI-Tests.
 
 ### Testen vom Dev-PC aus
 
 ```powershell
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-.\gradlew assembleDebug
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r app\build\outputs\apk\debug\app-debug.apk
+.\gradlew assembleBueroDebug
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r app\build\outputs\apk\buero\debug\app-buero-debug.apk
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" shell am start -n de.chefassistent.app/.MainActivity
 ```
 
 Screenshot zum Nachsehen: `adb exec-out screencap -p > bild.png`.
+
+## Monteur-App (`android/app/src/monteur/`, seit v1.22.0)
+
+Zweite, schlanke App „Mitra Monteur“ (`de.mitra.monteur`, goldenes M auf Navy) aus demselben Projekt, Flavor `monteur`. Auftrag `AUFTRAG-APP-1.22.md`, API.md 5c. **Keine** Chat-, Ablage-, Angebots-, Plantafel-, Modellwahl-, Auftrags- oder Videofunktionen. Monteur-Zugänge erreichen nur `/v1/monteur/…`, `/v1/ich`, `/v1/abmelden` (sonst 403). Grundsatz: Handy raus, sagen oder tippen, was gemacht wurde, den Rest macht die KI.
+
+| Datei | Aufgabe |
+|---|---|
+| `MonteurApp` | eine `Einstellungen`-Instanz für `MonteurRepository` und (nur zum Testen) `AssistentRepository`, dazu `korb` |
+| `MonteurActivity` | Navigation: Einrichtung · Start (Reiter **Heute · Zeiten · Urlaub**, schwebendes Mikrofon, ⋮ mit Abmelden) · Projektmappe · Bericht · Datei (gemeinsamer Betrachter) |
+| `data/MonteurApi`, `MonteurRepository`, `MonteurVertrag` | alle `/v1/monteur/…`-Endpunkte. Gleicher OkHttp-Aufbau über `Netzwerk.dienst()` |
+| `data/MonteurKorb`, `MonteurVersand` | verschlüsselter Ausgangskorb (Berichte samt Aufnahme, Abschlüsse samt Unterschrift, Zeiten, Anträge) und WorkManager-Versand. Jeder Eintrag trägt seine `anfrage_id`, der Server legt nie doppelt an |
+| `ui/Mikrofon.kt` | großer Knopf: antippen = Start/Stopp, gedrückt halten = Aufnahme bis Loslassen. Bildschirm bleibt an |
+| `ui/einrichtung` | QR-Code `mitra-monteur:<URL>#<Code>` über den Scanner der Play-Dienste (**keine Kamera-Berechtigung**) oder Code abtippen. Langer Druck aufs M: Server-Adresse und **Anmeldung mit Büro-Zugang** zum Testen |
+| `ui/heute` | Termine je Tag/Woche, Wischen blättert. Karte: Uhrzeit, Kunde, Adresse (→ `geo:`), Telefon (→ Wählen), Beschreibung, Kollegen, Chip „Bericht fehlt“ (gold) / „Entwurf“ / „BER-…“ (grün). Korb-Banner und Rückmeldungen mit „Öffnen“ |
+| `ui/projekt` | Projektmappe (2a): Notizen des Büros hervorgehoben, Unterlagen nach Art → PDF im Betrachter, `datei: null` = „PDF folgt“, Fotoraster (`?vorschau=true`) mit Vollbild. Unten groß „Bericht“ bzw. „Entwurf weiterbearbeiten“ |
+| `ui/bericht` | Eingabe (Mikrofon/Text) → „KI schreibt den Bericht …“ → Bestätigungskarte (Tätigkeit, Stunden-Stepper 0,25 h entprellt, Material mit Rückfrage-Chips und ausdrücklichem `artikel_nr: null` über `materialJson`, Zeiten, Fürs Büro) → Unterschrift (Vollbild, PNG weiß, ≤ 2 MB) → „Passt – nach HERO“ → BER-Nummer. `anfrage_id` im `SavedStateHandle` |
+| `ui/zeiten` | Tag mit Einträgen und Summen, Stempeluhr (nur heute), Anlegen/Ändern/Löschen (nur `neu`), Verstehen → Vorschläge → „Übernehmen“, Banner „Tag bestätigen“ ab 15 Uhr bzw. nach dem letzten Termin (auch für vergangene, nicht eingereichte Tage), Stundenkonto des Monats |
+| `ui/urlaub` | Stand, Liste mit Status-Chips, „Urlaub beantragen“ und „Krank melden“ (Bottom Sheet mit `DateRangePicker`), Verstehen → Vorschlag, Wischen zieht `beantragt` zurück (`jahr` aus `von`) |
+
+- **Jeder 401** setzt im jeweiligen ViewModel `abgemeldet`, die Activity führt zur Einrichtung („Bitte im Büro neuen QR-Code holen“). Bei Berichten und Zeiten geht das Ungesendete vorher in den Korb.
+- **Was in den Korb geht:** Bericht anlegen, Bericht abschließen, Zeit anlegen, Antrag stellen. **Nicht:** Ergänzen per Diktat, Zeit ändern/löschen, Stempeln, Einreichen, Zurückziehen (dort weiß nur der Server, ob es noch geht). Scheitert Verstehen am Netz, bleibt die Aufnahme mit „Nochmal“ liegen.
+- **Farben:** wie die Büro-App, dazu `ColorScheme.erfolg`/`aufErfolg` (grün für fertig, genehmigt, BER-Nummer).
+- Gebaut am 2026-10-16. Heute, Projektmappe und Einrichtung von Hand, Bericht, Zeiten und Urlaub von Subagenten in eigenen Worktrees nach festen Schnittstellen (Platzhalter in der Activity), danach zusammengeführt. 144 Unit-Tests (`./gradlew testMonteurDebugUnitTest`).
+
+**Noch nicht am Gerät geprüft.** Testen mit Büro-Zugang (Sascha hat eine HERO-Zuordnung). **„Passt – nach HERO“, Zeiten und Urlaub schreiben echt in HERO:** nur nach Rückfrage, Berichte nur am Testprojekt `UNB-795`.
+
+**Offene Fragen ans Backend:**
+- Urlaub: Gilt bei einem einzelnen Tag `halber_tag_anfang` oder `_ende`? Dürfen Krankmeldungen halbe Tage haben? `verstehen` liefert keine Tage, die App schätzt Mo–Fr ohne Feiertage.
+- Zeiten: Wie entfernt man die Projekt-Nr. eines Eintrags (`projekt_nr: ""`)? Liefert `GET /v1/monteur/zeiten` für vergangene Tage `stempel`? Welche Arten kann `verstehen` liefern, die beim Anlegen nicht erlaubt sind (die App bucht Unbekanntes als `arbeit`, sichtbar vor dem Übernehmen)?
+- Bericht: Was bedeutet 409 bei `POST /v1/monteur/berichte` (läuft noch oder keine HERO-Zuordnung)? Die App zeigt `detail` und behält die Aufnahme. Der Bericht trägt keinen Kundennamen, bei automatischer Zuordnung fehlt er deshalb im Kopf und im Unterschriftsnamen.
 
 ## Windows-Client (`windows/`)
 
@@ -733,11 +766,11 @@ Geprüft am 2026-09-24 auf dem Dev-PC: Start lädt die Anmeldeseite, das Server-
 
 ## Vertragsdateien holen
 
-Stand 2026-10-16, v1.21.0 (neu: Gesprächsliste mit `angeheftet`, Suche `GET /v1/gespraeche?q=`, `PATCH … {"angeheftet"}`, Neugestaltung, API.md 1e und 7, Auftrag `AUFTRAG-APP-1.21.md`. Auf dem Server liegt schon 1.22.0 mit der Monteur-App, bewusst noch nicht übernommen. Davor v1.20.0 mit Modellwahl je Gespräch, `GET /v1/modelle`, `PATCH /v1/gespraeche/{gid}`, `modell`/`denkaufwand` in Chat und Sprache, Fortschritt per `GET /v1/chat/{anfrage_id}?seit=`, `POST …/abbrechen` und `…/zwischenruf`, API.md 1c und 1d, Auftrag `AUFTRAG-APP-1.20.md`. Davor v1.19.0 mit HERO-Projekt anheften, `POST`/`GET /v1/hero-mappe`, `hero_projekt` an `NotizOrdner`, API.md 4 „HERO-Projekt anheften“, Auftrag `AUFTRAG-APP-1.19.md`. Davor v1.18.0 mit HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
+Stand 2026-10-16, v1.22.0 (neu: Monteur-App, `/v1/monteur/…` mit Einrichtung per QR-Code, Tagen, Projektmappe, Berichten, Zeiten, Stempeluhr, Stundenkonto, Abwesenheiten, Verstehen, `rolle` in `GET /v1/ich`, API.md 5c, Auftrag `AUFTRAG-APP-1.22.md`; der Stand wurde am selben Tag einmal erweitert, die Prüfsummen unten sind die neueren. Davor v1.21.0 mit Gesprächsliste mit `angeheftet`, Suche `GET /v1/gespraeche?q=`, `PATCH … {"angeheftet"}`, Neugestaltung, API.md 1e und 7, Auftrag `AUFTRAG-APP-1.21.md`. Davor v1.20.0 mit Modellwahl je Gespräch, `GET /v1/modelle`, `PATCH /v1/gespraeche/{gid}`, `modell`/`denkaufwand` in Chat und Sprache, Fortschritt per `GET /v1/chat/{anfrage_id}?seit=`, `POST …/abbrechen` und `…/zwischenruf`, API.md 1c und 1d, Auftrag `AUFTRAG-APP-1.20.md`. Davor v1.19.0 mit HERO-Projekt anheften, `POST`/`GET /v1/hero-mappe`, `hero_projekt` an `NotizOrdner`, API.md 4 „HERO-Projekt anheften“, Auftrag `AUFTRAG-APP-1.19.md`. Davor v1.18.0 mit HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
 
 ```
-30c08862291d8e77fbc2c36ba2a96f6d11d3d4ce69b2d569a1d6b4096b659221  openapi.json
-3084f20b297df060efbf3ee1fdaf01d27c13fa67ecae4dc2a468297db98499e6  API.md
+6470912c9f152f4ac258a076acff3bd4674f37a886b3d996e37fac6fd2b80ed8  openapi.json
+9a285058a530e3c58189c58e831a8315e3612d7b8f0cd6eaede3f172bbc236fa  API.md
 ```
 
 `WINDOWS-HUELLE.md` kommt ebenfalls vom Server, ist aber der Auftrag für den Agenten, der die Windows-App baut, und gehört nicht in dieses Projekt.
