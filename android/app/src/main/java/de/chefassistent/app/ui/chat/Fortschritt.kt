@@ -36,6 +36,10 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.ArrowUpward
+import de.chefassistent.app.ui.komponenten.MZeichen
+import de.chefassistent.app.ui.theme.gold
+import de.chefassistent.app.ui.theme.hauptflaeche
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -225,17 +229,15 @@ fun FortschrittBlase(laufend: LaufendeAnfrage) {
     // Lokal weiterzaehlen, aber nie hinter dem zuruecklaufen, was der Server sagt.
     val sekunden = maxOf((jetzt - laufend.beginn) / 1000, fortschritt.dauer_s.toLong())
 
-    Card(
-        shape = RoundedCornerShape(6.dp, 22.dp, 22.dp, 22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    // Seit v1.21.0 wie die Antworten: ohne Blase, mit dem M-Zeichen, Kreisel in Gold.
+    Row(modifier = Modifier.fillMaxWidth()) {
+        MZeichen(Modifier.padding(top = 2.dp))
         Column(
-            modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 6.dp),
+            modifier = Modifier.weight(1f).padding(start = 10.dp, top = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.gold)
                 Text(
                     text = arbeitetZeile(fortschritt.schritte, fortschritt.werkzeuge, sekunden),
                     style = MaterialTheme.typography.bodyMedium,
@@ -409,10 +411,19 @@ fun SendenKnopf(
     // Alle drei rund und gleich gross: ein breiter Knopf mit Text drueckte das
     // Eingabefeld auf eine schmale Spalte zusammen (am S25 gesehen). Was der Knopf
     // tut, sagen Farbe, Symbol und der Platzhalter "Zwischenruf an den Assistenten …".
-    val form = Modifier.size(56.dp)
+    // Seit v1.21.0 in der Eingabekarte: 48 dp, Senden Navy, Zwischenruf Gold.
+    val form = Modifier.size(48.dp)
     when (knopf) {
-        SendeKnopf.SENDEN -> FilledIconButton(onClick = beiSenden, enabled = aktiv, modifier = form) {
-            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.chat_senden))
+        SendeKnopf.SENDEN -> FilledIconButton(
+            onClick = beiSenden,
+            enabled = aktiv,
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.hauptflaeche,
+                contentColor = Color.White,
+            ),
+            modifier = form,
+        ) {
+            Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(R.string.chat_senden))
         }
 
         SendeKnopf.STOPP -> FilledIconButton(
@@ -427,7 +438,15 @@ fun SendenKnopf(
             Icon(Icons.Default.Stop, contentDescription = "Stopp")
         }
 
-        SendeKnopf.ZWISCHENRUF -> FilledIconButton(onClick = beiZwischenruf, enabled = aktiv, modifier = form) {
+        SendeKnopf.ZWISCHENRUF -> FilledIconButton(
+            onClick = beiZwischenruf,
+            enabled = aktiv,
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.gold,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+            ),
+            modifier = form,
+        ) {
             Icon(Icons.Default.Campaign, contentDescription = ZWISCHENRUF_MARKE)
         }
     }

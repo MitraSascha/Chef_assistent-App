@@ -134,6 +134,8 @@ fun AufgabenScreen(
 
     GrosseKopfleiste(
         titel = stringResource(R.string.aufgaben_titel),
+        // Reiter der unteren Leiste: schmaler Kopf wie Chat und Kalender (seit v1.21.0).
+        kompakt = true,
         untertitel = uebersicht?.let {
             if (zustand.person == null) {
                 pluralStringResource(R.plurals.aufgaben_offen_anzahl, it.offen, it.offen)

@@ -668,8 +668,8 @@ class AssistentRepository(
      * Laedt eine Datei aus `dateien` der Chat-Antwort in den Cache und gibt sie
      * als [File] zurueck. Der Aufrufer reicht sie per FileProvider weiter.
      */
-    suspend fun dateiLaden(pfad: String): File = withContext(Dispatchers.IO) {
-        val koerper = ruf { it.datei(pfad) }
+    suspend fun dateiLaden(pfad: String, anzeigen: Boolean = false): File = withContext(Dispatchers.IO) {
+        val koerper = ruf { it.datei(pfad, if (anzeigen) true else null) }
         val ordner = File(context.cacheDir, "dateien").apply { mkdirs() }
         val ziel = File(ordner, dateiname(pfad))
         herunterladen(koerper, ziel)

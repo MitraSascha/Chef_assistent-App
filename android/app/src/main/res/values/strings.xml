@@ -76,6 +76,16 @@
     <string name="nav_kalender">Kalender</string>
     <string name="nav_ablage">Ablage</string>
     <string name="nav_offen">Offen</string>
+    <string name="ansehen">Ansehen</string>
+    <string name="kalender_heute_frei">Heute keine eigenen Termine.</string>
+    <string name="kalender_heute_weitere">+ %1$d weitere</string>
+    <string name="ansehen_oeffnen_mit">Öffnen mit …</string>
+    <string name="ansehen_seiten">%1$d Seiten</string>
+    <string name="ansehen_seite_eins">1 Seite</string>
+    <string name="ansehen_pdf_kaputt">Das PDF lässt sich hier nicht anzeigen. „Öffnen mit …“ versucht es mit einer anderen App.</string>
+    <string name="ansehen_bild_kaputt">Das Bild lässt sich hier nicht anzeigen.</string>
+    <string name="ansehen_nochmal">Nochmal versuchen</string>
+    <string name="link_im_ordner_zeigen">Im Ordner zeigen</string>
     <string name="loeschen_titel">Gespräch löschen?</string>
     <string name="loeschen_frage">„%1$s“ wird auf dem Server gelöscht. Das lässt sich nicht rückgängig machen.</string>
     <string name="loeschen_ja">Löschen</string>

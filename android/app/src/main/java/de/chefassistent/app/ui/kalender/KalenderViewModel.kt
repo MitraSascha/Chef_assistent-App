@@ -9,6 +9,7 @@ import de.chefassistent.app.data.AssistentRepository
 import de.chefassistent.app.data.HeroTerminErgebnis
 import de.chefassistent.app.data.KalenderAntwort
 import de.chefassistent.app.data.KalenderTermin
+import de.chefassistent.app.data.PERSON_ICH
 import de.chefassistent.app.data.Personen
 import de.chefassistent.app.data.TerminKategorie
 import kotlinx.coroutines.Job
@@ -40,6 +41,11 @@ data class KalenderZustand(
     val formular: HeroFormular? = null,
     /** `GET /v1/kalender/kategorien`, geladen beim ersten Oeffnen des Formulars. */
     val kategorien: List<TerminKategorie> = emptyList(),
+    /**
+     * Karte „Heute“ (Auftrag 1.21, B3): die eigenen Termine von heute, unabhaengig
+     * von Zeitraum und Personenwahl. `null` = noch nicht geladen.
+     */
+    val heuteTermine: List<KalenderTermin>? = null,
 ) {
     val von: LocalDate get() = zeitraum(anker, woche).first
     val bis: LocalDate get() = zeitraum(anker, woche).second
@@ -60,6 +66,7 @@ class KalenderViewModel(private val repository: AssistentRepository) : ViewModel
     init {
         personenLaden()
         laden()
+        heuteLaden()
     }
 
     fun fehlerVerwerfen() = _zustand.update { it.copy(fehler = null) }
@@ -93,6 +100,20 @@ class KalenderViewModel(private val repository: AssistentRepository) : ViewModel
     fun aktualisieren() {
         personenLaden(neu = true)
         laden()
+        heuteLaden()
+    }
+
+    /** `GET /v1/kalender?von=<heute>&bis=<heute>&personen=ich`. Fehler bleiben still, die Woche meldet sie. */
+    fun heuteLaden() {
+        val heute = LocalDate.now().toString()
+        viewModelScope.launch {
+            try {
+                val antwort = repository.kalender(heute, heute, listOf(PERSON_ICH))
+                _zustand.update { it.copy(heuteTermine = antwort.termine) }
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) behandleFehler(fehler)
+            }
+        }
     }
 
     // --- HERO-Termine anlegen und verschieben (API.md 5b) ----------------------

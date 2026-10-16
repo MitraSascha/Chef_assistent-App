@@ -7,6 +7,7 @@ import android.text.util.Linkify
 import android.widget.TextView
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import de.chefassistent.app.ui.theme.link
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -38,7 +39,7 @@ fun MarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     farbe: Color = MaterialTheme.colorScheme.onSurface,
-    linkFarbe: Color = MaterialTheme.colorScheme.primary,
+    linkFarbe: Color = MaterialTheme.colorScheme.link,
 ) {
     val kontext = LocalContext.current
     val markwon = remember(kontext) {

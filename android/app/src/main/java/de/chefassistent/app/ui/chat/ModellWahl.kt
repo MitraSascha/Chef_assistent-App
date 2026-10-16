@@ -105,19 +105,26 @@ fun ModellLeiste(
     aktiv: Boolean,
     beiModell: (String) -> Unit,
     beiDenkaufwand: (String) -> Unit,
+    /** Seit v1.21.0 in der Eingabekarte: davor das angeheftete Projekt. */
+    vorne: @Composable () -> Unit = {},
 ) {
-    if (auswahl == null) return
+    if (auswahl == null) {
+        // Alter Server ohne Modellwahl: nur das Projekt.
+        Row(modifier = Modifier.horizontalScroll(rememberScrollState())) { vorne() }
+        return
+    }
     var infoOffen by remember { mutableStateOf(false) }
     var teuerInfoOffen by remember { mutableStateOf(false) }
     var rueckfrage by remember { mutableStateOf<ModellEintrag?>(null) }
     val teuer = auswahl.modell(modell)?.takeIf { it.teuer }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            vorne()
             ModellFeld(
                 auswahl = auswahl,
                 wert = modell,
@@ -295,9 +302,9 @@ private fun AuswahlChip(
         selected = gewaehlt,
         onClick = beiKlick,
         enabled = aktiv,
-        shape = CircleShape,
+        shape = RoundedCornerShape(15.dp),
         modifier = Modifier.semantics { contentDescription = beschreibung },
-        label = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        label = { Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon = symbol,
         trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(FilterChipDefaults.IconSize)) },
         colors = FilterChipDefaults.filterChipColors(

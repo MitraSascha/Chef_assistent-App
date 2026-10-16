@@ -17,7 +17,7 @@ Antworten und Kommunikation auf **Deutsch**. Code und Commit-Messages auf Englis
 
 | Datei | Rolle |
 |---|---|
-| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.20.0 |
+| `openapi.json` | **Quelle der Wahrheit**, OpenAPI 3.1, `Chef-Assistent` v1.21.0 |
 | `API.md` | Erläuterung + Kotlin/Retrofit-Gerüst, für Android geschrieben |
 | `WINDOWS-HUELLE.md` | Auftrag für die Windows-App (WebView2-Hülle, Nachrichten `hallo`/`zeigen`/`oeffnen`/`ergebnis`/`sprechen`) |
 
@@ -136,7 +136,7 @@ ui/      theme/, komponenten/ (One-UI-Bausteine), MarkdownText.kt, anmeldung/, c
 
 `AssistentRepository` ist die austauschbare Schicht: ViewModels kennen nur diese Fassade und nie Retrofit, HTTP-Codes oder `IOException`. Fehler kommen dort bereits als `ApiFehler` mit fertigem `anzeigetext` heraus.
 
-Navigation: `MainActivity` hält u. a. die Ziele Anmeldung, Chat, Termine, Verbrauch und Geräte. Der Chat trägt eine Schublade mit der Gesprächsliste und den Verweisen auf Termine und Verbrauch. Ein 401 wirft von jedem Bildschirm aus zurück zur Anmeldung und räumt den Verlauf ab.
+Navigation (seit v1.21.0): unten eine `NavigationBar` mit **Chat · Kalender · Ablage · Offen** (`HauptNavigation` in `MainActivity`). Der Chat bleibt unten im Stapel, die anderen Reiter liegen einzeln darüber (`popUpTo(ZIEL_CHAT) { saveState }`). Startseite des Reiters Chat ist die **Gesprächsliste**. Die Leiste steht über der Liste und den drei anderen Reitern, nicht im offenen Gespräch. `listeOffen` liegt deshalb in `AppNavigation`, nicht im Chat. Die Schublade (Menü der Liste) hält Plantafel, Angebote, Aufträge, Verbrauch und Einstellungen. Ein 401 wirft von jedem Bildschirm aus zurück zur Anmeldung und räumt den Verlauf ab.
 
 ### Angebundene Endpunkte
 
@@ -170,7 +170,7 @@ Auf dem Galaxy S25 installiert und mit echtem Token gegen den Server gefahren:
 
 Nebenbei belegt: `shared_prefs/chef_assistent_zugang.xml` enthält nur verschlüsselte Schlüssel und Werte — das Token liegt nicht im Klartext.
 
-141 Unit-Tests laufen (`./gradlew testDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
+149 Unit-Tests laufen (`./gradlew testDebugUnitTest`) — sie sichern vor allem die Zusage aus `API.md`, dass neue Serverfelder die App nicht umbringen.
 
 ### Anmeldung (`ui/anmeldung/`, `ui/geraete/`, seit v1.10.0)
 
@@ -315,6 +315,33 @@ Ein bereits getippter Entwurf wird **nicht ueberschrieben**, der erkannte Text h
 **Nicht `View.keepScreenOn` nehmen.** Damit blieb das Flag am S25 nach einer Unterbrechung am Fenster haengen (`dumpsys window`: `fl=81810180`, Bit 0x80), das Display waere bis zum Schliessen der App angeblieben. Deshalb `window.addFlags`/`clearFlags`, und `ON_STOP` loescht das Flag zusaetzlich.
 
 Am Geraet geprueft (2026-10-13), per `dumpsys power`: Wach-Lock nur waehrend der Aufnahme, nach Stopp und nach Home + Rueckkehr wieder frei. Nach Home: Hinweiszeile da, Erkanntes im Eingabefeld, nichts gesendet. Die Ein/Aus-Taste selbst ist ungeprueft (Geraet laesst sich per adb nicht entsperren), sie loest aber dasselbe `ON_STOP` aus.
+
+### Gesprächsliste und Neugestaltung (seit v1.21.0)
+
+Auftrag `AUFTRAG-APP-1.21.md`, API.md 1e. **Dieselbe Handschrift wie die Weboberfläche** (`/web/app.css`): Navy `#1B3244`, Gold `#DA9C4D`, ruhige Flächen.
+
+**Teil A, Gesprächsliste** (`ui/chat/GespraechListe.kt`, Logik testbar in `GespraechGruppen.kt`):
+
+- Gruppen nach `geaendert` in Ortszeit: Angeheftet · Heute · Gestern · Letzte 7 Tage · Letzte 30 Tage · je Monat. Monate starten eingeklappt. Gemerkt wird nur, was vom Standard abweicht (`Einstellungen.umgeklappteGruppen`).
+- Zweite Zeile: Uhrzeit (heute/gestern), „Mo 12.10.“ (7 Tage), sonst „28.9.“. `laeuft` = goldener Punkt.
+- **Langer Druck** → „Oben anheften“/„Nicht mehr anheften“ und „Löschen“ (mit Rückfrage). Im offenen Gespräch ein Pin-Symbol in der Kopfleiste. `PATCH` mit nur `{"angeheftet": …}`, danach Liste neu laden.
+- **Alter Server:** `angeheftet` ist `Boolean?`. `null` heißt nicht angeheftet, der Menüpunkt und das Pin-Symbol fehlen dann.
+- Lupe → `GET /v1/gespraeche?q=` ab 2 Zeichen, 250 ms entprellt, Treffer als eine Gruppe. Zurück schließt erst die Suche.
+- Schwebender Knopf „Neues Gespräch“ (Navy, abgerundetes Quadrat). Im Gespräch steht „Neues Gespräch“ im ⋮-Menü, damit der Titel Platz hat. Zurück führt aus dem Gespräch in die Liste.
+- **Vorsicht `neuesGespraech()`:** baut `ChatZustand` neu und übernimmt nur aufgezählte Felder. Neue Felder, die ein Gespräch überleben sollen (z. B. `anzeigename`, `umgeklappteGruppen`), müssen dort eingetragen werden.
+
+**Teil B, Gestaltung:**
+
+- **Farben** in `theme/Theme.kt` nach B1. Abweichung: Im Dunkeln ist `primary` das Linkblau `#8CC0EA`, nicht `#2F5878`. Material nimmt `primary` auch als Textfarbe, und `#2F5878` hätte auf `#1B232A` nur etwa 2:1. Gefüllte Flächen in der Hauptfarbe nehmen `ColorScheme.hauptflaeche`. Dazu kommen `gold`, `auswahl`, `navigationsflaeche` und `link`. Gold nie als Schrift auf Weiß.
+- **Bausteine** in `ui/komponenten/Marken.kt`: `MZeichen` (Navy-Quadrat, goldenes M) und `TypMarke` (Kürzel PDF/JPG/XLSX, Ordner gold mit Symbol). Karten 12 dp (`AUSSEN` in `Gestaltung.kt`).
+- **Chat:** Antworten ohne Blase mit M-Zeichen, auch die Fortschritts- und Arbeitet-Blase. Systemzeilen mittig. Datei-Karten: Typmarke · Name · Ordnerpfad mit „ › “ · „Ansehen“ (Navy) · Ordner-Symbol, langer Druck teilt. Antworten mit nur `dateien` bekommen dieselben Karten (`linkAusPfad`).
+- **Eingabekarte** (`Eingabekarte`): oben das Feld, darunter Anhang (📎-Menü wie früher die Kamera), dann seitlich scrollbar Projekt-Chip (angeheftet gold mit ✕) und Modell-Chips (`ModellLeiste(vorne = …)`), rechts Mikrofon und runder 48-dp-Knopf: Senden Navy ↑, Stopp rot, Zwischenruf gold.
+- **Leerer Chat:** M-Zeichen, „Hallo <anzeigename>!“ aus `GET /v1/ich`, drei Vorschläge (`vorschlagSenden`, senden im aktuellen leeren Gespräch).
+- **Ansehen in der App** (`ui/ansehen/`, Route `ansehen?pfad=`): `GET /v1/datei?…&anzeigen=true`. PDF über `PdfRenderer` (Seiten in doppelter Bildschirmbreite, eine Sperre, weil der Renderer nur eine Seite zugleich öffnen kann), Fotos, Videos mit Media3 ExoPlayer, `.md` über Markwon, `.txt/.csv/.log` als Text. Pinch- und Doppeltipp-Zoom; verschoben wird nur bei Zoom > 1, sonst blättert die Liste. Kopf: Name, Seitenzahl, „Öffnen mit …“, Teilen. Andere Typen gehen wie bisher per ACTION_VIEW raus (`kannAnsehen`). Gilt für Chat und Ablage.
+- **Kalender:** schmale Kopfleiste (`GrosseKopfleiste(kompakt = true)`, auch Ablage und Offen) mit „12.–18. Oktober 2026 · KW 42“. Termine als getönte Karten in der Personenfarbe statt Randstrich. Darüber fest die Karte **„Heute“** (`GET /v1/kalender?von=heute&bis=heute&personen=ich`, höchstens 3, laufender Termin mit goldenem Rand; Antippen → Tagesansicht). Sie steht fest oben, weil die Woche beim Öffnen zu „heute“ springt und eine Listenzeile weggescrollt wäre.
+- Ablage: Typmarken statt Symbolen.
+
+Am Gerät geprüft (2026-10-16), dunkel und hell: Gruppen (Gestern 5, Letzte 7 Tage 22), Anheften und Lösen an „Hallo“ (danach wieder gelöst), Suche „nur lesen“/„Rechnung“/„Treptower“, Datei-Karten im Gespräch „Zeig mir mal bitte die Rechnung …“, PDF RE-1530 mit „3 Seiten“ und Doppeltipp-Zoom, `_Projekt.md` als formatierte Notiz, Kalender mit KW und Heute-Karte, Ablage mit goldenen Ordnern, leerer Chat mit „Hallo Sascha!“. **Ungeprüft:** Pinch-Zoom (per adb nicht auslösbar), Foto und Video im Betrachter, Vorschlags-Chips (würden senden), Monatsgruppen auf-/zuklappen, alter Server ohne `angeheftet`, laufender Termin in der Heute-Karte (heute keine eigenen Termine).
 
 ### Modellwahl, Fortschritt, Stopp, Zwischenruf (seit v1.20.0)
 
@@ -649,7 +676,7 @@ Am 2026-09-28 abgeglichen mit Einstellungen, Eigene Dateien und Reminder (Samsun
 
 ### Fehlt noch
 
-`POST /v1/vorlesen` (Server-Stimme; im Repository vorhanden, in der Oberfläche nicht verdrahtet — es läuft Android-TTS) · Widget „Heute“ (optional laut Auftrag 1.16) · Release-Signierung · UI-Tests.
+`POST /v1/vorlesen` (Server-Stimme; im Repository vorhanden, in der Oberfläche nicht verdrahtet — es läuft Android-TTS) · Widget „Heute“ (optional laut Auftrag 1.16) · Release-Signierung · UI-Tests · Monteur-App (Auftrag 1.22, Server 1.22.0, noch nicht begonnen).
 
 ### Testen vom Dev-PC aus
 
@@ -700,17 +727,17 @@ dotnet test ChefAssistent.Tests      # 66 Tests: Pfadprüfung, Wurzeln, Tastenko
 **Server 1.10.0 (2026-09-30, Version 1.1.0, auf `main` gepusht, Commit `26f0ef9`, Repo öffentlich):** `StandardAdresse` ist `https://assistent.mitra-sanitaer.de/`, die alte steht als `TailscaleAdresse` daneben. Die Anmeldung mit Passwort und Code macht die Weboberfläche, die Hülle braucht dafür nichts. **Bestehende Installationen bleiben auf Tailscale:** die Hülle schreibt `einstellungen.json` schon beim ersten Start vollständig, eine gesetzte `startUrl` wird nie umgeschrieben. Wechsel von Hand, siehe README „Server-Adresse wechseln“ (localStorage hängt am Origin, also neu anmelden). Die Offline-Seite rät bei `*.ts.net` zu Tailscale/Büronetz, sonst zur Internetverbindung.
 
 Geprüft am 2026-09-24 auf dem Dev-PC: Start lädt die Anmeldeseite, das Server-Symbol wird übernommen, ein Zweitstart beendet sich sofort, eine falsche `startUrl` zeigt die Offline-Seite.
-**Gegen v1.9.0 abgeglichen am 2026-09-28: keine Änderung nötig.** Die Hülle hängt nicht an der API-Version, sondern nur an `WINDOWS-HUELLE.md` (auf dem Server unverändert seit 2026-09-24) und an den Nachrichten, die `app.js` schickt. Neue Funktionen (Aufgaben, Plantafel, Aufträge …) kommen mit der Weboberfläche. `app.js`/`plantafel.js` schicken weiterhin nur `hallo` (Wurzeln aus `GET /v1/freigabe`), `zeigen`, `oeffnen` und empfangen `ergebnis`, `sprechen`. Das Plantafel-PDF und die Notizlinks der Aufgaben laufen über `zeigen`. **Erst wenn `app.js` einen neuen `typ` schickt oder `WINDOWS-HUELLE.md` sich ändert, muss die Hülle nachziehen.** Erneut geprüft am 2026-10-14 gegen v1.18.0: Dazu kam `/web/kalender.js` (Kalender mit HERO-Terminen anlegen/verschieben), die nicht mit der Hülle spricht. Alle vier Skripte (`app.js`, `plantafel.js`, `kalender.js`, `diagramm.js`) senden weiterhin nur `hallo`/`zeigen`/`oeffnen`. Keine Änderung nötig.
+**Gegen v1.9.0 abgeglichen am 2026-09-28: keine Änderung nötig.** Die Hülle hängt nicht an der API-Version, sondern nur an `WINDOWS-HUELLE.md` (auf dem Server unverändert seit 2026-09-24) und an den Nachrichten, die `app.js` schickt. Neue Funktionen (Aufgaben, Plantafel, Aufträge …) kommen mit der Weboberfläche. `app.js`/`plantafel.js` schicken weiterhin nur `hallo` (Wurzeln aus `GET /v1/freigabe`), `zeigen`, `oeffnen` und empfangen `ergebnis`, `sprechen`. Das Plantafel-PDF und die Notizlinks der Aufgaben laufen über `zeigen`. **Erst wenn `app.js` einen neuen `typ` schickt oder `WINDOWS-HUELLE.md` sich ändert, muss die Hülle nachziehen.** Erneut geprüft am 2026-10-14 gegen v1.18.0: Dazu kam `/web/kalender.js` (Kalender mit HERO-Terminen anlegen/verschieben), die nicht mit der Hülle spricht. Alle vier Skripte (`app.js`, `plantafel.js`, `kalender.js`, `diagramm.js`) senden weiterhin nur `hallo`/`zeigen`/`oeffnen`. Keine Änderung nötig. Erneut geprüft am 2026-10-16 gegen v1.21.0 (Neugestaltung der Weboberfläche): `WINDOWS-HUELLE.md` unverändert, neu ist `/web/vorschau.js` (PDF und Bilder mit pdf.js neben dem Chat, ohne `window.open`). `app.js` schickt weiterhin nur `hallo`/`zeigen`/`oeffnen`. Keine Änderung nötig.
 
 **Ungeprüft:** alles mit M:, also Abnahme 2–6 und 9. Dafür braucht es einen Büro-PC. Ungeprüft sind außerdem Mikrofon, Tastenkombination, Drag & Drop und das Update. Punkt 9 ist per Unit-Test abgedeckt, am Gerät braucht es dafür den Debug-Build (`dotnet build`): nur dort sind die Entwicklertools an.
 
 ## Vertragsdateien holen
 
-Stand 2026-10-15, v1.20.0 (neu: Modellwahl je Gespräch, `GET /v1/modelle`, `PATCH /v1/gespraeche/{gid}`, `modell`/`denkaufwand` in Chat und Sprache, Fortschritt per `GET /v1/chat/{anfrage_id}?seit=`, `POST …/abbrechen` und `…/zwischenruf`, API.md 1c und 1d, Auftrag `AUFTRAG-APP-1.20.md`. Davor v1.19.0 mit HERO-Projekt anheften, `POST`/`GET /v1/hero-mappe`, `hero_projekt` an `NotizOrdner`, API.md 4 „HERO-Projekt anheften“, Auftrag `AUFTRAG-APP-1.19.md`. Davor v1.18.0 mit HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
+Stand 2026-10-16, v1.21.0 (neu: Gesprächsliste mit `angeheftet`, Suche `GET /v1/gespraeche?q=`, `PATCH … {"angeheftet"}`, Neugestaltung, API.md 1e und 7, Auftrag `AUFTRAG-APP-1.21.md`. Auf dem Server liegt schon 1.22.0 mit der Monteur-App, bewusst noch nicht übernommen. Davor v1.20.0 mit Modellwahl je Gespräch, `GET /v1/modelle`, `PATCH /v1/gespraeche/{gid}`, `modell`/`denkaufwand` in Chat und Sprache, Fortschritt per `GET /v1/chat/{anfrage_id}?seit=`, `POST …/abbrechen` und `…/zwischenruf`, API.md 1c und 1d, Auftrag `AUFTRAG-APP-1.20.md`. Davor v1.19.0 mit HERO-Projekt anheften, `POST`/`GET /v1/hero-mappe`, `hero_projekt` an `NotizOrdner`, API.md 4 „HERO-Projekt anheften“, Auftrag `AUFTRAG-APP-1.19.md`. Davor v1.18.0 mit HERO-Termine anlegen und verschieben, `GET /v1/kalender/kategorien`, `POST /v1/kalender/hero`, `PATCH /v1/kalender/hero/{id}` mit `nur_pruefen`, `hero_schreiben` im Kalender, API.md 5b, Auftrag `AUFTRAG-APP-1.18.md`. Davor v1.17.0 mit langen Anfragen sicher, `anfrage_id` in Chat und Sprache, `GET /v1/chat/{anfrage_id}`, `laeuft` in der Gesprächsliste, kein Lese-Timeout für Chat/Sprache, API.md 1b. Davor v1.16.0 mit Kalender mit HERO-Terminen, `GET /v1/kalender` und `GET /v1/personen`, API.md 5a. Davor v1.15.0 mit Entscheidungen im Angebot, `punkte`, `beantwortet` und `POST /v1/angebote/{aid}/antworten`, API.md 4e „Entscheidungen“. Davor v1.14.0 mit Diagrammen im Chat als ```diagramm-Block in `antwort`, API.md Abschnitt 1a. Davor v1.13.0 mit Suche über die ganze Ablage `GET /v1/suche`, API.md Abschnitt 6a, `links` in Chat und Verlauf, Ordner mit `sortierung`, `ab`/`anzahl`, `gesamt` und `projekt`. Davor v1.12.0 mit Dokumenten zur Notiz, `POST /v1/dokumente`, API.md Abschnitt „Dokumente“ unter 4a. Davor v1.11.0 mit Angeboten aus dem Angebotsgenerator, `/v1/angebote`, API.md Abschnitt 4e. Davor v1.10.0 mit Internet-Adresse und Anmeldung mit Passwort + Zwei-Faktor, `/v1/anmelden`, `/v1/abmelden`, `/v1/geraete`, `/v1/sicherheit*`, API.md Abschnitt 0. Davor v1.9.0 mit GU-Plantafel `/v1/bauablauf`, API.md Abschnitt 4d. Davor v1.8.0 mit Begehungsprotokollen als zweite Auftragsart `art: "begehungsprotokoll"`, API.md Abschnitt 4b-2. Davor v1.7.0 mit Aufgaben „Was ist offen?“ `/v1/aufgaben`, API.md Abschnitt 4c. Davor v1.6.0 mit Hintergrundaufträgen `/v1/auftraege`, API.md Abschnitt 4b. Davor v1.5.0 mit `bilder` in `ChatAnfrage`, bis zu 4 Fotopfade, die der Assistent ansieht, z. B. Typenschild oder Fehleranzeige. Dazu API.md Abschnitt 4a „Foto an den Assistenten“. v1.4.0 brachte `GET /v1/notizen`, `/v1/ordner`, `/v1/freigabe`, v1.2.0 Videos, v1.1.0 Fotos):
 
 ```
-c833691d6317b4044fc8a48e3f6465ca5e65e503d9f9652f47c79571adfd33bc  openapi.json
-4209f4e6a6f8964ade832ca2ba3d21bf386bccefd94d1b9aa697424b0a12d921  API.md
+30c08862291d8e77fbc2c36ba2a96f6d11d3d4ce69b2d569a1d6b4096b659221  openapi.json
+3084f20b297df060efbf3ee1fdaf01d27c13fa67ecae4dc2a468297db98499e6  API.md
 ```
 
 `WINDOWS-HUELLE.md` kommt ebenfalls vom Server, ist aber der Auftrag für den Agenten, der die Windows-App baut, und gehört nicht in dieses Projekt.

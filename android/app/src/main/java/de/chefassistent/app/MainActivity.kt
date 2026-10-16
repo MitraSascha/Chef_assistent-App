@@ -51,6 +51,8 @@ import android.net.Uri
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import de.chefassistent.app.ui.ablage.AblageScreen
+import de.chefassistent.app.ui.ansehen.AnsehenScreen
+import de.chefassistent.app.ui.ansehen.AnsehenViewModel
 import de.chefassistent.app.ui.angebote.AngebotScreen
 import de.chefassistent.app.ui.angebote.AngeboteScreen
 import de.chefassistent.app.ui.angebote.AngeboteViewModel
@@ -90,6 +92,7 @@ private const val ZIEL_PLANTAFEL = "gu/{projekt}"
 private const val ZIEL_GERAETE = "geraete"
 private const val ZIEL_ANGEBOTE = "angebote"
 private const val ZIEL_ANGEBOT = "angebote/{angebot}"
+private const val ZIEL_ANSEHEN = "ansehen?pfad={pfad}"
 
 class MainActivity : ComponentActivity() {
 
@@ -195,6 +198,8 @@ private fun AppNavigation(
         }
     }
 
+    val ansehen: (String) -> Unit = { pfad -> navController.navigate("ansehen?pfad=${Uri.encode(pfad)}") }
+
     // Reiter wie in Material vorgesehen: der Chat bleibt unten im Stapel,
     // jeder andere Reiter liegt einzeln darueber und behaelt seinen Zustand.
     val zuReiter: (Reiter) -> Unit = { ziel ->
@@ -293,6 +298,7 @@ private fun AppNavigation(
                 geteiltErledigt = geteiltErledigt,
                 listeOffen = listeOffen,
                 beiListeOffen = { listeOffen = it },
+                beiAnsehen = ansehen,
             )
         }
 
@@ -316,6 +322,20 @@ private fun AppNavigation(
                 factory = AblageViewModel.factory(repository, pfad)
             )
             AblageScreen(
+                viewModel = viewModel,
+                beiZurueck = { navController.popBackStack() },
+                beiAbmeldung = { navController.zurueckZurAnmeldung() },
+                beiAnsehen = ansehen,
+            )
+        }
+
+        composable(
+            ZIEL_ANSEHEN,
+            arguments = listOf(navArgument("pfad") { type = NavType.StringType; defaultValue = "" }),
+        ) { eintrag ->
+            val pfad = eintrag.arguments?.getString("pfad").orEmpty()
+            val viewModel: AnsehenViewModel = viewModel(factory = AnsehenViewModel.factory(repository, pfad))
+            AnsehenScreen(
                 viewModel = viewModel,
                 beiZurueck = { navController.popBackStack() },
                 beiAbmeldung = { navController.zurueckZurAnmeldung() },

@@ -311,7 +311,11 @@ interface AssistentApi {
 
     @Streaming
     @GET("v1/datei")
-    suspend fun datei(@Query("pfad") pfad: String): ResponseBody
+    suspend fun datei(
+        @Query("pfad") pfad: String,
+        /** `true` = inline statt Download. Nur zum Ansehen in der App (Auftrag 1.21). */
+        @Query("anzeigen") anzeigen: Boolean? = null,
+    ): ResponseBody
 
     /**
      * Token-Verbrauch je Monat.

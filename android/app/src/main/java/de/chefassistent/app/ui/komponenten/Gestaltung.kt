@@ -188,10 +188,26 @@ fun GrosseKopfleiste(
     /** Grosser Titel: hoechstens so viele Zeilen, danach "…". */
     titelZeilen: Int = 2,
     snackbar: SnackbarHostState? = null,
+    /**
+     * Seit v1.21.0: nur die schmale Leiste mit Titel und Untertitel, ohne den
+     * grossen Kopf. Fuer Ansichten mit festem Kopfbereich wie den Kalender.
+     */
+    kompakt: Boolean = false,
     aktionen: @Composable RowScope.() -> Unit = {},
     knopf: @Composable () -> Unit = {},
     inhalt: @Composable (PaddingValues) -> Unit,
 ) {
+    if (kompakt) {
+        Scaffold(
+            modifier = modifier,
+            containerColor = MaterialTheme.colorScheme.surface,
+            topBar = { KompakterKopf(titel, untertitel, beiZurueck, aktionen) },
+            snackbarHost = { if (snackbar != null) FehlerSnackbar(snackbar) },
+            floatingActionButton = knopf,
+            content = inhalt,
+        )
+        return
+    }
     val verhalten = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         modifier = modifier.nestedScroll(verhalten.nestedScrollConnection),
@@ -302,6 +318,45 @@ private fun SamsungKopf(
             )
             aktionen()
         }
+    }
+}
+
+@Composable
+private fun KompakterKopf(
+    titel: String,
+    untertitel: String?,
+    beiZurueck: (() -> Unit)?,
+    aktionen: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .height(64.dp)
+            .padding(horizontal = 4.dp),
+    ) {
+        if (beiZurueck != null) {
+            IconButton(onClick = beiZurueck) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.zurueck))
+            }
+        } else {
+            Spacer(Modifier.width(12.dp))
+        }
+        Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+            Text(titel, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (untertitel != null) {
+                Text(
+                    untertitel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        aktionen()
     }
 }
 

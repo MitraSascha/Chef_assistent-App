@@ -68,11 +68,13 @@ import de.chefassistent.app.data.OrdnerEintrag
 import de.chefassistent.app.data.ProjektAngaben
 import de.chefassistent.app.data.SuchTreffer
 import de.chefassistent.app.ui.dateiOeffnen
+import de.chefassistent.app.ui.ansehen.kannAnsehen
 import de.chefassistent.app.ui.komponenten.EINZUG_MIT_SYMBOL
 import de.chefassistent.app.ui.komponenten.GrosseKopfleiste
 import de.chefassistent.app.ui.komponenten.GruppenBlock
 import de.chefassistent.app.ui.komponenten.LeerHinweis
 import de.chefassistent.app.ui.komponenten.RundesSymbol
+import de.chefassistent.app.ui.komponenten.TypMarke
 import de.chefassistent.app.ui.komponenten.SEITENRAND
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +83,7 @@ fun AblageScreen(
     viewModel: AblageViewModel,
     beiZurueck: () -> Unit,
     beiAbmeldung: () -> Unit,
+    beiAnsehen: (String) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val kontext = LocalContext.current
@@ -123,12 +126,17 @@ fun AblageScreen(
     }
 
     val pfad = zustand.ordner?.pfad.orEmpty()
-    val beiDatei: (String) -> Unit = { p -> viewModel.dateiOeffnen(p) { datei -> dateiOeffnen(kontext, datei) } }
+    // Seit v1.21.0: PDF, Fotos, Videos und Text in der App ansehen, der Rest wie bisher.
+    val beiDatei: (String) -> Unit = { p ->
+        if (kannAnsehen(p)) beiAnsehen(p) else viewModel.dateiOeffnen(p) { datei -> dateiOeffnen(kontext, datei) }
+    }
 
     GrosseKopfleiste(
         titel = pfad.substringAfterLast('/').ifBlank { stringResource(R.string.ablage_titel) },
         untertitel = pfad.substringBeforeLast('/', "").ifBlank { null },
         beiZurueck = zurueck,
+        // Reiter der unteren Leiste: schmaler Kopf wie Chat und Kalender (seit v1.21.0).
+        kompakt = true,
         snackbar = snackbar,
         aktionen = {
             SortierMenue(zustand.sortierung, viewModel::sortierungWaehlen)
@@ -361,21 +369,10 @@ private fun Trefferliste(
     }
 }
 
+/** Seit v1.21.0 die Typmarke mit Kuerzel statt eines Symbols (Auftrag 1.21, B2). */
 @Composable
 private fun EintragSymbol(istOrdner: Boolean, name: String) {
-    if (istOrdner) {
-        RundesSymbol(
-            Icons.Default.Folder,
-            farbe = MaterialTheme.colorScheme.primaryContainer,
-            symbolFarbe = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-    } else {
-        RundesSymbol(
-            dateiSymbol(name),
-            farbe = MaterialTheme.colorScheme.surfaceContainerHighest,
-            symbolFarbe = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    TypMarke(name, istOrdner)
 }
 
 /** Symbol nach Endung, wie in Eigene Dateien. Auch fuer die Link-Karten im Chat. */

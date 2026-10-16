@@ -181,6 +181,8 @@ data class ChatZustand(
     /** Seit v1.21.0: Titelsuche in der Gespraechsliste. `null` = keine Suche, normale Liste. */
     val gespraechTreffer: List<GespraechKurz>? = null,
     val gespraechSucheLaeuft: Boolean = false,
+    /** Fuer „Hallo <Name>!“ im leeren Chat (`anzeigename` aus `GET /v1/ich`). */
+    val anzeigename: String? = null,
     /** Gruppen der Gespraechsliste, die vom Standard abweichen (Monate zu, Rest offen). */
     val umgeklappteGruppen: Set<String> = emptySet(),
     /** true = Stimme vom Server (`POST /v1/vorlesen`), false = Android-Sprachausgabe. */
@@ -335,6 +337,7 @@ class ChatViewModel(
     private val chatSichtbar = MutableStateFlow(false)
 
     init {
+        nameLaden()
         fortschrittVerfolgen()
         zieleLaden()
         offeneBestaetigungenLaden()
@@ -850,6 +853,9 @@ class ChatViewModel(
                 // Assistent mit der naechsten Nachricht trotzdem erfahren.
                 entwurf = it.entwurf,
                 ungemeldeteDokumente = it.ungemeldeteDokumente,
+                // Seit v1.21.0: Begruessung und Klappzustand der Gespraechsliste.
+                anzeigename = it.anzeigename,
+                umgeklappteGruppen = it.umgeklappteGruppen,
             )
         }
         if (_zustand.value.modelle == null) modelleLaden()
@@ -1262,6 +1268,27 @@ class ChatViewModel(
         neuesGespraech()
         _zustand.update { it.copy(entwurf = text) }
         senden()
+    }
+
+    /** Vorschlags-Chip im leeren Chat (Auftrag 1.21, B3): Antippen schickt den Text ab. */
+    fun vorschlagSenden(text: String) {
+        if (_zustand.value.laeuft || _zustand.value.nimmtAuf) {
+            geteilterText(text)
+            return
+        }
+        _zustand.update { it.copy(entwurf = text) }
+        senden()
+    }
+
+    /** Nur fuer die Begruessung. Fehler bleiben still, 401 meldet der naechste echte Aufruf. */
+    private fun nameLaden() {
+        viewModelScope.launch {
+            try {
+                val ich = repository.ich()
+                _zustand.update { it.copy(anzeigename = ich.anzeigename.ifBlank { ich.name }) }
+            } catch (_: ApiFehler) {
+            }
+        }
     }
 
     /** Text aus "Teilen" (Link, Mailausschnitt) - haengt sich an den Entwurf. */

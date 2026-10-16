@@ -1,5 +1,14 @@
 package de.chefassistent.app.ui.kalender
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.text.style.TextOverflow
+import de.chefassistent.app.ui.theme.gold
+import de.chefassistent.app.ui.theme.link
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -171,7 +180,8 @@ fun KalenderScreen(
 
     GrosseKopfleiste(
         titel = stringResource(R.string.kalender_titel),
-        untertitel = zeitraumText(zustand.von, zustand.bis),
+        untertitel = zeitraumMitKw(zustand.von, zustand.bis),
+        kompakt = true,
         beiZurueck = beiZurueck,
         snackbar = snackbar,
         aktionen = {
@@ -203,6 +213,16 @@ fun KalenderScreen(
                     monteureOffen = zustand.monteureOffen,
                     beiPerson = viewModel::personUmschalten,
                     beiMonteure = viewModel::monteureUmschalten,
+                )
+                // Fest oben, damit sie nicht wegscrollt, wenn die Woche zu heute springt.
+                HeuteKarte(
+                    termine = zustand.heuteTermine,
+                    beiTermin = { termin ->
+                        // In die Tagesansicht von heute springen und den Termin aufklappen.
+                        offen = offen + "${termin.id}@${heute}"
+                        viewModel.ansichtWaehlen(false)
+                        viewModel.heute()
+                    },
                 )
             }
             PullToRefreshBox(
@@ -277,6 +297,105 @@ fun KalenderScreen(
             beiAbschicken = viewModel::formularAbschicken,
             beiSchliessen = viewModel::formularSchliessen,
         )
+    }
+}
+
+/**
+ * „12.–18. Oktober 2026 · KW 42“, ueber Monatsgrenzen „28. Sept. – 4. Oktober 2026 · KW 40“,
+ * in der Tagesansicht „Fr. 16. Oktober 2026 · KW 42“.
+ */
+internal fun zeitraumMitKw(von: LocalDate, bis: LocalDate): String {
+    val kw = von.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+    val monat = { d: LocalDate -> d.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.GERMANY) }
+    val text = when {
+        von == bis -> "${wochentag(von)}. ${von.dayOfMonth}. ${monat(von)} ${von.year}"
+        von.month == bis.month -> "${von.dayOfMonth}.–${bis.dayOfMonth}. ${monat(bis)} ${bis.year}"
+        von.year == bis.year -> "${von.dayOfMonth}. ${monat(von)} – ${bis.dayOfMonth}. ${monat(bis)} ${bis.year}"
+        else -> "${von.dayOfMonth}. ${monat(von)} ${von.year} – ${bis.dayOfMonth}. ${monat(bis)} ${bis.year}"
+    }
+    return "$text · KW $kw"
+}
+
+/** Mehr passt nicht, ohne der Woche darunter den Platz zu nehmen. */
+private const val HEUTE_MAX = 3
+
+/**
+ * Kleine Karte „Heute“ oben (Auftrag 1.21, B3): die eigenen Termine des Tages,
+ * der gerade laufende mit goldenem Rand. Antippen springt in die Tagesansicht.
+ */
+@Composable
+private fun HeuteKarte(termine: List<KalenderTermin>?, beiTermin: (KalenderTermin) -> Unit) {
+    val farben = MaterialTheme.colorScheme
+    var jetzt by remember { mutableStateOf(java.time.OffsetDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            jetzt = java.time.OffsetDateTime.now()
+        }
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = farben.surfaceContainer,
+        border = BorderStroke(1.dp, farben.outlineVariant),
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                stringResource(R.string.kalender_heute),
+                style = MaterialTheme.typography.labelLarge,
+                color = farben.onSurfaceVariant,
+            )
+            when {
+                termine == null -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                termine.isEmpty() -> Text(
+                    stringResource(R.string.kalender_heute_frei),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = farben.onSurfaceVariant,
+                )
+                else -> termine.sortedBy { it.beginn }.take(HEUTE_MAX).forEach { t ->
+                    val laeuft = runCatching {
+                        !t.ganztag && !jetzt.isBefore(java.time.OffsetDateTime.parse(t.beginn)) &&
+                            jetzt.isBefore(java.time.OffsetDateTime.parse(t.ende))
+                    }.getOrDefault(false)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .then(
+                                if (laeuft) Modifier.border(2.dp, farben.gold, RoundedCornerShape(10.dp)) else Modifier
+                            )
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { beiTermin(t) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            if (t.ganztag) stringResource(R.string.kalender_ganztaegig)
+                            else "${zeitText(t.beginn, false)}–${zeitText(t.ende, false)}",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.width(96.dp),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(t.titel, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val ort = t.projekt?.adresse?.takeIf { it.isNotBlank() } ?: t.ort
+                            if (!ort.isNullOrBlank()) {
+                                Text(ort, style = MaterialTheme.typography.bodySmall, color = farben.onSurfaceVariant,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }.also {
+                    if (termine.size > HEUTE_MAX) {
+                        Text(
+                            stringResource(R.string.kalender_heute_weitere, termine.size - HEUTE_MAX),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = farben.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -400,7 +519,7 @@ private fun TagesKopf(tag: LocalDate, istHeute: Boolean) {
     val text = "${wochentag(tag)} ${tag.format(DATUM_KURZ)}"
     GruppenTitel(
         text = if (istHeute) stringResource(R.string.kalender_tag_heute, text) else text,
-        farbe = if (istHeute) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        farbe = if (istHeute) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -425,19 +544,20 @@ private fun TerminKarte(
     val farben = MaterialTheme.colorScheme
     val kontext = LocalContext.current
     val mehrtaegig = istMehrtaegig(t)
-    GruppenBlock(index = index, anzahl = anzahl, einzug = 0.dp) {
+    // Seit v1.21.0 eine getoente Karte in der Personenfarbe statt des Randstrichs
+    // (Auftrag 1.21, B3). Ohne gewaehlte Person neutral mit Rahmen.
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = personenFarbe?.copy(alpha = 0.16f)?.compositeOver(farben.surfaceContainer) ?: farben.surfaceContainer,
+        border = if (personenFarbe == null) BorderStroke(1.dp, farben.outlineVariant) else null,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
                 .clickable(onClick = beiKlick),
         ) {
-            Box(
-                Modifier
-                    .width(5.dp)
-                    .fillMaxHeight()
-                    .background(personenFarbe ?: farben.outlineVariant),
-            )
             Column(modifier = Modifier.width(if (mehrtaegig) 92.dp else 68.dp).padding(start = 14.dp, top = 12.dp)) {
                 kategorieFarbe(t.farbe)?.let { strich ->
                     Box(
@@ -499,8 +619,8 @@ private fun TerminKarte(
                                 .padding(top = 6.dp)
                                 .clickable { karteOeffnen(kontext, adresse) },
                         ) {
-                            Icon(Icons.Default.Place, null, tint = farben.primary, modifier = Modifier.size(18.dp))
-                            Text(adresse, style = MaterialTheme.typography.bodyMedium, color = farben.primary)
+                            Icon(Icons.Default.Place, null, tint = farben.link, modifier = Modifier.size(18.dp))
+                            Text(adresse, style = MaterialTheme.typography.bodyMedium, color = farben.link)
                         }
                     }
                     if (t.personen.isNotEmpty()) {

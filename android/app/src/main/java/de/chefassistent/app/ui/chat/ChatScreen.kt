@@ -70,7 +70,6 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material.icons.filled.Share
 import de.chefassistent.app.data.DateiLink
-import de.chefassistent.app.ui.ablage.dateiSymbol
 import de.chefassistent.app.ui.dateiTeilen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -119,6 +118,25 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.ImageSearch
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Videocam
+import de.chefassistent.app.ui.komponenten.MZeichen
+import de.chefassistent.app.ui.komponenten.TypMarke
+import de.chefassistent.app.ui.theme.gold
+import de.chefassistent.app.ui.theme.hauptflaeche
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.InputChip
@@ -193,6 +211,7 @@ import de.chefassistent.app.ui.antwort.kopieren
 import de.chefassistent.app.ui.antwort.textZumKopieren
 import androidx.compose.material.icons.filled.ContentCopy
 import de.chefassistent.app.ui.dateiOeffnen
+import de.chefassistent.app.ui.ansehen.kannAnsehen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -225,6 +244,8 @@ fun ChatScreen(
      */
     listeOffen: Boolean = false,
     beiListeOffen: (Boolean) -> Unit = {},
+    /** Datei in der App ansehen (seit v1.21.0). */
+    beiAnsehen: (String) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val kontext = LocalContext.current
@@ -584,9 +605,6 @@ fun ChatScreen(
                                 stringResource(R.string.freihand_titel),
                             )
                         }
-                        IconButton(onClick = viewModel::neuesGespraech) {
-                            Icon(Icons.Default.Add, stringResource(R.string.chat_neues_gespraech))
-                        }
                         // Abmelden ist selten und wirft das Token weg - deshalb
                         // nicht als Symbol neben "Neu", sondern im Menue wie bei Samsung.
                         Box {
@@ -597,8 +615,18 @@ fun ChatScreen(
                             DropdownMenu(
                                 expanded = menue,
                                 onDismissRequest = { menue = false },
-                                shape = RoundedCornerShape(20.dp),
+                                shape = RoundedCornerShape(12.dp),
                             ) {
+                                // Neu steht seit v1.21.0 hier und als Knopf in der Liste,
+                                // damit der Gespraechstitel oben Platz hat.
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.chat_neues_gespraech)) },
+                                    leadingIcon = { Icon(Icons.Default.Add, null) },
+                                    onClick = {
+                                        menue = false
+                                        viewModel.neuesGespraech()
+                                    },
+                                )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.chat_abmelden)) },
                                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null) },
@@ -614,53 +642,58 @@ fun ChatScreen(
             },
             snackbarHost = { FehlerSnackbar(snackbar) },
             bottomBar = {
-                Column {
-                    Kontextleiste(
-                        kontext = zustand.kontext,
-                        hero = zustand.kontextHero,
-                        beiOeffnen = { kontextDialogOffen = true },
-                        beiInfo = { heroInfoOffen = true },
-                        beiLoesen = { viewModel.kontextSetzen(null) },
-                    )
-                    // Modell und Denkaufwand je Gespraech (seit v1.20.0, ModellWahl.kt).
-                    ModellLeiste(
-                        auswahl = zustand.modelle,
-                        modell = zustand.modell,
-                        denkaufwand = zustand.denkaufwand,
-                        aktiv = !zustand.laeuft,
-                        beiModell = viewModel::modellWaehlen,
-                        beiDenkaufwand = viewModel::denkaufwandWaehlen,
-                    )
-                    Eingabeleiste(
-                        entwurf = zustand.entwurf,
-                        kannSenden = zustand.kannSenden,
-                        kannAufnehmen = zustand.kannAufnehmen,
-                        kannFotografieren = zustand.kannFotografieren,
-                        nimmtAuf = zustand.nimmtAuf,
-                        laeuft = zustand.laeuft,
-                        beiAenderung = viewModel::entwurfGeaendert,
-                        beiSenden = viewModel::senden,
-                        knopf = zustand.sendeKnopf,
-                        knopfAktiv = zustand.sendeKnopfAktiv,
-                        beiStopp = viewModel::stoppen,
-                        beiZwischenruf = viewModel::zwischenrufSenden,
-                        beiKamera = beiKamera,
-                        beiGalerie = beiGalerie,
-                        beiDokument = beiDokument,
-                        beiMikrofon = {
-                            val erlaubt = ContextCompat.checkSelfPermission(
-                                kontext,
-                                Manifest.permission.RECORD_AUDIO,
-                            ) == PackageManager.PERMISSION_GRANTED
+                // Eingabe als Karte (Auftrag 1.21, B3): oben das Textfeld, darunter Anhang,
+                // Projekt, Modellwahl, Mikrofon und Senden.
+                Eingabekarte(
+                    entwurf = zustand.entwurf,
+                    kannSenden = zustand.kannSenden,
+                    kannAufnehmen = zustand.kannAufnehmen,
+                    kannFotografieren = zustand.kannFotografieren,
+                    nimmtAuf = zustand.nimmtAuf,
+                    laeuft = zustand.laeuft,
+                    beiAenderung = viewModel::entwurfGeaendert,
+                    beiSenden = viewModel::senden,
+                    knopf = zustand.sendeKnopf,
+                    knopfAktiv = zustand.sendeKnopfAktiv,
+                    beiStopp = viewModel::stoppen,
+                    beiZwischenruf = viewModel::zwischenrufSenden,
+                    beiKamera = beiKamera,
+                    beiGalerie = beiGalerie,
+                    beiDokument = beiDokument,
+                    beiMikrofon = {
+                        val erlaubt = ContextCompat.checkSelfPermission(
+                            kontext,
+                            Manifest.permission.RECORD_AUDIO,
+                        ) == PackageManager.PERMISSION_GRANTED
 
-                            if (erlaubt) {
-                                viewModel.aufnahmeUmschalten()
-                            } else {
-                                mikrofonAnfrage.launch(Manifest.permission.RECORD_AUDIO)
-                            }
-                        },
-                    )
-                }
+                        if (erlaubt) {
+                            viewModel.aufnahmeUmschalten()
+                        } else {
+                            mikrofonAnfrage.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    },
+                    leiste = {
+                        // Modell und Denkaufwand je Gespraech (seit v1.20.0, ModellWahl.kt),
+                        // davor das angeheftete Projekt.
+                        ModellLeiste(
+                            auswahl = zustand.modelle,
+                            modell = zustand.modell,
+                            denkaufwand = zustand.denkaufwand,
+                            aktiv = !zustand.laeuft,
+                            beiModell = viewModel::modellWaehlen,
+                            beiDenkaufwand = viewModel::denkaufwandWaehlen,
+                            vorne = {
+                                KontextChip(
+                                    kontext = zustand.kontext,
+                                    hero = zustand.kontextHero,
+                                    beiOeffnen = { kontextDialogOffen = true },
+                                    beiInfo = { heroInfoOffen = true },
+                                    beiLoesen = { viewModel.kontextSetzen(null) },
+                                )
+                            },
+                        )
+                    },
+                )
             },
         ) { innen ->
             Column(modifier = Modifier.fillMaxSize().padding(innen)) {
@@ -704,26 +737,16 @@ fun ChatScreen(
                 }
 
                 if (zustand.eintraege.isEmpty()) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        RundesSymbol(
-                            Icons.Default.AutoAwesome,
-                            farbe = MaterialTheme.colorScheme.primaryContainer,
-                            symbolFarbe = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(64.dp),
-                        )
-                        Text(
-                            text = stringResource(R.string.chat_leer),
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(top = 16.dp),
-                        )
-                    }
+                    LeererChat(
+                        name = zustand.anzeigename,
+                        aktiv = !zustand.laeuft,
+                        beiVorschlag = viewModel::vorschlagSenden,
+                    )
                 } else {
+                    // Seit v1.21.0: PDF, Fotos, Videos und Text in der App ansehen, der Rest wie bisher.
                     val beiDatei: (String) -> Unit = { pfad ->
-                        viewModel.dateiOeffnen(pfad) { datei -> dateiOeffnen(kontext, datei) }
+                        if (kannAnsehen(pfad)) beiAnsehen(pfad)
+                        else viewModel.dateiOeffnen(pfad) { datei -> dateiOeffnen(kontext, datei) }
                     }
                     val teilenTitel = stringResource(R.string.link_teilen)
                     val beiTeilen: (String) -> Unit = { pfad ->
@@ -1048,7 +1071,7 @@ private fun StimmenAuswahl(stimme: String?, beiWahl: (String?) -> Unit) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Kontextleiste(
+private fun KontextChip(
     kontext: String?,
     /** HERO-Projektnummer, wenn eine HERO-Mappe angeheftet ist. */
     hero: String?,
@@ -1056,17 +1079,12 @@ private fun Kontextleiste(
     beiInfo: () -> Unit,
     beiLoesen: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         if (kontext == null) {
             AssistChip(
                 onClick = beiOeffnen,
-                shape = CircleShape,
-                label = { Text(stringResource(R.string.kontext_setzen)) },
+                shape = RoundedCornerShape(15.dp),
+                label = { Text(stringResource(R.string.kontext_setzen), style = MaterialTheme.typography.labelMedium) },
                 leadingIcon = {
                     Icon(
                         Icons.Default.PushPin,
@@ -1076,11 +1094,19 @@ private fun Kontextleiste(
                 },
             )
         } else {
+            // Angeheftet: goldener Chip mit ✕ (Auftrag 1.21, B3). Gold nur als Flaeche,
+            // die Schrift bleibt in der Textfarbe.
             InputChip(
                 selected = true,
                 onClick = beiOeffnen,
-                shape = CircleShape,
-                modifier = Modifier.weight(1f, fill = false),
+                shape = RoundedCornerShape(15.dp),
+                colors = InputChipDefaults.inputChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.gold.copy(alpha = 0.28f),
+                    selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onSurface,
+                    selectedTrailingIconColor = MaterialTheme.colorScheme.onSurface,
+                ),
+                modifier = Modifier.widthIn(max = 220.dp),
                 label = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (hero != null) {
@@ -1088,7 +1114,8 @@ private fun Kontextleiste(
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            stringResource(R.string.kontext_angeheftet, kontext),
+                            kontext,
+                            style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -1548,19 +1575,13 @@ private fun AssistentBlase(
     beiOrdner: (String) -> Unit,
     beiTeilen: (String) -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(6.dp, 22.dp, 22.dp, 22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    // Seit v1.21.0 ohne Blase, mit dem M-Zeichen links (Auftrag 1.21, B3).
+    AssistentZeile {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // Text, Tabellen, Codebloecke und Diagramme (API.md 1a).
             AntwortInhalt(
                 markdown = eintrag.text,
-                hintergrund = MaterialTheme.colorScheme.surfaceContainer,
+                hintergrund = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -1568,8 +1589,8 @@ private fun AssistentBlase(
             // Aeltere Gespraeche und Server haben nur `dateien` - dann die Chips.
             if (eintrag.links.isNotEmpty()) {
                 eintrag.links.forEach { link -> LinkKarte(link, beiDatei, beiOrdner, beiTeilen) }
-            } else if (eintrag.dateien.isNotEmpty()) {
-                DateiChips(eintrag.dateien, beiDatei, beiOrdner)
+            } else {
+                eintrag.dateien.forEach { pfad -> LinkKarte(linkAusPfad(pfad), beiDatei, beiOrdner, beiTeilen) }
             }
 
             if (eintrag.quellen.isNotEmpty()) {
@@ -1644,15 +1665,12 @@ private fun ArbeitetBlase() {
             sekunden = ((System.currentTimeMillis() - beginn) / 1000).toInt()
         }
     }
-    Card(
-        shape = RoundedCornerShape(6.dp, 22.dp, 22.dp, 22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    ) {
+    AssistentZeile {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.padding(top = 4.dp),
         ) {
-            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.gold)
             Text(
                 text = stringResource(R.string.antwort_arbeitet) + if (sekunden >= 3) " $sekunden s" else "",
                 style = MaterialTheme.typography.bodyMedium,
@@ -1692,12 +1710,7 @@ private fun DateiChips(dateien: List<String>, beiDatei: (String) -> Unit, beiOrd
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        Icons.Default.AttachFile,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(AssistChipDefaults.IconSize),
-                    )
+                    TypMarke(pfad.substringAfterLast('/'), modifier = Modifier.size(24.dp))
                     Text(
                         text = pfad.substringAfterLast('/'),
                         style = MaterialTheme.typography.labelLarge,
@@ -1710,10 +1723,11 @@ private fun DateiChips(dateien: List<String>, beiDatei: (String) -> Unit, beiOrd
 }
 
 /**
- * Datei oder Ordner aus `links` (seit v1.13.0) als Karte mit Knoepfen, wie
- * `API.md` sie beschreibt: Symbol, Name fett, Projekt darunter. Fragt man nach
- * "der Rechnung von Boese", soll ein Tipp reichen.
+ * Datei oder Ordner aus `links` (seit v1.13.0) als Karte (Auftrag 1.21, B3):
+ * Typmarke · Name fett · Ordnerpfad grau mit „ › “, rechts „Ansehen“ und das
+ * Ordner-Symbol. Ordner bekommen „Ordner öffnen“. Langer Druck teilt die Datei.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LinkKarte(
     link: DateiLink,
@@ -1722,67 +1736,139 @@ private fun LinkKarte(
     beiTeilen: (String) -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .combinedClickable(
+                onClick = { if (link.istOrdner) beiOrdner(link.pfad) else beiDatei(link.pfad) },
+                onLongClick = if (link.istOrdner) null else ({ beiTeilen(link.pfad) }),
+                onLongClickLabel = stringResource(R.string.link_teilen),
+            ),
     ) {
-        Column(modifier = Modifier.padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (link.istOrdner) {
-                    RundesSymbol(
-                        Icons.Default.Folder,
-                        farbe = MaterialTheme.colorScheme.primaryContainer,
-                        symbolFarbe = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                } else {
-                    RundesSymbol(
-                        dateiSymbol(link.name),
-                        farbe = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        symbolFarbe = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        ) {
+            TypMarke(link.name, link.istOrdner)
+            Column(modifier = Modifier.weight(1f).padding(start = 10.dp, end = 6.dp)) {
+                Text(
+                    text = link.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val pfad = ordnerPfadText(link.ordner)
+                if (pfad.isNotBlank()) {
                     Text(
-                        text = link.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        text = pfad,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.StartEllipsis,
                     )
-                    val unter = link.projekt?.takeIf { it.isNotBlank() }
-                        ?: link.ordner.substringAfterLast('/').takeIf { it.isNotBlank() }
-                    val zeile = listOfNotNull(unter, link.groesse).joinToString(" · ")
-                    if (zeile.isNotBlank()) {
-                        Text(
-                            text = zeile,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (link.istOrdner) {
-                    FilledTonalButton(onClick = { beiOrdner(link.pfad) }) {
-                        Text(stringResource(R.string.link_ordner_oeffnen))
-                    }
-                } else {
-                    IconButton(onClick = { beiTeilen(link.pfad) }) {
-                        Icon(Icons.Default.Share, stringResource(R.string.link_teilen))
-                    }
-                    TextButton(onClick = { beiOrdner(link.pfad) }) {
-                        Text(stringResource(R.string.ablage_im_ordner))
-                    }
-                    FilledTonalButton(onClick = { beiDatei(link.pfad) }) {
-                        Text(stringResource(R.string.link_oeffnen))
-                    }
+            if (link.istOrdner) {
+                FlacherKnopf(stringResource(R.string.link_ordner_oeffnen)) { beiOrdner(link.pfad) }
+            } else {
+                FlacherKnopf(stringResource(R.string.ansehen)) { beiDatei(link.pfad) }
+                IconButton(onClick = { beiOrdner(link.pfad) }, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        Icons.Outlined.FolderOpen,
+                        stringResource(R.string.link_im_ordner_zeigen),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+            }
+        }
+    }
+}
+
+/** Kleiner Knopf in der Hauptfarbe (Navy), Ecken 8 dp wie im Web. */
+@Composable
+private fun FlacherKnopf(text: String, beiKlick: () -> Unit) {
+    Button(
+        onClick = beiKlick,
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.hauptflaeche,
+            contentColor = Color.White,
+        ),
+        contentPadding = PaddingValues(horizontal = 10.dp),
+        modifier = Modifier.heightIn(min = 36.dp),
+    ) { Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
+}
+
+/** „Notizen/Sascha/Projekt“ -> „Notizen › Sascha › Projekt“. */
+private fun ordnerPfadText(ordner: String): String =
+    ordner.trim('/').split('/').filter { it.isNotBlank() }.joinToString(" › ")
+
+/** Aeltere Antworten haben nur `dateien` (Pfade) - daraus eine Karte wie fuer `links`. */
+private fun linkAusPfad(pfad: String): DateiLink = DateiLink(
+    pfad = pfad,
+    name = pfad.substringAfterLast('/'),
+    typ = "datei",
+    ordner = pfad.substringBeforeLast('/', ""),
+)
+
+/** Antwortzeile: M-Zeichen links, Inhalt daneben, ohne Blase. */
+@Composable
+private fun AssistentZeile(inhalt: @Composable () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        MZeichen(Modifier.padding(top = 2.dp))
+        Box(modifier = Modifier.weight(1f).padding(start = 10.dp)) { inhalt() }
+    }
+}
+
+/**
+ * Leerer Chat (Auftrag 1.21, B3): M-Zeichen, „Hallo <Name>!“, kurzer Hinweis
+ * und drei Vorschlaege. Antippen schickt den Text ab.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LeererChat(name: String?, aktiv: Boolean, beiVorschlag: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        MZeichen(groesse = 52.dp)
+        Text(
+            text = name?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.chat_hallo, it) }
+                ?: stringResource(R.string.chat_hallo_ohne_name),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(top = 16.dp),
+        )
+        Text(
+            text = stringResource(R.string.chat_leer_hinweis),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
+        )
+        val vorschlaege = listOf(
+            stringResource(R.string.vorschlag_heute),
+            stringResource(R.string.vorschlag_offen),
+            stringResource(R.string.vorschlag_woche),
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            vorschlaege.forEach { text ->
+                SuggestionChip(
+                    onClick = { beiVorschlag(text) },
+                    enabled = aktiv,
+                    shape = RoundedCornerShape(15.dp),
+                    label = { Text(text) },
+                )
             }
         }
     }
@@ -1811,11 +1897,15 @@ private fun QuellenListe(quellen: List<Quelle>) {
 
 @Composable
 private fun HinweisZeile(eintrag: HinweisEintrag, beiDatei: (String) -> Unit, beiOrdner: (String) -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(
             text = eintrag.text,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
         // Abgelegte Fotos: antippen laedt sie ueber GET /v1/datei und zeigt sie an.
         if (eintrag.dateien.isNotEmpty()) {
@@ -2287,6 +2377,7 @@ private class VideoMitGrenze : ActivityResultContracts.CaptureVideo() {
 @Composable
 private fun FrageKarte(eintrag: FrageEintrag, beiJa: () -> Unit, beiNein: () -> Unit) {
     Card(
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
         ),
@@ -2304,12 +2395,19 @@ private fun FrageKarte(eintrag: FrageEintrag, beiJa: () -> Unit, beiNein: () -> 
 
             when (val z = eintrag.zustand) {
                 is FrageZustand.Offen -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilledTonalButton(onClick = beiJa) {
+                    Button(
+                        onClick = beiJa,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.hauptflaeche,
+                            contentColor = Color.White,
+                        ),
+                    ) {
                         Icon(Icons.Default.Check, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.bestaetigung_ja))
                     }
-                    OutlinedButton(onClick = beiNein) {
+                    OutlinedButton(onClick = beiNein, shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.Close, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.bestaetigung_nein))
@@ -2336,7 +2434,7 @@ private fun FrageKarte(eintrag: FrageEintrag, beiJa: () -> Unit, beiNein: () -> 
 }
 
 @Composable
-private fun Eingabeleiste(
+private fun Eingabekarte(
     entwurf: String,
     kannSenden: Boolean,
     kannAufnehmen: Boolean,
@@ -2354,116 +2452,109 @@ private fun Eingabeleiste(
     beiGalerie: () -> Unit,
     beiDokument: () -> Unit,
     beiMikrofon: () -> Unit,
+    /** Projekt und Modellwahl, seitlich scrollbar zwischen Anhang und Mikrofon. */
+    leiste: @Composable () -> Unit,
 ) {
-    Row(
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 3.dp,
         modifier = Modifier
             .fillMaxWidth()
             .imePadding()
             .navigationBarsPadding()
-            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 8.dp),
     ) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.weight(1f).heightIn(min = 56.dp),
-        ) {
-            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(horizontal = 4.dp)) {
-                // Foto, Video und Galerie hinter einem Knopf, damit das Eingabefeld
-                // nicht noch schmaler wird.
-                Box(modifier = Modifier.padding(bottom = 4.dp)) {
+        Column(modifier = Modifier.padding(start = 4.dp, end = 6.dp, top = 2.dp, bottom = 6.dp)) {
+            TextField(
+                value = entwurf,
+                onValueChange = beiAenderung,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !nimmtAuf,
+                placeholder = {
+                    Text(
+                        when {
+                            nimmtAuf -> stringResource(R.string.sprache_nimmt_auf)
+                            knopf != SendeKnopf.SENDEN -> ZWISCHENRUF_PLATZHALTER
+                            laeuft -> stringResource(R.string.chat_denkt)
+                            else -> stringResource(R.string.chat_eingabe)
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                textStyle = MaterialTheme.typography.bodyLarge,
+                maxLines = 6,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                ),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Foto, Video, Galerie und Dokument hinter dem Anhang-Knopf.
+                Box {
                     var auswahl by remember { mutableStateOf(false) }
                     IconButton(onClick = { auswahl = true }, enabled = kannFotografieren) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(R.string.foto_aufnehmen))
+                        Icon(Icons.Outlined.AttachFile, contentDescription = stringResource(R.string.foto_aufnehmen))
                     }
                     DropdownMenu(
                         expanded = auswahl,
                         onDismissRequest = { auswahl = false },
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.kamera_foto)) },
-                            leadingIcon = { Icon(Icons.Default.PhotoCamera, null) },
+                            leadingIcon = { Icon(Icons.Outlined.PhotoCamera, null) },
                             onClick = { auswahl = false; beiKamera(false, false) },
                         )
                         // Typenschild, Fehleranzeige: Foto machen und direkt fragen (v1.5.0).
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.kamera_fragen)) },
-                            leadingIcon = { Icon(Icons.Default.ImageSearch, null) },
+                            leadingIcon = { Icon(Icons.Outlined.ImageSearch, null) },
                             onClick = { auswahl = false; beiKamera(false, true) },
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.kamera_video)) },
-                            leadingIcon = { Icon(Icons.Default.Videocam, null) },
+                            leadingIcon = { Icon(Icons.Outlined.Videocam, null) },
                             onClick = { auswahl = false; beiKamera(true, false) },
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.kamera_galerie)) },
-                            leadingIcon = { Icon(Icons.Default.PhotoLibrary, null) },
+                            leadingIcon = { Icon(Icons.Outlined.PhotoLibrary, null) },
                             onClick = { auswahl = false; beiGalerie() },
                         )
                         // LV, Plan, Kundenmail als Grundlage fuers Angebot (v1.12.0).
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.kamera_dokument)) },
-                            leadingIcon = { Icon(Icons.Default.Description, null) },
+                            leadingIcon = { Icon(Icons.Outlined.Description, null) },
                             onClick = { auswahl = false; beiDokument() },
                         )
                     }
                 }
-
-                TextField(
-                    value = entwurf,
-                    onValueChange = beiAenderung,
-                    modifier = Modifier.weight(1f),
-                    enabled = !nimmtAuf,
-                    placeholder = {
-                        Text(
-                            when {
-                                nimmtAuf -> stringResource(R.string.sprache_nimmt_auf)
-                                knopf != SendeKnopf.SENDEN -> ZWISCHENRUF_PLATZHALTER
-                                laeuft -> stringResource(R.string.chat_denkt)
-                                else -> stringResource(R.string.chat_eingabe)
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    maxLines = 5,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        disabledContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                    ),
-                )
-
-                IconButton(
-                    onClick = beiMikrofon,
-                    enabled = kannAufnehmen,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                ) {
+                Box(modifier = Modifier.weight(1f)) { leiste() }
+                IconButton(onClick = beiMikrofon, enabled = kannAufnehmen) {
                     Icon(
-                        imageVector = if (nimmtAuf) Icons.Default.Stop else Icons.Default.Mic,
+                        imageVector = if (nimmtAuf) Icons.Default.Stop else Icons.Outlined.Mic,
                         contentDescription = stringResource(
                             if (nimmtAuf) R.string.sprache_aufnahme_stopp else R.string.sprache_aufnahme_start
                         ),
                         tint = if (nimmtAuf) MaterialTheme.colorScheme.error else LocalContentColor.current,
                     )
                 }
+                SendenKnopf(
+                    knopf = knopf,
+                    aktiv = if (knopf == SendeKnopf.SENDEN) kannSenden else knopfAktiv,
+                    beiSenden = beiSenden,
+                    beiStopp = beiStopp,
+                    beiZwischenruf = beiZwischenruf,
+                )
             }
         }
-
-        SendenKnopf(
-            knopf = knopf,
-            aktiv = if (knopf == SendeKnopf.SENDEN) kannSenden else knopfAktiv,
-            beiSenden = beiSenden,
-            beiStopp = beiStopp,
-            beiZwischenruf = beiZwischenruf,
-        )
     }
 }
 
