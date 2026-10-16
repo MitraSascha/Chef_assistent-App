@@ -39,7 +39,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.chefassistent.app.R
 import de.chefassistent.app.monteur.data.Artikel
 import de.chefassistent.app.monteur.data.MaterialAenderung
@@ -48,14 +47,21 @@ import de.chefassistent.app.monteur.data.MaterialAenderung
  * „+ Material“ (Auftrag 1.22, 3.): Suche im Artikelstamm, Treffer antippen,
  * Menge waehlen, hinzufuegen. Ohne passenden Treffer als freie Position mit
  * Bezeichnung und Einheit. **Keine Preise** - die liefert der Server auch nicht.
+ *
+ * Kennt kein ViewModel: Bericht und Bestellung (Auftrag 1.23, 2.) suchen auf
+ * eigenen Wegen, der Dialog bekommt nur den Stand [suche] und die beiden
+ * Aufrufe. [beiFertig] liefert neben der Position den gewaehlten Treffer, weil
+ * die Bestellung ihn bis „Passt“ selbst anzeigen muss (den Bericht schickt der
+ * Server mit Artikelnamen zurueck).
  */
 @Composable
 internal fun MaterialDialog(
-    viewModel: BerichtViewModel,
-    beiFertig: (MaterialAenderung) -> Unit,
+    suche: ArtikelSuche,
+    beiSuche: (String) -> Unit,
+    beiSucheBeenden: () -> Unit,
+    beiFertig: (MaterialAenderung, Artikel?) -> Unit,
     beiAbbruch: () -> Unit,
 ) {
-    val suche by viewModel.artikelTreffer.collectAsStateWithLifecycle()
     var eingabe by rememberSaveable { mutableStateOf("") }
     var gewaehlt by remember { mutableStateOf<Artikel?>(null) }
     var frei by rememberSaveable { mutableStateOf(false) }
@@ -76,7 +82,7 @@ internal fun MaterialDialog(
                         value = eingabe,
                         onValueChange = {
                             eingabe = it
-                            if (!frei) viewModel.artikelSuchen(it)
+                            if (!frei) beiSuche(it)
                         },
                         label = { Text(stringResource(if (frei) R.string.b_material_name else R.string.b_material_suchen)) },
                         singleLine = true,
@@ -136,7 +142,7 @@ internal fun MaterialDialog(
                         }
                         // Kein passender Artikel: als freie Position, der Suchtext wird zur Bezeichnung.
                         if (eingabe.trim().length >= 2) {
-                            TextButton(onClick = { frei = true; viewModel.artikelSucheBeenden() }) {
+                            TextButton(onClick = { frei = true; beiSucheBeenden() }) {
                                 Text(stringResource(R.string.b_material_frei))
                             }
                         }
@@ -151,7 +157,8 @@ internal fun MaterialDialog(
                     val a = gewaehlt
                     beiFertig(
                         if (a != null) neuePosition(menge, a.nr)
-                        else neuePosition(menge, null, text = eingabe, einheit = einheit)
+                        else neuePosition(menge, null, text = eingabe, einheit = einheit),
+                        a,
                     )
                 },
             ) { Text(stringResource(R.string.b_material_uebernehmen)) }
