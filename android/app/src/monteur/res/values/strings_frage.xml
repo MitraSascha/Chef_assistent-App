@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App: Antwortkarte „frage“ (Auftrag 1.23, 2.). -->
+<resources>
+    <string name="f_du">Du: %1$s</string>
+    <string name="f_aufklappen">Antippen zum Aufklappen</string>
+    <string name="f_zuklappen">Einklappen</string>
+    <string name="f_keine_antwort">Keine Antwort erhalten.</string>
+    <string name="f_quellen">Quellen</string>
+    <string name="f_anleitungen">Anleitungen</string>
+    <string name="f_artikel">Passende Artikel</string>
+    <string name="f_anleitung_zeile">%1$s · S. %2$d</string>
+    <string name="f_video">Video</string>
+    <string name="f_kopiert">Kopiert</string>
+    <string name="f_keine_app">Keine App zum Öffnen gefunden</string>
+</resources>

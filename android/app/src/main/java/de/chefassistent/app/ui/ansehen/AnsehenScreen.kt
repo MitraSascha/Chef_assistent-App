@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -151,7 +152,7 @@ fun AnsehenScreen(
                 datei == null -> Unit
                 zustand.text != null -> TextAnsicht(zustand.text!!, istMarkdown = name.endsWith(".md", true))
                 else -> when (dateiArt(name)) {
-                    DateiArt.PDF -> PdfAnsicht(datei) { seiten = it }
+                    DateiArt.PDF -> PdfAnsicht(datei, startSeite) { seiten = it }
                     DateiArt.VIDEO -> VideoAnsicht(datei)
                     else -> BildAnsicht(datei)
                 }
@@ -246,7 +247,7 @@ private class PdfDokument(datei: File) : Closeable {
 }
 
 @Composable
-private fun PdfAnsicht(datei: File, beiSeiten: (Int) -> Unit) {
+private fun PdfAnsicht(datei: File, startSeite: Int, beiSeiten: (Int) -> Unit) {
     val dokument = remember(datei) { runCatching { PdfDokument(datei) }.getOrNull() }
     DisposableEffect(dokument) { onDispose { dokument?.close() } }
     if (dokument == null) {
@@ -254,12 +255,15 @@ private fun PdfAnsicht(datei: File, beiSeiten: (Int) -> Unit) {
         return
     }
     LaunchedEffect(dokument) { beiSeiten(dokument.seiten) }
+    // Nur der Anfangswert: einmal beim Oeffnen auf die Seite, danach blaettert der Nutzer selbst.
+    val liste = rememberLazyListState(initialFirstVisibleItemIndex = startIndex(startSeite, dokument.seiten))
     // Doppelte Bildschirmbreite, damit es beim Zoomen nicht sofort verschwimmt.
     val breite = with(LocalDensity.current) { (LocalConfiguration.current.screenWidthDp.dp.toPx() * 2).toInt() }
         .coerceAtMost(2400)
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Zoombar {
             LazyColumn(
+                state = liste,
                 contentPadding = PaddingValues(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -285,6 +289,9 @@ private fun PdfAnsicht(datei: File, beiSeiten: (Int) -> Unit) {
         }
     }
 }
+
+/** Startseite (0-basiert) auf die vorhandenen Seiten begrenzt, damit ein Treffer hinter dem Ende nicht ins Leere zeigt. */
+internal fun startIndex(startSeite: Int, seiten: Int): Int = startSeite.coerceIn(0, (seiten - 1).coerceAtLeast(0))
 
 @Composable
 private fun BildAnsicht(datei: File) {
