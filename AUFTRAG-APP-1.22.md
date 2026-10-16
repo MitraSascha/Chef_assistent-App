@@ -7,7 +7,7 @@ Zeit, Material, Tätigkeit) und **Zeit-/Urlaubsbuchung**. Die KI soll den größ
 Mehrere Kollegen schreiben nur Stichworte oder einfaches Deutsch – der Bericht muss trotzdem einer Hausverwaltung
 vorgelegt werden können. Das erledigt der Server; die App muss nur Aufnahme/Text schicken.
 
-Vertrag: [`openapi.json`](openapi.json) 1.22.0 (sha256 `098cc637…526a513`), Beschreibung in [`API.md` 5c](API.md).
+Vertrag: [`openapi.json`](openapi.json) 1.22.0 (sha256 `727928b9…91bf26d`), Beschreibung in [`API.md` 5c](API.md).
 Es gibt nur Ergänzungen; die Büro-App bleibt unverändert (Aufträge 1.13–1.21 gelten weiter). Neu in `GET /v1/ich`:
 Feld `rolle` (`buero` | `monteur`).
 
@@ -69,6 +69,9 @@ Feld `rolle` (`buero` | `monteur`).
   - Material-Liste: Menge (Stepper), Name des gewählten Artikels bzw. Diktat-Text. Hat ein Eintrag `rueckfrage`:
     gold markiert, Frage anzeigen, darunter die `vorschlaege` als Chips zum Antippen (→ `PATCH` mit `artikel_nr`) oder
     „Frei lassen“ (`artikel_nr: null`) oder per Mikrofon antworten (`POST …/diktat`).
+  - **„+ Material“** am Ende der Liste: Suchfeld (ab 2 Zeichen, 300 ms Pause) → `GET /v1/monteur/artikel?q=…`,
+    Treffer antippen → Menge per Stepper → `PATCH` mit `{"index": null, "menge", "artikel_nr"}` an die Liste
+    angehängt. Kein Treffer → „Als freie Position“ (Name, Menge, Einheit, `artikel_nr: null`). Keine Preise zeigen.
   - Zeiten des Tages (aus dem Entwurf) als Zeilen von–bis/Art.
   - „Fürs Büro“ (hinweise_buero) und offene `rueckfragen` als Hinweiskarte.
   - Unten: Mikrofon „Ergänzen/Korrigieren“ (`POST …/diktat`), **„Kunde unterschreibt“** (Unterschriftsfeld

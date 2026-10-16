@@ -49,6 +49,10 @@ interface MonteurApi {
     @GET("v1/monteur/dateien/{uuid}")
     suspend fun datei(@Path("uuid") uuid: String, @Query("vorschau") vorschau: Boolean? = null): Response<ResponseBody>
 
+    /** Artikelstamm (Gut Mollenhauer), ohne Preise. Unter 2 Zeichen leere Liste. */
+    @GET("v1/monteur/artikel")
+    suspend fun artikel(@Query("q") q: String, @Query("max") max: Int? = null): List<Artikel>
+
     // --- Bericht ---
 
     @Multipart

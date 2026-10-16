@@ -131,4 +131,16 @@ class BerichtTest {
         // Auch bei kleinem Ueberschuss sicher kleiner, sonst liefe die Schleife ewig.
         assertTrue(unterschriftSkalierung(UNTERSCHRIFT_MAX_BYTES + 1)!! <= 0.9f)
     }
+
+    @Test
+    fun `neue Position aus dem Artikelstamm und als freie Position`() {
+        val katalog = de.chefassistent.app.monteur.data.materialJson(
+            listOf(de.chefassistent.app.monteur.ui.bericht.neuePosition(2.0, "EV"))
+        ).toString()
+        org.junit.Assert.assertEquals("""[{"menge":2.0,"artikel_nr":"EV"}]""", katalog)
+        val frei = de.chefassistent.app.monteur.data.materialJson(
+            listOf(de.chefassistent.app.monteur.ui.bericht.neuePosition(1.0, null, text = " Silikon ", einheit = "Kart"))
+        ).toString()
+        org.junit.Assert.assertEquals("""[{"menge":1.0,"text":"Silikon","einheit":"Kart","artikel_nr":null}]""", frei)
+    }
 }

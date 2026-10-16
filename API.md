@@ -95,6 +95,7 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/monteur/berichte`, `/v1/monteur/berichte/{id}` | Eigene Berichte (1.22.0) |
 | POST | `/v1/monteur/berichte/{id}/diktat` | Entwurf per Sprache ergänzen/korrigieren (1.22.0) |
 | PATCH / DELETE | `/v1/monteur/berichte/{id}` | Entwurf korrigieren (Artikel wählen) / verwerfen (1.22.0) |
+| GET | `/v1/monteur/artikel?q=&max=` | Artikelstamm durchsuchen (ohne Preise) für „+ Material“ von Hand (1.22.0) |
 | POST | `/v1/monteur/berichte/{id}/abschliessen` | „Passt“ → **fertiger Baustellenbericht in HERO** + Unterschrift + Zeiten (1.22.0) |
 | GET / POST | `/v1/monteur/zeiten` | Zeiten des Tages (aus HERO) / Zeitabschnitt eintragen (1.22.0) |
 | PATCH / DELETE | `/v1/monteur/zeiten/{id}` | Zeit ändern / löschen, solange nicht eingereicht (1.22.0) |
@@ -1049,7 +1050,11 @@ und stehen in der Projektmappe unter `videos:[{"name","groesse_mb","datum"}]`, a
    artikel{nr,name,einheit}|null, vorschlaege[], rueckfrage}], zeiten[{beginn,ende,art}], hinweise_buero[], rueckfragen[]`.
 2. Korrigieren: per Sprache `POST …/{id}/diktat` (z. B. Antwort auf „Welches Eckventil, 1/2 oder 3/8?“) oder von
    Hand `PATCH …/{id}` (Felder wie im Entwurf; `material` = vollständige Liste `[{index, menge, text?, einheit?,
-   artikel_nr?}]` – `artikel_nr` aus `vorschlaege` wählt, `null` = freie Position).
+   artikel_nr?}]` – `artikel_nr` aus `vorschlaege` wählt, `null` = freie Position ohne Katalogabgleich).
+   **Material von Hand:** `GET /v1/monteur/artikel?q=eckventil 1/2&max=20` → `[{"nr","name","einheit"}]` (Artikelstamm
+   Gut Mollenhauer, bei uns oft genutzte zuerst, alle Wörter müssen vorkommen, exakte Artikelnummer trifft direkt,
+   **keine Preise**; unter 2 Zeichen `[]`). Übernehmen als neue Position: `{"index": null, "menge": 2,
+   "artikel_nr": "<nr>"}` in der `material`-Liste – geht in HERO als Katalogartikel (per IDS bestellbar).
 3. Kunde unterschreibt (optional) → `POST …/{id}/abschliessen {"unterschrift_png": base64|data-URL|null,
    "unterschrift_name", "zeiten_buchen": true}`. Der Server legt einen **fertigen Baustellenbericht** in HERO an
    (BER-Nummer, PDF, Kunde als Empfänger, Positionen Kundendienst/Baustellenmonteur + Monteurhelfer in Std,

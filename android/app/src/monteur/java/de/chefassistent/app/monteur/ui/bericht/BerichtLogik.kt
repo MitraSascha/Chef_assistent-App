@@ -77,6 +77,24 @@ fun materialAenderungen(
     )
 }
 
+/**
+ * Neue Position fuer „+ Material“, an die Liste angehaengt (`index: null`).
+ * Mit [artikelNr] als Katalogartikel, sonst als freie Position mit [text]/[einheit]
+ * (`artikel_nr: null`, wird nicht abgeglichen).
+ */
+fun neuePosition(menge: Double, artikelNr: String?, text: String? = null, einheit: String? = null): MaterialAenderung =
+    if (artikelNr != null) {
+        MaterialAenderung(index = null, menge = menge, artikel = ArtikelWahl.Waehlen(artikelNr))
+    } else {
+        MaterialAenderung(
+            index = null,
+            menge = menge,
+            text = text?.trim()?.takeIf { it.isNotEmpty() },
+            einheit = einheit?.trim()?.takeIf { it.isNotEmpty() },
+            artikel = ArtikelWahl.Frei,
+        )
+    }
+
 /** Anzeigename einer Position: der gewaehlte Katalogartikel, sonst der diktierte Text. */
 fun materialName(m: Material): String = m.artikel?.name?.takeIf { it.isNotBlank() } ?: m.text
 

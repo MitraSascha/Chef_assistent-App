@@ -145,6 +145,31 @@ internal fun BerichtKarte(viewModel: BerichtViewModel, zustand: BerichtZustand) 
                     }
                 }
             }
+            // Material von Hand, mit Suche im Artikelstamm (seit 1.22.0).
+            var materialDialog by rememberSaveable { mutableStateOf(false) }
+            OutlinedButton(
+                onClick = { materialDialog = true },
+                enabled = !gesperrt,
+                shape = KNOPF_FORM,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.b_material_plus))
+            }
+            if (materialDialog) {
+                MaterialDialog(
+                    viewModel = viewModel,
+                    beiFertig = { neu ->
+                        materialDialog = false
+                        viewModel.materialHinzufuegen(neu)
+                    },
+                    beiAbbruch = {
+                        materialDialog = false
+                        viewModel.artikelSucheBeenden()
+                    },
+                )
+            }
 
             if (e.zeiten.isNotEmpty()) {
                 GruppenTitel(stringResource(R.string.b_zeiten))

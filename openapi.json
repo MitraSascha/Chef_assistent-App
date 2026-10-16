@@ -4858,6 +4858,103 @@
         }
       }
     },
+    "/v1/monteur/artikel": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Artikel Suchen",
+        "description": "Artikelstamm durchsuchen (Gut Mollenhauer; bei uns oft genutzte Artikel zuerst) – ohne Preise.\nFür „+ Material“ im Bericht: Treffer per PATCH mit artikel_nr übernehmen. Unter 2 Zeichen: leere Liste.",
+        "operationId": "artikel_suchen_v1_monteur_artikel_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Stichwörter oder Artikelnummer; alle Wörter müssen vorkommen",
+              "title": "Q"
+            },
+            "description": "Stichwörter oder Artikelnummer; alle Wörter müssen vorkommen"
+          },
+          {
+            "name": "max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Max"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Artikel"
+                  },
+                  "title": "Response Artikel Suchen V1 Monteur Artikel Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/monteur/projekte/{pid}": {
       "get": {
         "tags": [
@@ -10040,7 +10137,7 @@
               }
             ],
             "title": "Artikel Nr",
-            "description": "Nur mitschicken, um zu wählen: nr aus vorschlaege; null = freie Position"
+            "description": "Nur mitschicken, um zu wählen: nr aus vorschlaege oder aus GET /v1/monteur/artikel (auch bei index null = neue Position als Katalogartikel); null = freie Position (wird nicht abgeglichen)"
           }
         },
         "type": "object",

@@ -94,4 +94,14 @@
     <string name="b_ergaenzen_titel">Ergänzen oder korrigieren</string>
     <string name="b_ergaenzen_platzhalter">z. B. „um 7:45 losgefahren“ oder „2 Eckventile 1/2 Zoll“</string>
     <string name="b_ergaenzen_senden">Ergänzung senden</string>
+    <string name="b_material_plus">Material hinzufügen</string>
+    <string name="b_material_suchen">Artikel suchen, z. B. „Eckventil 1/2“</string>
+    <string name="b_material_keine_treffer">Keine Treffer im Artikelstamm.</string>
+    <string name="b_material_frei">Als freie Position</string>
+    <string name="b_material_frei_hinweis">Wird nicht mit dem Katalog abgeglichen – das Büro ordnet sie zu.</string>
+    <string name="b_material_name">Bezeichnung</string>
+    <string name="b_material_einheit">Einheit</string>
+    <string name="b_material_menge">Menge</string>
+    <string name="b_material_uebernehmen">Hinzufügen</string>
+    <string name="b_material_artikelnr">Art.-Nr. %1$s</string>
 </resources>

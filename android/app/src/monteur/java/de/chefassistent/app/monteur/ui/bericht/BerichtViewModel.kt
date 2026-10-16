@@ -21,6 +21,7 @@ import de.chefassistent.app.monteur.data.ArtikelWahl
 import de.chefassistent.app.monteur.data.BerichtAenderung
 import de.chefassistent.app.monteur.data.BerichtAuftrag
 import de.chefassistent.app.monteur.data.MonteurBericht
+import de.chefassistent.app.monteur.data.MaterialAenderung
 import de.chefassistent.app.monteur.data.MonteurRepository
 import de.chefassistent.app.monteur.data.MonteurVersand
 import de.chefassistent.app.monteur.data.materialJson
@@ -382,6 +383,50 @@ class BerichtViewModel(
         sperrend { materialSenden(index, wahl) }
     }
 
+    // --- „+ Material“ von Hand ------------------------------------------------------------
+
+    private val _artikelTreffer = MutableStateFlow<ArtikelSuche>(ArtikelSuche())
+
+    /** Treffer der Artikelsuche fuer den Dialog „+ Material“. */
+    val artikelTreffer: StateFlow<ArtikelSuche> = _artikelTreffer.asStateFlow()
+
+    private var sucheJob: Job? = null
+
+    /** Ab 2 Zeichen, 300 ms Pause, vorige Anfrage abbrechen (Auftrag 1.22). */
+    fun artikelSuchen(eingabe: String) {
+        sucheJob?.cancel()
+        val q = eingabe.trim()
+        if (q.length < 2) {
+            _artikelTreffer.value = ArtikelSuche()
+            return
+        }
+        _artikelTreffer.update { it.copy(laeuft = true, fehler = null) }
+        sucheJob = viewModelScope.launch {
+            delay(SUCHE_PAUSE_MS)
+            try {
+                _artikelTreffer.value = ArtikelSuche(suchtext = q, treffer = repository.artikelSuchen(q))
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) abmelden()
+                _artikelTreffer.value = ArtikelSuche(suchtext = q, fehler = fehler.anzeigetext)
+            }
+        }
+    }
+
+    fun artikelSucheBeenden() {
+        sucheJob?.cancel()
+        _artikelTreffer.value = ArtikelSuche()
+    }
+
+    /** Neue Position anhaengen: Katalogartikel oder freie Position. Die ganze Liste geht mit. */
+    fun materialHinzufuegen(neu: MaterialAenderung) {
+        mengenJob?.cancel()
+        artikelSucheBeenden()
+        sperrend {
+            val material = _zustand.value.bericht?.entwurf?.material ?: return@sperrend
+            senden(BerichtAenderung(material = materialJson(materialAenderungen(material) + neu)))
+        }
+    }
+
     fun materialEntfernen(index: Int) {
         mengenJob?.cancel()
         sperrend { materialSenden(index, entfernen = true) }
@@ -679,3 +724,13 @@ class BerichtViewModel(
         }
     }
 }
+
+/** Stand der Artikelsuche im Dialog „+ Material“. */
+data class ArtikelSuche(
+    val suchtext: String = "",
+    val treffer: List<de.chefassistent.app.monteur.data.Artikel> = emptyList(),
+    val laeuft: Boolean = false,
+    val fehler: String? = null,
+)
+
+private const val SUCHE_PAUSE_MS = 300L

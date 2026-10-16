@@ -173,6 +173,9 @@ class MonteurRepository(
         }
     }
 
+    /** „+ Material“: Artikelstamm durchsuchen, oft genutzte zuerst (API.md 5c). */
+    suspend fun artikelSuchen(q: String, max: Int = 20): List<Artikel> = ruf { it.artikel(q, max) }
+
     suspend fun berichte(von: String? = null, bis: String? = null): List<MonteurBericht> = ruf { it.berichte(von, bis) }
 
     suspend fun bericht(id: String): MonteurBericht = ruf { it.bericht(id) }
