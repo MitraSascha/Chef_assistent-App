@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mitra Monteur: goldenes M auf Navy, wie das M-Zeichen in der App.
+     108x108 Adaptive-Icon-Flaeche, Motiv in der sicheren Mitte (ca. 30..78). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFDA9C4D"
+        android:pathData="M32,76 L32,32 L42,32 L54,52 L66,32 L76,32 L76,76 L67,76 L67,48 L56,66 L52,66 L41,48 L41,76 Z" />
+</vector>
