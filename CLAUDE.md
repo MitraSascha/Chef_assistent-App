@@ -831,7 +831,7 @@ Am Gerät geprüft (2026-10-16, `UNB-795`):
 - **Netz zurück:** `registerDefaultNetworkCallback` stößt den Korb sofort an, Backoff linear statt exponentiell.
 - Aufräumen beim Start: Cache-Fotos und nicht mehr benutzte Eingabe-Fotos älter als ein Tag.
 
-Am Gerät geprüft (2026-10-16): Foto in der Eingabe → Zurück → App hart beendet → Foto wieder da. Flugmodus → Text + Foto → „Wartet auf Netz“ nach 1,4 s (mit Screenshot), Eingang und Foto verschlüsselt im Korb. Flugmodus aus → nach etwa 50 s von selbst gesendet, Karte unter „Noch zu bestätigen“. **Offen:** Die Projektmappe öffnet sich ohne Netz nicht (kein Zwischenspeicher). Die Kamera auf „Heute“ geht dann aber weiter, die Fotos warten in der Eingabe.
+Am Gerät geprüft (2026-10-16): Foto in der Eingabe → Zurück → App hart beendet → Foto wieder da. Flugmodus → Text + Foto → „Wartet auf Netz“ nach 1,4 s (mit Screenshot), Eingang und Foto verschlüsselt im Korb. Flugmodus aus → nach etwa 50 s von selbst gesendet, Karte unter „Noch zu bestätigen“. **TODO (Vorgabe des Nutzers, 2026-10-16): Die Projektmappe muss auch ohne Netz öffnen.** Heute öffnet sie sich ohne Netz nicht, die Kamera auf „Heute“ geht aber weiter. Plan für App und Server: `TODO-MONTEUR-OFFLINE.md`.
 
 **Ungeprüft:** Sprechen statt Tippen (gleicher Weg), Funkloch mit `gerade_ids`, Vollbild mit Projektfoto (die Mappe zeigte noch keine Fotos aus HERO), Video/Datei über ⋮.
 
