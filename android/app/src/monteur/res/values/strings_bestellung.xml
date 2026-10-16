@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App: Karten „Material bestellen“ und „Info ans Büro“ (Auftrag 1.23, Abschnitt 2). -->
+<resources>
+    <!-- Bestellung -->
+    <string name="bs_material">Material</string>
+    <string name="bs_leer">Keine Position. Mit „Material hinzufügen“ etwas eintragen.</string>
+    <string name="bs_hinweis">Hinweis: %1$s</string>
+    <string name="bs_neu">neu</string>
+    <string name="bs_geaendert">geändert</string>
+    <string name="bs_entfernen">Position entfernen</string>
+    <string name="bs_weniger">Weniger</string>
+    <string name="bs_mehr">Mehr</string>
+    <string name="bs_diktiert">gesagt: „%1$s“</string>
+
+    <!-- Meldung -->
+    <string name="bs_art_nicht_angetroffen">Kunde nicht angetroffen</string>
+    <string name="bs_art_verspaetung">Verspätung</string>
+    <string name="bs_art_mangel">Mangel/Schaden</string>
+    <string name="bs_art_nachtrag">Nachtrag/Zusatzwunsch</string>
+    <string name="bs_art_sonstiges">Sonstiges</string>
+    <string name="bs_text">Text fürs Büro</string>
+    <string name="bs_zeichen">%1$d/%2$d</string>
+    <plurals name="bs_fotos_mehr">
+        <item quantity="one">+ %1$d Foto</item>
+        <item quantity="other">+ %1$d Fotos</item>
+    </plurals>
+    <string name="bs_verlauf">Kommt in den HERO-Projektverlauf von %1$s.</string>
+    <string name="bs_verlauf_ohne_projekt">Kommt in den HERO-Projektverlauf.</string>
+</resources>

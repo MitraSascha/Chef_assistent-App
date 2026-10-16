@@ -56,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.chefassistent.app.R
 import de.chefassistent.app.monteur.data.ArtikelWahl
 import de.chefassistent.app.monteur.data.Material
@@ -158,9 +159,12 @@ internal fun BerichtKarte(viewModel: BerichtViewModel, zustand: BerichtZustand) 
                 Text(stringResource(R.string.b_material_plus))
             }
             if (materialDialog) {
+                val suche by viewModel.artikelTreffer.collectAsStateWithLifecycle()
                 MaterialDialog(
-                    viewModel = viewModel,
-                    beiFertig = { neu ->
+                    suche = suche,
+                    beiSuche = viewModel::artikelSuchen,
+                    beiSucheBeenden = viewModel::artikelSucheBeenden,
+                    beiFertig = { neu, _ ->
                         materialDialog = false
                         viewModel.materialHinzufuegen(neu)
                     },
