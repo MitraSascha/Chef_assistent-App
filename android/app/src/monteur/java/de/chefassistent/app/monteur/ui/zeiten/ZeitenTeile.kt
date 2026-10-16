@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Warehouse
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,8 +62,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.chefassistent.app.R
 import de.chefassistent.app.monteur.data.ART_ARBEIT
+import de.chefassistent.app.monteur.data.ART_LAGER
 import de.chefassistent.app.monteur.data.Stempel
 import de.chefassistent.app.monteur.data.ZEIT_ARTEN
+import de.chefassistent.app.monteur.data.ZEIT_ARTEN_ANLEGEN
 import de.chefassistent.app.monteur.data.Zeiteintrag
 import de.chefassistent.app.ui.komponenten.GruppenKarte
 import de.chefassistent.app.ui.theme.warnung
@@ -81,6 +84,7 @@ fun artSymbol(art: String): ImageVector = when (art) {
     "fahrt" -> Icons.Outlined.DirectionsCar
     "pause" -> Icons.Outlined.Coffee
     "material" -> Icons.Outlined.Inventory2
+    ART_LAGER -> Icons.Outlined.Warehouse
     "buero" -> Icons.Outlined.Business
     "vor_ort" -> Icons.Outlined.Place
     else -> Icons.Outlined.MoreHoriz
@@ -93,6 +97,7 @@ fun artName(art: String): String = when (art) {
     "fahrt" -> stringResource(R.string.z_art_fahrt)
     "pause" -> stringResource(R.string.z_art_pause)
     "material" -> stringResource(R.string.z_art_material)
+    ART_LAGER -> stringResource(R.string.z_art_lager)
     "buero" -> stringResource(R.string.z_art_buero)
     "vor_ort" -> stringResource(R.string.z_art_vor_ort)
     "sonstige" -> stringResource(R.string.z_art_sonstige)
@@ -105,7 +110,7 @@ private fun ArtAuswahl(gewaehlt: String, beiWahl: (String) -> Unit, modifier: Mo
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
     ) {
-        ZEIT_ARTEN.forEach { art ->
+        ZEIT_ARTEN_ANLEGEN.forEach { art ->
             FilterChip(
                 selected = art == gewaehlt,
                 onClick = { beiWahl(art) },
@@ -162,7 +167,7 @@ fun StempelKarte(
     sendet: Boolean,
     beiAktion: (aktion: String, art: String, projektNr: String?) -> Unit,
 ) {
-    var art by rememberSaveable(stempel?.art) { mutableStateOf(stempel?.art?.takeIf { it in ZEIT_ARTEN } ?: ART_ARBEIT) }
+    var art by rememberSaveable(stempel?.art) { mutableStateOf(stempel?.art?.takeIf { it in ZEIT_ARTEN_ANLEGEN } ?: ART_ARBEIT) }
     var projekt by rememberSaveable { mutableStateOf(projekte.singleOrNull()?.first.orEmpty()) }
     val beginn = zeitLesen(stempel?.beginn)
 
@@ -200,11 +205,12 @@ fun StempelKarte(
                 )
             }
             ArtAuswahl(art, { art = it }, Modifier.padding(top = 8.dp))
-            ProjektAuswahl(projekte, projekt, { projekt = it }, Modifier.padding(top = 4.dp))
+            // Lager, Fahrt, Pause haben kein Projekt - die Chips wuerden nur verleiten.
+            if (mitProjekt(art)) ProjektAuswahl(projekte, projekt, { projekt = it }, Modifier.padding(top = 4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 if (stempel == null) {
                     Button(
-                        onClick = { beiAktion(ZeitenViewModel.AKTION_START, art, projekt) },
+                        onClick = { beiAktion(ZeitenViewModel.AKTION_START, art, projektFuerArt(art, projekt)) },
                         enabled = !sendet,
                         colors = navyFarben(),
                         shape = RoundedCornerShape(10.dp),
@@ -215,7 +221,7 @@ fun StempelKarte(
                     }
                 } else {
                     Button(
-                        onClick = { beiAktion(ZeitenViewModel.AKTION_WECHSEL, art, projekt) },
+                        onClick = { beiAktion(ZeitenViewModel.AKTION_WECHSEL, art, projektFuerArt(art, projekt)) },
                         enabled = !sendet,
                         colors = navyFarben(),
                         shape = RoundedCornerShape(10.dp),
@@ -407,7 +413,7 @@ fun ZeitFormular(
 
             Text(stringResource(R.string.z_art), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ZEIT_ARTEN.forEach { a ->
+                artenZurWahl(eintrag?.art).forEach { a ->
                     FilterChip(
                         selected = a == art,
                         onClick = { art = a },
@@ -417,15 +423,19 @@ fun ZeitFormular(
                     )
                 }
             }
+            ArtHilfe(art, Modifier.padding(top = 4.dp))
 
-            OutlinedTextField(
-                value = projekt,
-                onValueChange = { projekt = it.take(40) },
-                label = { Text(stringResource(R.string.z_projekt)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            )
-            ProjektAuswahl(projekte, projekt, { projekt = it }, Modifier.padding(top = 4.dp))
+            // Lager, Fahrt, Pause: kein Projekt, also auch kein Feld dafuer.
+            if (mitProjekt(art)) {
+                OutlinedTextField(
+                    value = projekt,
+                    onValueChange = { projekt = it.take(40) },
+                    label = { Text(stringResource(R.string.z_projekt)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                )
+                ProjektAuswahl(projekte, projekt, { projekt = it }, Modifier.padding(top = 4.dp))
+            }
 
             OutlinedTextField(
                 value = kommentar,
@@ -450,7 +460,7 @@ fun ZeitFormular(
                     Text(stringResource(R.string.z_abbrechen))
                 }
                 Button(
-                    onClick = { beiSpeichern(von, bis, art, projekt, kommentar) },
+                    onClick = { beiSpeichern(von, bis, art, projektFuerArt(art, projekt), kommentar) },
                     enabled = gueltig && !sendet,
                     colors = navyFarben(),
                     shape = RoundedCornerShape(10.dp),
@@ -461,9 +471,36 @@ fun ZeitFormular(
     }
 }
 
+/**
+ * Ein Satz je Art, klein und grau, dazu der Hinweis zum Heimweg (Auftrag 1.23, 6.).
+ * Die Regeln des Betriebs sind nicht selbsterklaerend - ohne den Satz landet die
+ * Ladezeit am Morgen als „Arbeit“ beim ersten Kunden.
+ */
+@Composable
+fun ArtHilfe(art: String, modifier: Modifier = Modifier) {
+    val satz = when (art) {
+        ART_LAGER -> R.string.z_hilfe_lager
+        "fahrt" -> R.string.z_hilfe_fahrt
+        "arbeit" -> R.string.z_hilfe_arbeit
+        "material" -> R.string.z_hilfe_material
+        "pause" -> R.string.z_hilfe_pause
+        else -> null
+    }
+    Column(modifier) {
+        if (satz != null) {
+            Text(stringResource(satz), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(
+            stringResource(R.string.z_hilfe_heimweg),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ZeitKnopf(beschriftung: String, wert: LocalTime, beiWahl: (LocalTime) -> Unit, modifier: Modifier = Modifier) {
+internal fun ZeitKnopf(beschriftung: String, wert: LocalTime, beiWahl: (LocalTime) -> Unit, modifier: Modifier = Modifier) {
     var offen by remember { mutableStateOf(false) }
     Column(modifier = modifier) {
         Text(beschriftung, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

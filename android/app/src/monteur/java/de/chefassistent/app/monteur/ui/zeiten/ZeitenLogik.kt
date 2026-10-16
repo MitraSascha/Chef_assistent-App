@@ -1,9 +1,11 @@
 package de.chefassistent.app.monteur.ui.zeiten
 
 import de.chefassistent.app.monteur.data.ART_ARBEIT
+import de.chefassistent.app.monteur.data.ART_LAGER
 import de.chefassistent.app.monteur.data.MonteurTag
 import de.chefassistent.app.monteur.data.TagTermin
 import de.chefassistent.app.monteur.data.ZEIT_ARTEN
+import de.chefassistent.app.monteur.data.ZEIT_ARTEN_ANLEGEN
 import de.chefassistent.app.monteur.data.ZeitAbschnitt
 import de.chefassistent.app.monteur.data.ZeitNeu
 import de.chefassistent.app.monteur.data.Zeiteintrag
@@ -119,7 +121,55 @@ fun vorschlagZuZeit(abschnitt: ZeitAbschnitt, datum: String, anfrageId: String):
     )
 }
 
+/** Bekannte Arten (seit 1.23.0 auch `lager`) bleiben, Unbekanntes wird `arbeit`. */
 fun artFuerBuchung(art: String): String = art.takeIf { it in ZEIT_ARTEN } ?: ART_ARBEIT
+
+/**
+ * Arten ohne Projektbezug (API.md 5c): `lager` ist Arbeitszeit **ohne** Projekt,
+ * `fahrt` steckt in der Anfahrtspauschale, `pause` zaehlt gar nicht. Fuer sie wird
+ * das Projektfeld ausgeblendet und keine `projekt_nr` geschickt - sonst landete die
+ * Ladezeit am Morgen auf der Rechnung des ersten Kunden.
+ */
+val ARTEN_OHNE_PROJEKT: Set<String> = setOf(ART_LAGER, "fahrt", "pause")
+
+fun mitProjekt(art: String): Boolean = art !in ARTEN_OHNE_PROJEKT
+
+/** Arten, die dem Kunden berechnet werden und deshalb an einem Projekt haengen. */
+val ARTEN_AUF_PROJEKT: Set<String> = setOf(ART_ARBEIT, "material")
+
+/**
+ * Was zur Wahl steht: nur [ZEIT_ARTEN_ANLEGEN]. Hat ein Eintrag aus HERO eine andere
+ * Art (`buero`, `vor_ort`, `sonstige`), steht sie zusaetzlich am Ende, damit man sieht,
+ * was gerade gilt - neu angeboten wird sie sonst nirgends.
+ */
+fun artenZurWahl(aktuell: String?): List<String> =
+    if (aktuell == null || aktuell in ZEIT_ARTEN_ANLEGEN) ZEIT_ARTEN_ANLEGEN else ZEIT_ARTEN_ANLEGEN + aktuell
+
+/** Projektnummer, die bei [art] mitgeht: bei Arten ohne Projekt immer leer. */
+fun projektFuerArt(art: String, projektNr: String?): String = if (mitProjekt(art)) projektNr.orEmpty().trim() else ""
+
+/**
+ * Dauer eines Abschnitts `HH:MM`–`HH:MM` in Minuten; endet er vor dem Beginn, geht
+ * er ueber Mitternacht (Notdienst). Unlesbares oder gleiche Zeiten zaehlen 0.
+ */
+fun abschnittMinuten(abschnitt: ZeitAbschnitt): Int {
+    val von = uhrzeitLesen(abschnitt.beginn) ?: return 0
+    val bis = uhrzeitLesen(abschnitt.ende) ?: return 0
+    val minuten = Duration.between(von, bis).toMinutes().toInt()
+    return if (minuten < 0) minuten + 24 * 60 else minuten
+}
+
+/** Arbeitszeit der Abschnitte: alles ausser `pause` (API.md 5c, auch `fahrt` und `lager`). */
+fun arbeitMinuten(abschnitte: List<ZeitAbschnitt>): Int =
+    abschnitte.filter { it.art != "pause" }.sumOf(::abschnittMinuten)
+
+/** Liste mit Abschnitt [index] ersetzt; ausserhalb der Liste bleibt sie, wie sie ist. */
+fun abschnittErsetzen(abschnitte: List<ZeitAbschnitt>, index: Int, neu: ZeitAbschnitt): List<ZeitAbschnitt> =
+    if (index !in abschnitte.indices) abschnitte else abschnitte.toMutableList().also { it[index] = neu }
+
+/** Liste ohne Abschnitt [index]. */
+fun abschnittEntfernen(abschnitte: List<ZeitAbschnitt>, index: Int): List<ZeitAbschnitt> =
+    abschnitte.filterIndexed { i, _ -> i != index }
 
 /**
  * Wann der Banner „Tag bestätigen“ erscheint (Auftrag 1.22, Abschnitt 4):
