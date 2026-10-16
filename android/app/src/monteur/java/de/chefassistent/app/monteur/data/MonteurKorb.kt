@@ -29,6 +29,13 @@ import java.io.File
  */
 class MonteurKorb(context: Context) {
 
+    /** Seit 1.29.0: ein Foto ist oben, seine `foto_id` geht an „gerade aufgenommen“. */
+    var beiFotoId: (anfrageId: String, fotoId: String) -> Unit = { _, _ -> }
+
+    /** Loest „gerade aufgenommen“-IDs eines wartenden Eingangs in `foto_ids` auf. */
+    var fotoIdFuer: (anfrageId: String) -> String? = { null }
+
+
     private val tresor = Tresor(context)
     private val ordner = File(context.filesDir, "monteur_ausgang").apply { mkdirs() }
     private val beiseite = File(context.filesDir, "monteur_ausgang_beiseite").apply { mkdirs() }
@@ -228,7 +235,8 @@ class MonteurKorb(context: Context) {
                     datum = e.datum,
                     berichtId = e.bericht_id,
                     bezugId = e.bezug_id,
-                    fotoIds = e.foto_ids,
+                    // Die Uploads sind aelter und gingen vorher raus; was fehlt, faellt weg statt zu haengen.
+                    fotoIds = e.foto_ids + e.gerade_ids.mapNotNull(fotoIdFuer),
                 )
                 return KorbMeldung(name, e.titel, "Karte ist da – bitte ansehen.", fertig = true, karteId = karte.id)
             } finally {
@@ -252,7 +260,11 @@ class MonteurKorb(context: Context) {
             }
             try {
                 val antwort = repository.hochladen(d.projekt_id, klar, d.text, d.anfrage_id) { fortschritt(d.dateiname, it) }
-                return KorbMeldung(name, antwort.name.ifBlank { d.dateiname }, antwort.hinweis, fertig = true, projektId = d.projekt_id)
+                antwort.foto_id?.let { beiFotoId(d.anfrage_id, it) }
+                return KorbMeldung(
+                    name, antwort.name.ifBlank { d.dateiname }, antwort.hinweis, fertig = true, projektId = d.projekt_id,
+                    still = d.still,
+                )
             } finally {
                 klar.delete()
             }
@@ -304,6 +316,7 @@ class MonteurKorb(context: Context) {
     }
 
     private fun melden(meldung: KorbMeldung) {
+        if (meldung.still && meldung.fertig) return
         _gemeldet.value = _gemeldet.value + meldung
     }
 
@@ -396,6 +409,8 @@ data class EingangAuftrag(
     val titel: String = "Eingabe",
     /** Seit 1.27.0: Fotos aus der Projektmappe (uuid) - die holt der Server selbst. */
     val foto_ids: List<String> = emptyList(),
+    /** Seit 1.29.0: „gerade aufgenommen“, deren Upload beim Einreihen noch lief - beim Senden aufloesen. */
+    val gerade_ids: List<String> = emptyList(),
 )
 
 /** Ein „Passt“, das auf Netz wartet. */
@@ -415,6 +430,8 @@ data class DateiAuftrag(
     val dateiname: String,
     /** Kurze Beschreibung, kommt in den Dateinamen. */
     val text: String = "",
+    /** Seit 1.29.0: Foto aus Kamera/Galerie - Erfolg nicht einzeln melden (8 Fotos = 8 Meldungen). */
+    val still: Boolean = false,
 )
 
 /** Rueckmeldung vom Nachsenden. [berichtId] fuehrt zum fertigen Entwurf, [projektId] zur Mappe. */
@@ -427,4 +444,6 @@ data class KorbMeldung(
     val projektId: Int? = null,
     /** Seit 1.23.0: fuehrt zur Karte. */
     val karteId: String? = null,
+    /** Erfolg, der nicht angezeigt wird (Fotos „gerade aufgenommen“). */
+    val still: Boolean = false,
 )

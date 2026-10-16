@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.28.0"
+    "version": "1.29.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -8499,7 +8499,7 @@
             },
             "type": "array",
             "title": "Fotos",
-            "description": "0–5 Fotos (Typenschild, Schaden, Tür …)",
+            "description": "Neue Fotos (bis 50; die KI sieht die letzten 5)",
             "default": []
           },
           "foto_ids": {
@@ -8508,7 +8508,7 @@
             },
             "type": "array",
             "title": "Foto Ids",
-            "description": "Fotos aus der Projektmappe (uuid aus fotos[]) – der Server holt sie selbst (neu in 1.27.0); zusammen mit fotos höchstens 5",
+            "description": "Fotos, die schon im Projekt liegen: foto_id aus POST …/projekte/{id}/dateien oder uuid aus der Projektmappe – beliebig viele, werden nicht nochmal abgelegt; die KI sieht die letzten 5 (1.29.0)",
             "default": []
           },
           "termin_id": {
@@ -10832,6 +10832,18 @@
           "name": {
             "type": "string",
             "title": "Name"
+          },
+          "foto_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foto Id",
+            "description": "Nur Fotos: sofort im Eingang als foto_ids nutzbar (1.29.0)"
           },
           "ziel": {
             "type": "string",

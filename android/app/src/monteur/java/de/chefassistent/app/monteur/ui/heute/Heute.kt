@@ -207,6 +207,10 @@ fun HeuteReiter(
     nachrichten: List<MonteurNachricht> = emptyList(),
     beiNachricht: (MonteurNachricht) -> Unit = {},
     beiNachrichtGelesen: (MonteurNachricht) -> Unit = {},
+    /** Seit 1.29.0: „gerade aufgenommen“ zum laufenden Termin. */
+    gerade: List<de.chefassistent.app.monteur.data.GeradeFoto> = emptyList(),
+    gemeint: Set<String> = emptySet(),
+    beiGeradeTippen: (de.chefassistent.app.monteur.data.GeradeFoto) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val wartend by viewModel.wartend.collectAsStateWithLifecycle()
@@ -249,6 +253,11 @@ fun HeuteReiter(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    if (gerade.isNotEmpty()) {
+                        item(key = "gerade") {
+                            de.chefassistent.app.monteur.ui.karte.GeradeLeiste(gerade, gemeint, beiGeradeTippen, groesse = 72.dp)
+                        }
+                    }
                     if (nachrichten.isNotEmpty()) {
                         item(key = "nachrichten") { NachrichtenLeiste(nachrichten, beiNachricht, beiNachrichtGelesen) }
                     }
@@ -621,6 +630,28 @@ private fun MeldungKarte(meldung: KorbMeldung, beiOeffnen: (() -> Unit)?, beiOk:
             }
         }
     }
+}
+
+/**
+ * Der Termin, an dem der Monteur gerade ist (Auftrag 1.29): heute, mit Projekt, von
+ * 30 min vor Beginn bis 2 h nach Ende (es wird oft laenger). Mehrere → der spaetest
+ * begonnene. Ganztaegig zaehlt den ganzen Tag. Sonst `null` - dann gehen Fotos wie bisher
+ * erst mit der Eingabe raus und der Server sucht den Termin.
+ */
+fun laufenderTermin(tage: List<MonteurTag>?, jetzt: java.time.LocalDateTime = java.time.LocalDateTime.now()): TagTermin? {
+    val heute = jetzt.toLocalDate().toString()
+    fun zeit(s: String): java.time.LocalDateTime? =
+        runCatching { java.time.OffsetDateTime.parse(s).atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDateTime() }.getOrNull()
+            ?: runCatching { java.time.LocalDateTime.parse(s.take(16)) }.getOrNull()
+    return tage.orEmpty().filter { it.datum == heute }.flatMap { it.termine }
+        .filter { it.projekt != null }
+        .mapNotNull { t ->
+            if (t.ganztag) return@mapNotNull t to jetzt.toLocalDate().atStartOfDay()
+            val von = zeit(t.beginn) ?: return@mapNotNull null
+            val bis = zeit(t.ende) ?: von.plusHours(1)
+            if (jetzt.isBefore(von.minusMinutes(30)) || jetzt.isAfter(bis.plusHours(2))) null else t to von
+        }
+        .maxByOrNull { it.second }?.first
 }
 
 fun projektTitel(p: TagProjekt): String = listOf(p.nr, p.kunde).filter { it.isNotBlank() }.joinToString(" · ")

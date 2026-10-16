@@ -16,6 +16,11 @@ import de.chefassistent.app.monteur.data.MaterialAenderung
 import de.chefassistent.app.monteur.data.MonteurRepository
 import de.chefassistent.app.monteur.data.MonteurVersand
 import de.chefassistent.app.monteur.data.Passt
+import de.chefassistent.app.monteur.data.FotoAuswahl
+import de.chefassistent.app.monteur.data.GeradeAufgenommen
+import de.chefassistent.app.monteur.data.GeradeFoto
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import de.chefassistent.app.monteur.data.Protokoll
 import de.chefassistent.app.monteur.ui.bericht.Unterschrift
 import de.chefassistent.app.monteur.ui.bericht.Zeichenblock
@@ -43,6 +48,8 @@ data class EingangKontext(
     val datum: String? = null,
     /** Fuer die Anzeige („SAN-1243 · Böse“). */
     val titel: String? = null,
+    /** Seit 1.29.0: bekanntes Projekt - Fotos gehen sofort hinein, Sprechen bezieht sich auf „gerade aufgenommen“. */
+    val projektId: Int? = null,
 )
 
 enum class EingangPhase {
@@ -166,6 +173,33 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
 
     private var sprung = 0
 
+    private val _auswahl = MutableStateFlow(FotoAuswahl())
+
+    /** Welche „gerade aufgenommen“-Fotos beim Sprechen/Tippen mitgehen (Auftrag 1.29). */
+    val auswahl: StateFlow<FotoAuswahl> = _auswahl.asStateFlow()
+
+    fun fotoUmschalten(foto: GeradeFoto) {
+        val liste = app.gerade.fuerProjekt(foto.projektId)
+        _auswahl.update { it.umschalten(foto, liste) }
+    }
+
+    /** Die gemeinten Fotos fuer [projektId] - markierte, sonst das letzte noch nicht verwendete. */
+    fun gemeint(projektId: Int?): List<GeradeFoto> = _auswahl.value.gemeint(app.gerade.fuerProjekt(projektId))
+
+    /** Fotos aus Kamera/Galerie mit bekanntem Projekt: sofort ablegen (Auftrag 1.29). */
+    fun fotosAblegen(projektId: Int, dateien: List<File>) {
+        if (dateien.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                app.fotosAblegen(projektId, dateien)
+                // Ein neues Foto ist wieder automatisch „gemeint“.
+                _auswahl.value = FotoAuswahl()
+            } catch (_: Exception) {
+                _meldungen.trySend(KORB_FEHLER)
+            }
+        }
+    }
+
     init {
         // Kam eine Karte aus dem Korb an, steht sie in den offenen Karten.
         viewModelScope.launch {
@@ -255,8 +289,10 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         val k = kontext ?: z.kontext
         val getippt = (text ?: z.text).trim().takeIf { it.isNotEmpty() }
         val fotos = z.fotos.map(::File).filter { it.exists() }
-        val fotoIds = z.projektFotos.map(ProjektFotoRef::uuid)
-        if (aufnahme == null && getippt == null && fotos.isEmpty() && fotoIds.isEmpty()) return
+        val projektFotoIds = z.projektFotos.map(ProjektFotoRef::uuid)
+        // Seit 1.29.0: Sprechen/Tippen bezieht sich auf die gemeinten „gerade aufgenommen“-Fotos.
+        val gerade = gemeint(k.projektId)
+        if (aufnahme == null && getippt == null && fotos.isEmpty() && projektFotoIds.isEmpty()) return
         val offen = z.karte?.takeIf { it.istOffen || it.art == Karte.ART_FRAGE }
         val bezug = offen?.takeIf { it.art == Karte.ART_FRAGE }?.id
         val berichtId = offen?.takeIf { it.art == Karte.ART_BERICHT }?.bericht?.id
@@ -265,10 +301,29 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         _zustand.update {
             it.copy(
                 phase = EingangPhase.LAEUFT, kontext = k, beginn = System.currentTimeMillis(),
-                passtFehler = null, kartenFotos = fotos.map(File::getAbsolutePath),
+                passtFehler = null, kartenFotos = gerade.map(GeradeFoto::vorschau) + fotos.map(File::getAbsolutePath),
             )
         }
         viewModelScope.launch {
+            // Noch nicht oben? Kurz warten - meist dauert der Upload Sekunden.
+            val offen = gerade.filter { it.fotoId == null }.map(GeradeFoto::id)
+            if (offen.isNotEmpty()) {
+                withTimeoutOrNull(FOTO_ID_WARTEN_MS) {
+                    app.gerade.fotos.first { l -> offen.all { id -> l.firstOrNull { it.id == id }?.fotoId != null } }
+                }
+            }
+            val aufgeloest = gerade.map { g -> g.id to (g.fotoId ?: app.gerade.fotoIdFuer(g.id)) }
+            val fotoIds = projektFotoIds + aufgeloest.mapNotNull { it.second }
+            val nochOffen = aufgeloest.filter { it.second == null }.map { it.first }
+            if (gerade.isNotEmpty()) {
+                app.gerade.alsVerwendet(gerade.map(GeradeFoto::id))
+                _auswahl.value = FotoAuswahl()
+            }
+            if (nochOffen.isNotEmpty()) {
+                // Upload haengt (Funkloch): alles in den Korb, er loest die IDs nach dem Upload auf.
+                einreihen(anfrage, aufnahme, getippt, fotos, k, berichtId, bezug, fotoIds, nochOffen)
+                return@launch
+            }
             try {
                 val karte = repository.eingang(
                     anfrageId = anfrage,
@@ -322,6 +377,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         berichtId: String?,
         bezug: String?,
         fotoIds: List<String> = emptyList(),
+        geradeIds: List<String> = emptyList(),
     ) {
         viewModelScope.launch {
             try {
@@ -332,6 +388,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
                             datum = k.datum, bericht_id = berichtId, bezug_id = bezug,
                             titel = k.titel ?: text?.take(40) ?: "Eingabe",
                             foto_ids = fotoIds,
+                            gerade_ids = geradeIds,
                         ),
                         aufnahme,
                         fotos,
@@ -505,7 +562,8 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
 
     /** Karte zu, lokale Fotos weg. */
     fun schliessen() {
-        _zustand.value.kartenFotos.forEach { File(it).delete() }
+        // Vorschauen „gerade aufgenommen“ gehoeren der Leiste, nicht der Karte.
+        _zustand.value.kartenFotos.filterNot { "/${GeradeAufgenommen.ORDNER}/" in it }.forEach { File(it).delete() }
         fotosVerwerfen()
         eingabe.zuruecksetzen()
         _zustand.update { it.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), kartenFotos = emptyList(), text = "", passtFehler = null, projektFotos = emptyList()) }
@@ -540,7 +598,11 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
     }
 
     companion object {
-        const val MAX_FOTOS = 5
+        /** Seit 1.29.0 bis 50 neue Fotos je Eingang; die KI sieht die letzten 5. */
+        const val MAX_FOTOS = 50
+
+        /** So lange wartet Sprechen auf die `foto_id` eines gerade hochladenden Fotos. */
+        const val FOTO_ID_WARTEN_MS = 15_000L
         private const val ZU_VIELE_FOTOS = "Höchstens %d Fotos auf einmal – %d nicht übernommen."
         private const val KORB_FEHLER = "Konnte nicht zwischengespeichert werden. Bitte nochmal senden."
 

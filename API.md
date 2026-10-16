@@ -1045,7 +1045,7 @@ Dateien: `GET /v1/monteur/dateien/{uuid}` (PDF/Bild inline), Fotos-Liste mit `?v
 Monteure sehen nur Projekte, auf denen sie eingeteilt sind (Termine 90 Tage zurück bis 30 voraus) oder zu denen sie
 einen Bericht geschrieben haben – sonst `404`. `datei: null` = PDF ist noch nicht im Archiv (Spiegel lädt nach).
 
-**Fotos, Dokumente, Videos vom Handy.** `POST /v1/monteur/projekte/{id}/dateien` (multipart `datei`, optional `text`
+**Fotos, Dokumente, Videos vom Handy.** `POST /v1/monteur/projekte/{id}/dateien` (ab 1.29.0 mit `foto_id` in der Antwort; multipart `datei`, optional `text`
 kurz → Dateiname, `anfrage_id`) → `{"art":"foto|dokument|video","name","ziel":"hero|server","hinweis"}`.
 Fotos (JPEG/PNG/WebP, max. 25 MB; verkleinert auf 2560 px, ohne GPS) und Dokumente (PDF, Word, Excel, Text, max.
 50 MB) kommen über „Nach HERO hochladen“ in **wenigen Minuten ins HERO-Projekt** (danach auch in `fotos`/`unterlagen`).
@@ -1200,8 +1200,13 @@ immer mit **„Passt“**.
 |---|---|---|
 | `audio` | optional | Aufnahme (m4a/aac …, max. 25 MB), jede Sprache |
 | `text` | optional | Getipptes; mit `audio` zusammen wird beides aneinandergehängt |
-| `fotos` | optional, 0–5 | Feld mehrfach schicken; je max. 25 MB, nicht selbst verkleinern |
-| `foto_ids` | optional (neu in 1.27.0) | Fotos aus der Projektmappe (`uuid` aus `fotos[]`), Feld mehrfach schicken – der Server holt sie selbst aus dem HERO-Archiv (kein Umweg übers Handy). Zusammen mit `fotos` höchstens 5. Ohne `termin_id`/`projekt_nr` geht das Projekt des Fotos mit. Kein Foto → `415`, fremdes Projekt/unbekannt → `404` |
+| `fotos` | optional, bis 50 (1.29.0) | Neue Fotos; Feld mehrfach schicken; je max. 25 MB, nicht selbst verkleinern. Die KI sieht die letzten 5 |
+| `foto_ids` | optional, beliebig viele (1.27.0, erweitert 1.29.0) | Fotos, die **schon im Projekt liegen**: `foto_id` aus `POST /v1/monteur/projekte/{id}/dateien` (sofort nach dem Hochladen, auch bevor HERO sie hat) oder `uuid` aus der Projektmappe. Werden **nie nochmal abgelegt** (auch nicht bei Meldung/Bericht). Die KI sieht von `foto_ids`+`fotos` die letzten 5. Ohne `termin_id`/`projekt_nr` geht das Projekt des (letzten) Fotos mit. Kein Foto → `415`, kein Zugriff/unbekannt → `404` |
+
+**Titel für schon abgelegte Fotos (1.29.0):** Bei `foto`/`frage` mit `foto_ids` legt „Passt“ nichts neu ab, sondern
+setzt den Titel: liegt das Foto noch in „Nach HERO hochladen“ (die ersten Minuten), wird die Datei umbenannt
+(„… Igor Zählerstand Wasser.jpg“, so kommt sie nach HERO); ist es schon in HERO, steht der Titel als Kommentar im
+Projektverlauf („Foto „…jpg“: Zählerstand Wasser – Igor …“). `foto.abgelegt` nennt den jeweiligen Namen.
 
 **Kartenart `foto` (neu in 1.28.0):** Fotos + kurzer Titel („Zählerstand Wasser“, „Vorher Bad“) → `foto: {titel,
 abgelegt: []}`; „Passt“ (optional `{"titel": "…"}`, max. 60 Zeichen) legt die Fotos mit Titel ins HERO-Projekt

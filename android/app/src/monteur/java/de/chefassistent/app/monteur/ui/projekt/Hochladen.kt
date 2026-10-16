@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.activity.result.PickVisualMediaRequest
 import de.chefassistent.app.monteur.ui.karte.GALERIE_MAX
@@ -51,8 +53,9 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Knopf „Foto/Video/Datei“ der Projektmappe (Auftrag 1.22, 2a): Kamera fuer Foto
- * oder Video, oder eine Datei aus der Systemauswahl (ohne Speicher-Berechtigung).
+ * ⋮-Menue der Projektmappe (seit 1.29.0, vorher Knopf „Foto/Video/Datei“): Video aufnehmen
+ * oder eine Datei aus der Systemauswahl (ohne Speicher-Berechtigung). Fotos gehen ueber die
+ * Kamera des Eingangs und landen sofort im Projekt.
  * Danach fragt ein Dialog nach einer kurzen Beschreibung; [beiDatei] bekommt die
  * Datei im Cache samt Namen. Fotos werden **nicht** verkleinert, das macht der Server.
  */
@@ -107,44 +110,14 @@ fun HochladenKnopf(aktiv: Boolean, beiDatei: (datei: File, name: String, text: S
     }
 
     Box(modifier) {
-        OutlinedButton(
-            onClick = { menue = true },
-            enabled = aktiv,
-            shape = RoundedCornerShape(10.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-        ) {
-            Icon(Icons.Outlined.AddAPhoto, null, Modifier.size(20.dp))
-            Spacer(Modifier.size(6.dp))
-            Text(
-                stringResource(R.string.m_hochladen_knopf),
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        IconButton(onClick = { menue = true }, enabled = aktiv) {
+            Icon(Icons.Outlined.MoreVert, stringResource(R.string.m_hochladen_knopf))
         }
         DropdownMenu(expanded = menue, onDismissRequest = { menue = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.m_hochladen_foto)) },
-                leadingIcon = { Icon(Icons.Outlined.PhotoCamera, null) },
-                onClick = { menue = false; kamera(false) },
-            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.m_hochladen_video)) },
                 leadingIcon = { Icon(Icons.Outlined.Videocam, null) },
                 onClick = { menue = false; kamera(true) },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.m_hochladen_galerie)) },
-                leadingIcon = { Icon(Icons.Outlined.PhotoLibrary, null) },
-                onClick = {
-                    menue = false
-                    try {
-                        galerie.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
-                    } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(kontext, keineKamera, Toast.LENGTH_LONG).show()
-                    }
-                },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.m_hochladen_datei)) },

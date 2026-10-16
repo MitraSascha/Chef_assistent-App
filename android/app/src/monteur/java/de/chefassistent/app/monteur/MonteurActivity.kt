@@ -61,6 +61,7 @@ import de.chefassistent.app.monteur.push.NachrichtenViewModel
 import de.chefassistent.app.monteur.push.Nachrichtendienst
 import de.chefassistent.app.monteur.push.beginnOrtszeit
 import de.chefassistent.app.monteur.ui.heute.projektTitel
+import de.chefassistent.app.monteur.ui.heute.laufenderTermin
 import de.chefassistent.app.monteur.ui.karte.EingangKnoepfe
 import de.chefassistent.app.monteur.ui.karte.EingangKontext
 import de.chefassistent.app.monteur.ui.karte.EingangPhase
@@ -264,6 +265,8 @@ private fun MonteurNavigation(app: MonteurApp, terminAnfrage: TerminAnfrage?, an
             val pid = a?.getInt("pid") ?: return@composable
             val termin = a.getString("termin").leerAlsNull()
             val vm: ProjektViewModel = viewModel(factory = ProjektViewModel.factory(app, pid))
+            val geradeAlle by app.gerade.fotos.collectAsState()
+            val geradeAuswahl by eingang.auswahl.collectAsState()
             ProjektScreen(
                 viewModel = vm,
                 entwurfId = a.getString("entwurf").leerAlsNull(),
@@ -272,24 +275,30 @@ private fun MonteurNavigation(app: MonteurApp, terminAnfrage: TerminAnfrage?, an
                 beiDatei = { uuid, name -> nav.navigate("datei/${Uri.encode(uuid)}?name=${Uri.encode(name)}") },
                 beiVideo = { name -> nav.navigate("video/$pid?name=${Uri.encode(name)}") },
                 beiEingang = { aufnahme, fotos ->
-                    val k = EingangKontext(terminId = termin, titel = a.getString("titel").leerAlsNull())
+                    val k = EingangKontext(terminId = termin, titel = a.getString("titel").leerAlsNull(), projektId = pid)
                     if (fotos.isNotEmpty()) {
-                        eingang.beginnen(k)
-                        eingang.fotosHinzu(fotos, k)
+                        // 1.29.0: Fotos sofort ins Projekt, man bleibt in der Mappe.
+                        eingang.fotosAblegen(pid, fotos)
                     } else if (aufnahme != null) {
                         eingang.beginnen(k)
                         eingang.senden(aufnahme = aufnahme, kontext = k)
+                        zurKarte()
                     }
-                    zurKarte()
                 },
                 beiEingangMitFoto = { aufnahme, fotos, foto ->
-                    val k = EingangKontext(terminId = termin, titel = a.getString("titel").leerAlsNull())
-                    eingang.beginnen(k)
-                    eingang.projektFotoHinzu(foto.uuid, foto.name, k)
-                    eingang.fotosHinzu(fotos, k)
-                    if (aufnahme != null) eingang.senden(aufnahme = aufnahme, kontext = k)
-                    zurKarte()
+                    val k = EingangKontext(terminId = termin, titel = a.getString("titel").leerAlsNull(), projektId = pid)
+                    if (aufnahme == null) {
+                        eingang.fotosAblegen(pid, fotos)
+                    } else {
+                        eingang.beginnen(k)
+                        eingang.projektFotoHinzu(foto.uuid, foto.name, k)
+                        eingang.senden(aufnahme = aufnahme, kontext = k)
+                        zurKarte()
+                    }
                 },
+                gerade = app.gerade.fuerProjekt(pid, geradeAlle),
+                gemeint = geradeAuswahl.gemeint(app.gerade.fuerProjekt(pid, geradeAlle)).map { it.id }.toSet(),
+                beiGeradeTippen = eingang::fotoUmschalten,
                 beiBericht = { berichtId, projektNr ->
                     zuBericht(
                         BerichtStart(
@@ -378,6 +387,12 @@ private fun StartReiter(
     var menue by remember { mutableStateOf(false) }
     var abmeldenFrage by remember { mutableStateOf(false) }
     val wartend by app.korb.anzahl.collectAsState()
+    // 1.29.0: laufender Termin = bekanntes Projekt. Fotos gehen dann sofort hinein.
+    val heuteStand by heute.zustand.collectAsState()
+    val laufPid = laufenderTermin(heuteStand.tage)?.projekt?.id
+    val geradeAlle by app.gerade.fotos.collectAsState()
+    val geradeAuswahl by eingang.auswahl.collectAsState()
+    val geradeHier = app.gerade.fuerProjekt(laufPid, geradeAlle)
     val nachrichtenZustand by nachrichten.zustand.collectAsState()
 
     // Termin aus einer Nachricht oeffnen: Tag zeigen, dann das Termindetail.
@@ -522,8 +537,11 @@ private fun StartReiter(
                         terminOeffnen(n.termin_id, n.datum)
                     },
                     beiNachrichtGelesen = nachrichten::gelesen,
+                    gerade = geradeHier,
+                    gemeint = geradeAuswahl.gemeint(geradeHier).map { it.id }.toSet(),
+                    beiGeradeTippen = eingang::fotoUmschalten,
                     beiTippen = {
-                        eingang.beginnen(EingangKontext(datum = heute.zustand.value.anker.takeIf { it != java.time.LocalDate.now() }?.toString()))
+                        eingang.beginnen(EingangKontext(datum = heute.zustand.value.anker.takeIf { it != java.time.LocalDate.now() }?.toString(), projektId = laufPid))
                         zurKarte()
                     },
                 )
@@ -574,6 +592,7 @@ private fun StartReiter(
                     Reiter.ZEITEN -> zeiten.zustand.value.datum.takeIf { it != java.time.LocalDate.now() }?.toString()
                     Reiter.URLAUB -> null
                 },
+                projektId = laufPid,
             )
             EingangKnoepfe(
                 aufnahme = aufnahme,
@@ -583,9 +602,14 @@ private fun StartReiter(
                     zurKarte()
                 },
                 beiFotos = { dateien ->
-                    eingang.beginnen(kontext)
-                    eingang.fotosHinzu(dateien, kontext)
-                    zurKarte()
+                    if (laufPid != null) {
+                        eingang.fotosAblegen(laufPid, dateien)
+                    } else {
+                        // Kein laufender Termin: wie bisher erst mit der Eingabe, der Server sucht das Projekt.
+                        eingang.beginnen(kontext)
+                        eingang.fotosHinzu(dateien, kontext)
+                        zurKarte()
+                    }
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

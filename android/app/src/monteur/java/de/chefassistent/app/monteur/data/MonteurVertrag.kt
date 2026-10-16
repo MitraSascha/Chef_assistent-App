@@ -160,6 +160,8 @@ data class Hochgeladen(
     /** hero = kommt in wenigen Minuten ins HERO-Projekt, server = bleibt im Projektordner. */
     val ziel: String = "",
     val hinweis: String = "",
+    /** Seit 1.29.0, nur Fotos: sofort im Eingang als `foto_ids` nutzbar, auch bevor HERO es hat. */
+    val foto_id: String? = null,
 )
 
 @Serializable

@@ -254,6 +254,10 @@ fun ProjektScreen(
     beiEingangMitFoto: (aufnahme: File?, fotos: List<File>, projektFoto: Foto) -> Unit = { a, f, _ -> beiEingang(a, f) },
     /** Lokal vorgemerkte eigene Meldungen/Bestellungen, bis sie im HERO-Verlauf stehen. */
     vorlaeufig: List<Verlaufseintrag> = emptyList(),
+    /** Seit 1.29.0: Leiste „gerade aufgenommen“ ueber dem Mikrofon. */
+    gerade: List<de.chefassistent.app.monteur.data.GeradeFoto> = emptyList(),
+    gemeint: Set<String> = emptySet(),
+    beiGeradeTippen: (de.chefassistent.app.monteur.data.GeradeFoto) -> Unit = {},
 ) {
     val aufnahme = rememberAufnahme()
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
@@ -295,6 +299,16 @@ fun ProjektScreen(
                         }
                     }
                 },
+                actions = {
+                    // Videos und Dokumente direkt ins Projekt (1.29: Fotos gehen ueber die Kamera).
+                    HochladenKnopf(
+                        aktiv = mappe != null,
+                        beiDatei = { datei, name, text ->
+                            viewModel.hochladen(datei, name, text)
+                            bereich.launch { snackbar.showSnackbar(vorbereitet) }
+                        },
+                    )
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -327,6 +341,13 @@ fun ProjektScreen(
                 }
                 Spacer(Modifier.height(8.dp))
             }
+            // Jedes Foto ist schon im Projekt; Sprechen bezieht sich auf das gemeinte (1.29.0).
+            de.chefassistent.app.monteur.ui.karte.GeradeLeiste(
+                fotos = gerade,
+                gemeint = gemeint,
+                beiTippen = beiGeradeTippen,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
             EingangKnoepfe(
                 aufnahme = aufnahme,
                 aktiv = mappe != null,
@@ -334,15 +355,6 @@ fun ProjektScreen(
                 beiAufnahme = { beiEingang(it, emptyList()) },
                 beiFotos = { beiEingang(null, it) },
                 modifier = Modifier.fillMaxWidth(),
-            )
-            // Datei direkt ins Projekt, ohne KI (aus 1.22) - klein, damit es nicht mit dem Eingang konkurriert.
-            HochladenKnopf(
-                aktiv = mappe != null,
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                beiDatei = { datei, name, text ->
-                    viewModel.hochladen(datei, name, text)
-                    bereich.launch { snackbar.showSnackbar(vorbereitet) }
-                },
             )
             }
             }

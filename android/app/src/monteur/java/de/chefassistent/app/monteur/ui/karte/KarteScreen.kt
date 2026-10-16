@@ -152,7 +152,8 @@ fun KarteScreen(
                         EingangPhase.EINGABE -> EingangKnoepfe(
                             aufnahme = aufnahme,
                             beiAufnahme = { viewModel.senden(aufnahme = it) },
-                            beiFotos = { viewModel.fotosHinzu(it) },
+                            // Bekanntes Projekt: sofort ablegen, das Foto erscheint oben in der Leiste (1.29.0).
+                            beiFotos = { d -> zustand.kontext.projektId?.let { viewModel.fotosAblegen(it, d) } ?: viewModel.fotosHinzu(d) },
                             modifier = Modifier.align(Alignment.CenterHorizontally),
                         )
                         EingangPhase.KARTE -> if (karte != null) KartenKnoepfe(
@@ -173,7 +174,13 @@ fun KarteScreen(
     ) { innen ->
         Box(Modifier.fillMaxSize().padding(innen)) {
             when (zustand.phase) {
-                EingangPhase.EINGABE -> Eingabe(zustand, viewModel)
+                EingangPhase.EINGABE -> {
+                    // „gerade aufgenommen“ zum Projekt dieser Eingabe (1.29.0) - antippen = markieren.
+                    val alle by app.gerade.fotos.collectAsStateWithLifecycle()
+                    val auswahl by viewModel.auswahl.collectAsStateWithLifecycle()
+                    val gerade = app.gerade.fuerProjekt(zustand.kontext.projektId, alle)
+                    Eingabe(zustand, viewModel, gerade, auswahl.gemeint(gerade).map { it.id }.toSet())
+                }
                 EingangPhase.LAEUFT -> Laeuft(zustand.beginn)
                 EingangPhase.WARTET -> Wartet(schliessen)
                 EingangPhase.KARTE -> if (karte != null) {
@@ -215,12 +222,18 @@ fun KarteScreen(
 
 /** Eingabe: gesammelte Fotos, Textfeld, Senden. Das Mikrofon steht unten. */
 @Composable
-private fun Eingabe(zustand: EingangZustand, viewModel: EingangViewModel) {
+private fun Eingabe(
+    zustand: EingangZustand,
+    viewModel: EingangViewModel,
+    gerade: List<de.chefassistent.app.monteur.data.GeradeFoto> = emptyList(),
+    gemeint: Set<String> = emptySet(),
+) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         zustand.kontext.titel?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+        GeradeLeiste(gerade, gemeint, viewModel::fotoUmschalten)
         if (zustand.projektFotos.isNotEmpty()) {
             Text(stringResource(R.string.k_frage_zum_foto), style = MaterialTheme.typography.labelLarge)
         }

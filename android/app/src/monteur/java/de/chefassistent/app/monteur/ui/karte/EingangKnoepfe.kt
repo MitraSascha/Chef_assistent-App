@@ -84,8 +84,8 @@ fun EingangKnoepfe(
     }
 }
 
-/** So viele kann man in der Fotoauswahl auf einmal antippen (Auftrag 1.28: max. 5); mehr meldet das ViewModel. */
-const val GALERIE_MAX = 5
+/** So viele kann man in der Fotoauswahl auf einmal antippen (seit 1.29.0 bis 50). */
+const val GALERIE_MAX = 50
 
 /** Kopiert ein Bild aus der Fotoauswahl in den Cache (Name aus der Quelle, sonst Zeitstempel). */
 fun galerieKopieren(kontext: android.content.Context, uri: android.net.Uri, nr: Int): File? = try {
@@ -93,8 +93,9 @@ fun galerieKopieren(kontext: android.content.Context, uri: android.net.Uri, nr: 
         if (c.moveToFirst()) c.getString(0) else null
     }?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
         ?: "Galerie_${SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.GERMANY).format(Date())}_$nr.jpg"
-    val ordner = File(kontext.cacheDir, "fotos").apply { mkdirs() }
-    val ziel = File(ordner, "${System.currentTimeMillis()}_${nr}_$name")
+    // Eigener Unterordner je Bild: der Originalname bleibt (sichtbar beim Hochladen), Doppelte stoeren nicht.
+    val ordner = File(kontext.cacheDir, "fotos/${System.currentTimeMillis()}_$nr").apply { mkdirs() }
+    val ziel = File(ordner, name)
     kontext.contentResolver.openInputStream(uri)?.use { ein -> ziel.outputStream().use { ein.copyTo(it) } }
     ziel.takeIf { it.length() > 0 }
 } catch (_: Exception) {

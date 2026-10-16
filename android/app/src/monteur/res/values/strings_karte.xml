@@ -32,6 +32,9 @@
     <string name="k_art_urlaub">Urlaub</string>
     <string name="k_art_protokoll">Protokoll</string>
     <string name="k_art_foto">Foto ins Projekt</string>
+    <string name="k_gerade">Gerade aufgenommen (%1$d) – liegt im Projekt</string>
+    <string name="k_gerade_gemeint">Gerade aufgenommen (%1$d) · Sprechen bezieht sich auf %2$d markierte</string>
+    <string name="k_gerade_wartet">Wird hochgeladen</string>
     <string name="k_erg_foto">Liegt im Projekt</string>
     <string name="k_foto_titel">Titel</string>
     <string name="k_foto_ablegen_als">Foto ins Projekt legen als:</string>
