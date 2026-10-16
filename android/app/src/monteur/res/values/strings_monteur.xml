@@ -83,6 +83,11 @@
     <string name="m_mehr">%1$d weitere anzeigen</string>
     <string name="m_weniger">Weniger anzeigen</string>
     <string name="m_wird_uebertragen">wird übertragen</string>
+    <string name="vg_titel">Vorgeschichte</string>
+    <string name="vg_geraet">Gerät</string>
+    <string name="vg_wartung">Letzte Wartung</string>
+    <string name="vg_einsaetze">Letzte Einsätze</string>
+    <string name="vg_offen">Offen</string>
     <string name="n_weitere">+ %1$d weitere</string>
     <string name="n_erlaubnis_titel">Benachrichtigungen</string>
     <string name="n_erlaubnis_text">Damit du neue Termine und Notdienste sofort bekommst.</string>

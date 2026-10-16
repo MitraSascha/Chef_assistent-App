@@ -399,6 +399,10 @@ private fun TerminKarte(termin: TagTermin, beiKlick: () -> Unit) {
             projekt?.adresse?.takeIf { it.isNotBlank() }?.let { adresse ->
                 Zeile(Icons.Outlined.Place, adresse, stringResource(R.string.m_navigation, adresse)) { navigieren(kontext, adresse, projekt.geo) }
             }
+            // Vorgeschichte (1.26.0): grau, hoechstens 2 Zeilen, ganz lesen in der Projektmappe.
+            termin.vorgeschichte?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = farben.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
             projekt?.telefon.orEmpty().forEach { tel ->
                 val name = listOf(tel.name, tel.art).filter { it.isNotBlank() }.joinToString(", ")
                 val text = if (name.isBlank()) tel.nummer else "${tel.nummer} · $name"

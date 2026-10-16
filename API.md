@@ -86,8 +86,8 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/freigabe` | Netzwerkpfade der Ablage für Windows |
 | GET | `/v1/verbrauch` | Token-Verbrauch je Monat |
 | POST | `/v1/monteur/einrichten` | **Monteur-App:** Einrichtungscode (QR) → Sitzung `cs_…` (ohne Anmeldung, neu in 1.22.0) |
-| GET | `/v1/monteur/tage?von=&bis=` | Eigene Termine je Tag mit Kunde, Adresse, Telefon, Beschreibung, Berichtsstand (1.22.0) |
-| GET | `/v1/monteur/projekte/{id}` | Projektmappe: Notizen, Unterlagen (Angebote, Pläne, Aufmaße, Berichte – keine Rechnungen), Fotos (1.22.0), **Verlauf** = Kommentare im HERO-Projektverlauf (neu in 1.23.0) |
+| GET | `/v1/monteur/tage?von=&bis=` | Eigene Termine je Tag mit Kunde, Adresse, Telefon, Beschreibung, Berichtsstand (1.22.0), **Vorgeschichte** als Kurzfassung (neu in 1.26.0) |
+| GET | `/v1/monteur/projekte/{id}` | Projektmappe: Notizen, Unterlagen (Angebote, Pläne, Aufmaße, Berichte – keine Rechnungen), Fotos (1.22.0), **Verlauf** = Kommentare im HERO-Projektverlauf (neu in 1.23.0), **Vorgeschichte** der Anlage/Baustelle (neu in 1.26.0) |
 | GET | `/v1/monteur/dateien/{uuid}?vorschau=` | PDF/Foto aus der Projektmappe (Vorschau 480 px) (1.22.0) |
 | POST | `/v1/monteur/projekte/{id}/dateien` | Foto/Dokument vom Handy → HERO-Projekt; Video → nur Server (1.22.0) |
 | GET | `/v1/monteur/projekte/{id}/videos/{name}` | Video aus dem Projektordner abspielen (1.22.0) |
@@ -1027,13 +1027,17 @@ zu viele Versuche → `429`. Sitzung verfällt nach 60 Tagen ohne Nutzung → `4
 **Heute.** `GET /v1/monteur/tage?von=YYYY-MM-DD&bis=…` (max. 14 Tage, Standard heute) →
 `[{"datum","wochentag","termine":[{"id":"hero:…","titel","beginn","ende","ganztag","kategorie","beschreibung",
 "kollegen":[…],"projekt":{"id","nr","titel","kunde","adresse","geo":{"lat","lng"}|null,"telefon":[{"nummer","name","art"}]}|null,
-"berichte":[{"id","status","hero_nr"}]}]}]`. `berichte` leer → „Bericht fehlt“. Adresse → Navigation (`geo:` bzw.
-Maps-Intent), Telefon → Wählen.
+"berichte":[{"id","status","hero_nr"}],"vorgeschichte":"<Kurzfassung>"|null}]}]`. `berichte` leer → „Bericht fehlt“.
+Adresse → Navigation (`geo:` bzw. Maps-Intent), Telefon → Wählen. `vorgeschichte` (neu in 1.26.0) ist **nur der Text**
+der Zusammenfassung (höchstens 4 Sätze), `null` = keine Vorgeschichte oder noch nicht berechnet – die ganze
+Vorgeschichte steht in der Projektmappe, siehe [Vorgeschichte](#vorgeschichte--neu-in-1260).
 
 **Projektmappe** (Termin antippen → Projekt, wie in HERO). `GET /v1/monteur/projekte/{projekt.id}` →
 `{"id","nr","titel","kunde","adresse","geo","telefon",[…],"notizen": "<Notizfeld des Projekts in HERO>",
 "unterlagen":[{"art","nr","name","datum","status","datei"}],"fotos":[{"uuid","name","datum"}],
-"verlauf":[{"datum","titel","text"}],"videos":[…]}` (`verlauf` neu in 1.23.0, siehe [5d](#5d-monteur-app-ein-eingang-für-alles--neu-in-1230)). `unterlagen` =
+"verlauf":[{"datum","titel","text"}],"videos":[…],"vorgeschichte":{…}|null}` (`verlauf` neu in 1.23.0, siehe
+[5d](#5d-monteur-app-ein-eingang-für-alles--neu-in-1230); `vorgeschichte` neu in 1.26.0, siehe
+[Vorgeschichte](#vorgeschichte--neu-in-1260)). `unterlagen` =
 alles außer Finanzen: Angebot (nur aktuelle Fassung), Auftragsbestätigung, Aufmaß, Unterlage (Pläne, hochgeladene
 PDFs), Dokument, Bericht, Reparaturauftrag, Bestellschein, Lieferschein, Brief – nach Art, je Art neueste zuerst.
 **Rechnungen, Stornos, Mahnungen und Kalkulationen sind für Monteure gesperrt** (auch beim direkten Dateiabruf).
@@ -1110,6 +1114,67 @@ unentschieden). Genehmigt wird im HERO-Web; HERO mailt die Entscheidung selbst.
 Bestätigen und bucht dann mit den Endpunkten oben („Feierabend, halbe Stunde Pause“, „nächste Woche Do und Fr frei“).
 Seit 1.23.0 nimmt die App für den Mikrofon-Knopf den **Eingang** ([5d](#5d-monteur-app-ein-eingang-für-alles--neu-in-1230));
 `verstehen`, `berichte`, `zeiten` und `abwesenheiten` bleiben unverändert für Änderungen von Hand.
+
+### Vorgeschichte – neu in 1.26.0
+
+Bevor der Monteur losfährt, soll er wissen, was an der Baustelle schon war – **ohne Knopf**. Der Termin bringt eine
+kurze Vorgeschichte mit: in `GET /v1/monteur/tage` je Termin als Text (`vorgeschichte`), in der Projektmappe
+`GET /v1/monteur/projekte/{id}` vollständig (`vorgeschichte`).
+
+**Quellen** (nur lesen, nichts wird in HERO geändert):
+- frühere **Baustellenberichte** desselben Kunden an **derselben Adresse** (Straße gleich, Groß-/Kleinschreibung egal) –
+  auch aus älteren Projekten, z. B. die Wartung im Vorjahr. Der Text „Ausgeführte Arbeiten“ wird aus dem PDF im
+  HERO-Archiv gelesen (die neuesten 8 Berichte, je die ersten 3 Seiten). Entwürfe zählen nicht.
+- **Protokolle** aus der Monteur-App ([1.25.0](#protokolle--neu-in-1250)): Gerät, Typ, Messwerte (die letzten 5).
+- **Kommentare im HERO-Projektverlauf** (die letzten 10, auch aus den älteren Projekten).
+- das **Notizfeld des Projekts** in HERO (Büro-Notizen).
+
+Die KI fasst das zusammen und **erfindet nichts**: was nicht in den Unterlagen steht, bleibt `null` bzw. leer.
+
+```json
+"vorgeschichte": {
+  "zusammenfassung": "Gas-Brennwerttherme im Keller, jährliche Wartung seit 2023. Bei der letzten Wartung war das Ausdehnungsgefäß zu schwach vorgespannt. Austausch wurde angeboten, ist aber noch offen.",
+  "anlage": {"geraet": "Gas-Brennwerttherme", "hersteller": "Vaillant", "typ": "ecoTEC plus VC 206/5-5", "baujahr": "2016"},
+  "letzte_wartung": "14.10.2025",
+  "letzte_arbeiten": [
+    {"datum": "14.10.2025", "text": "Wartung Therme, Brenner gereinigt, Abgasmessung i. O."},
+    {"datum": "03.02.2025", "text": "Störung F.28 behoben, Zündelektrode getauscht."},
+    {"datum": "08.10.2024", "text": "Wartung Therme, Siphon gereinigt."}
+  ],
+  "offen": ["Ausdehnungsgefäß tauschen (Angebot liegt beim Kunden)"],
+  "hinweise": ["Schlüssel bei der Nachbarin (EG links)", "Kunde nur abends telefonisch erreichbar"],
+  "quellen": {"berichte": 3, "protokolle": 1, "kommentare": 2, "projekte": 3},
+  "stand": "2026-10-16T05:30:12+00:00"
+}
+```
+
+| Feld | Inhalt |
+|---|---|
+| `zusammenfassung` | höchstens 4 kurze Sätze: was für eine Baustelle/Anlage, was zuletzt gemacht wurde, was ansteht |
+| `anlage` | verbautes Hauptgerät `{geraet, hersteller, typ, baujahr}` (jedes Feld kann `null` sein), `null` = nicht genannt |
+| `letzte_wartung` | Datum `TT.MM.JJJJ` der letzten Wartung, `null` = nicht erkennbar |
+| `letzte_arbeiten` | die letzten (höchstens 3) Einsätze `[{datum, text}]`, neueste zuerst |
+| `offen` | noch anstehende Arbeiten (aus „Anstehende Arbeiten“, Kommentaren, Notizen) |
+| `hinweise` | Wichtiges für vor Ort: Zugang, Schlüssel, Kunde schwer erreichbar, Ansprechpartner, Mängel |
+| `quellen` | Anzahl ausgewerteter Berichte, Protokolle, Kommentare und Projekte (zur Info) |
+| `stand` | wann die Vorgeschichte berechnet wurde (UTC) |
+
+**Wann sie berechnet wird.** Alle 30 Minuten rechnet der Server die Vorgeschichte für die Projekte aller Termine von
+**heute und morgen** der Monteur-Zugänge voraus (erster Lauf etwa 1 Minute nach dem Serverstart). Neu gerechnet wird
+nur, wenn sich die Quellen geändert haben (neuer Bericht, neues Protokoll, neuer Kommentar, geänderte Notiz) –
+sonst bleibt die gespeicherte Fassung. **Kosten:** ein KI-Aufruf je Projekt und Änderung (Monteur-Modell, niedriger
+Denkaufwand), nicht je Abruf; gebucht im Verbrauch unter `vorgeschichte`.
+
+**Projektmappe ohne gespeicherte Vorgeschichte** (z. B. Termin übermorgen oder Projekt aus der Suche): Der Abruf
+liefert `vorgeschichte: null` und startet die Berechnung im Hintergrund; der **nächste Abruf** (meist nach 10–30 s)
+hat sie. `GET /v1/monteur/tage` startet keine Berechnung, liefert nur, was schon da ist.
+
+**`null` heißt:**
+- es gibt keine Unterlagen (kein Bericht, Protokoll, Kommentar, keine Notiz) – dann bleibt es `null`,
+- sie wird gerade berechnet (siehe oben) bzw. ist für diesen Termin noch nicht vorausberechnet,
+- die KI war nicht erreichbar – der nächste Lauf versucht es wieder.
+
+Kein Fehlercode: Die Vorgeschichte fehlt dann einfach, alles andere in Tag und Projektmappe kommt wie bisher.
 
 ## 5d. Monteur-App: ein Eingang für alles – neu in 1.23.0
 

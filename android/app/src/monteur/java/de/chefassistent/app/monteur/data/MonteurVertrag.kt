@@ -50,6 +50,8 @@ data class TagTermin(
     val projekt: TagProjekt? = null,
     /** Leer = „Bericht fehlt“. */
     val berichte: List<BerichtKurz> = emptyList(),
+    /** Seit 1.26.0: Kurzfassung der Vorgeschichte (nur Text), `null` = keine bzw. noch nicht berechnet. */
+    val vorgeschichte: String? = null,
 )
 
 @Serializable
@@ -99,6 +101,44 @@ data class Projektmappe(
     val videos: List<Video> = emptyList(),
     /** Seit 1.23.0: Kommentare im HERO-Projektverlauf, neueste zuerst. */
     val verlauf: List<Verlaufseintrag> = emptyList(),
+    /** Seit 1.26.0: was an der Baustelle schon war. `null` = keine Unterlagen oder noch nicht berechnet. */
+    val vorgeschichte: Vorgeschichte? = null,
+)
+
+/** Vorgeschichte der Baustelle/Anlage (API.md 5c, 1.26.0). Die KI erfindet nichts - Fehlendes bleibt leer. */
+@Serializable
+data class Vorgeschichte(
+    val zusammenfassung: String = "",
+    val anlage: Anlage? = null,
+    /** `TT.MM.JJJJ`. */
+    val letzte_wartung: String? = null,
+    /** Hoechstens 3, neueste zuerst. */
+    val letzte_arbeiten: List<FruehererEinsatz> = emptyList(),
+    val offen: List<String> = emptyList(),
+    /** Wichtiges fuer vor Ort: Zugang, Schluessel, Erreichbarkeit, Maengel. */
+    val hinweise: List<String> = emptyList(),
+    val quellen: VorgeschichteQuellen? = null,
+    /** UTC, wird nicht angezeigt. */
+    val stand: String? = null,
+)
+
+@Serializable
+data class Anlage(
+    val geraet: String? = null,
+    val hersteller: String? = null,
+    val typ: String? = null,
+    val baujahr: String? = null,
+)
+
+@Serializable
+data class FruehererEinsatz(val datum: String = "", val text: String = "")
+
+@Serializable
+data class VorgeschichteQuellen(
+    val berichte: Int = 0,
+    val protokolle: Int = 0,
+    val kommentare: Int = 0,
+    val projekte: Int = 0,
 )
 
 @Serializable

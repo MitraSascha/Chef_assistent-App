@@ -103,10 +103,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
+
+/** So lange wartet die Mappe, bevor sie die Vorgeschichte einmal nachfragt. */
+const val VORGESCHICHTE_WARTEN_MS = 20_000L
 
 data class ProjektZustand(
     val mappe: Projektmappe? = null,
@@ -125,6 +129,9 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
     private val _zustand = MutableStateFlow(ProjektZustand())
     val zustand: StateFlow<ProjektZustand> = _zustand.asStateFlow()
 
+    /** Vorgeschichte noch nicht berechnet: einmal je Oeffnen still nachladen (Auftrag 1.26, 3.). */
+    private var nachgeladen = false
+
     init {
         laden()
     }
@@ -135,6 +142,7 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
             try {
                 val mappe = app.repository.projekt(projektId)
                 _zustand.update { it.copy(mappe = mappe, laeuft = false) }
+                if (mappe.vorgeschichte == null) vorgeschichteNachladen()
             } catch (fehler: ApiFehler) {
                 if (fehler is ApiFehler.NichtAngemeldet) {
                     app.repository.lokalAbmelden()
@@ -142,6 +150,26 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
                 }
                 _zustand.update { it.copy(fehler = fehler.anzeigetext, laeuft = false) }
             }
+        }
+    }
+
+    /**
+     * Der Server rechnet sie beim ersten Abruf im Hintergrund (10-30 s). Nach 20 s einmal
+     * still nachfragen und nur den Block uebernehmen - Scrollposition und Eingaben bleiben.
+     * Kein Spinner, keine Meldung; Fehler (offline) bleiben still. Schliesst die Mappe,
+     * bricht `viewModelScope` den Timer ab.
+     */
+    private fun vorgeschichteNachladen() {
+        if (nachgeladen) return
+        nachgeladen = true
+        viewModelScope.launch {
+            delay(VORGESCHICHTE_WARTEN_MS)
+            val neu = try {
+                app.repository.projekt(projektId).vorgeschichte
+            } catch (_: ApiFehler) {
+                null
+            } ?: return@launch
+            _zustand.update { z -> z.copy(mappe = z.mappe?.copy(vorgeschichte = neu)) }
         }
     }
 
@@ -324,6 +352,10 @@ fun ProjektScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                // Vorgeschichte (1.26.0) ganz oben - oder gar nicht.
+                mappe.vorgeschichte?.takeIf(::hatInhalt)?.let { v ->
+                    item(key = "vorgeschichte") { VorgeschichteBlock(v) }
+                }
                 item(key = "kontakt") {
                     Column {
                         mappe.adresse.takeIf { it.isNotBlank() }?.let { a ->

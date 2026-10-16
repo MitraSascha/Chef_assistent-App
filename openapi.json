@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.25.0"
+    "version": "1.26.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -7490,6 +7490,56 @@
         ],
         "title": "AngebotAntwort"
       },
+      "Anlage": {
+        "properties": {
+          "geraet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geraet"
+          },
+          "hersteller": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hersteller"
+          },
+          "typ": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typ"
+          },
+          "baujahr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baujahr"
+          }
+        },
+        "type": "object",
+        "title": "Anlage"
+      },
       "AnleitungTreffer": {
         "properties": {
           "pfad": {
@@ -11238,6 +11288,24 @@
         ],
         "title": "KarteProjekt"
       },
+      "LetzteArbeit": {
+        "properties": {
+          "datum": {
+            "type": "string",
+            "title": "Datum"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datum",
+          "text"
+        ],
+        "title": "LetzteArbeit"
+      },
       "Material": {
         "properties": {
           "text": {
@@ -12376,6 +12444,17 @@
             "title": "Fotos",
             "description": "Projektfotos aus HERO, neueste zuerst"
           },
+          "vorgeschichte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VorgeschichteModell"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vorgeschichte der Anlage/Baustelle (1.26.0): null = keine Unterlagen oder wird gerade berechnet"
+          },
           "verlauf": {
             "items": {
               "$ref": "#/components/schemas/Verlaufseintrag"
@@ -12969,6 +13048,18 @@
             "type": "array",
             "title": "Berichte",
             "description": "Leer = „Bericht fehlt“"
+          },
+          "vorgeschichte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorgeschichte",
+            "description": "Kurzfassung der Vorgeschichte (1.26.0) – null = keine/noch nicht berechnet"
           }
         },
         "type": "object",
@@ -13537,6 +13628,85 @@
           "abschrift"
         ],
         "title": "VideoAntwort"
+      },
+      "VorgeschichteModell": {
+        "properties": {
+          "zusammenfassung": {
+            "type": "string",
+            "title": "Zusammenfassung",
+            "description": "Höchstens 4 kurze Sätze"
+          },
+          "anlage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Anlage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "letzte_wartung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letzte Wartung",
+            "description": "TT.MM.JJJJ, wenn erkennbar"
+          },
+          "letzte_arbeiten": {
+            "items": {
+              "$ref": "#/components/schemas/LetzteArbeit"
+            },
+            "type": "array",
+            "title": "Letzte Arbeiten"
+          },
+          "offen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Offen",
+            "description": "Noch anstehende Arbeiten"
+          },
+          "hinweise": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise",
+            "description": "Zugang, Schlüssel, Erreichbarkeit, Mängel …"
+          },
+          "quellen": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Quellen",
+            "description": "Anzahl berichte/protokolle/kommentare/projekte"
+          },
+          "stand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stand"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zusammenfassung",
+          "letzte_arbeiten",
+          "offen",
+          "hinweise"
+        ],
+        "title": "VorgeschichteModell"
       },
       "VorlesenAnfrage": {
         "properties": {
