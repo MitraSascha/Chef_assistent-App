@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "932359354011",
+    "project_id": "mitra-monteure",
+    "storage_bucket": "mitra-monteure.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:932359354011:android:136197834f8008d28fb83e",
+        "android_client_info": {
+          "package_name": "de.mitra.monteur"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxx0vA6XsH9ZNMMis_LNp0L0vTMkVWNeE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

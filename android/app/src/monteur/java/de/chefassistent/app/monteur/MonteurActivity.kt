@@ -55,6 +55,12 @@ import androidx.navigation.navArgument
 import de.chefassistent.app.R
 import de.chefassistent.app.monteur.data.MonteurVersand
 import de.chefassistent.app.monteur.data.Karte
+import de.chefassistent.app.monteur.data.MonteurBericht
+import de.chefassistent.app.monteur.push.Benachrichtigungen
+import de.chefassistent.app.monteur.push.NachrichtenViewModel
+import de.chefassistent.app.monteur.push.Nachrichtendienst
+import de.chefassistent.app.monteur.push.beginnOrtszeit
+import de.chefassistent.app.monteur.ui.heute.projektTitel
 import de.chefassistent.app.monteur.ui.karte.EingangKnoepfe
 import de.chefassistent.app.monteur.ui.karte.EingangKontext
 import de.chefassistent.app.monteur.ui.karte.EingangPhase
@@ -98,20 +104,39 @@ private const val ZIEL_ANLEITUNG = "anleitung?pfad={pfad}&seite={seite}&titel={t
  * Bericht, auf „Zeiten“/„Urlaub“ ein Vorschlag (`/v1/monteur/verstehen`).
  */
 class MonteurActivity : ComponentActivity() {
+
+    /** Aus einer Benachrichtigung: Termin oeffnen (Auftrag 1.24, 5.). */
+    private val terminAnfrage = mutableStateOf<TerminAnfrage?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) terminAnfrage.value = anfrageAus(intent)
         enableEdgeToEdge()
         val app = application as MonteurApp
         // Was im Korb wartet, beim Start anstossen - auch nach erneuter Einrichtung.
         if (app.einstellungen.istAngemeldet) MonteurVersand.anstossen(this)
         setContent {
-            ChefAssistentTheme { MonteurNavigation(app) }
+            ChefAssistentTheme { MonteurNavigation(app, terminAnfrage.value) { terminAnfrage.value = null } }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        anfrageAus(intent)?.let { terminAnfrage.value = it }
+    }
+
+    private fun anfrageAus(intent: android.content.Intent?): TerminAnfrage? {
+        val id = intent?.getStringExtra(Benachrichtigungen.EXTRA_NACHRICHT)?.toIntOrNull() ?: return null
+        return TerminAnfrage(id, intent.getStringExtra(Benachrichtigungen.EXTRA_TERMIN), intent.getStringExtra(Benachrichtigungen.EXTRA_DATUM))
     }
 }
 
+/** Nachricht angetippt: [nachrichtId] gelesen, [terminId] am Tag [datum] oeffnen. */
+data class TerminAnfrage(val nachrichtId: Int, val terminId: String?, val datum: String?)
+
 @Composable
-private fun MonteurNavigation(app: MonteurApp) {
+private fun MonteurNavigation(app: MonteurApp, terminAnfrage: TerminAnfrage?, anfrageErledigt: () -> Unit) {
     val nav = rememberNavController()
     val start = if (app.einstellungen.istAngemeldet) ZIEL_START else ZIEL_EINRICHTUNG
     val zurEinrichtung: () -> Unit = { nav.zurEinrichtung() }
@@ -120,6 +145,23 @@ private fun MonteurNavigation(app: MonteurApp) {
             "bericht?id=${s.berichtId.q()}&termin=${s.terminId.q()}&projekt=${s.projektNr.q()}" +
                 "&titel=${s.titel.q()}&aufnahme=${s.aufnahme.q()}"
         )
+    }
+
+    // Nachrichten zum Plan (1.24.0): Leiste auf „Heute“, Zahl am Reiter, Token beim Start melden.
+    val nachrichten: NachrichtenViewModel = viewModel(factory = NachrichtenViewModel.factory(app))
+    val nachrichtenAbgemeldet by nachrichten.abgemeldet.collectAsState()
+    LaunchedEffect(nachrichtenAbgemeldet) { if (nachrichtenAbgemeldet) zurEinrichtung() }
+    LaunchedEffect(Unit) { Nachrichtendienst.tokenMelden(app) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        nachrichten.laden()
+        onPauseOrDispose { }
+    }
+    // Angetippte Benachrichtigung: zurueck zum Start, dort oeffnet „Heute“ den Termin.
+    LaunchedEffect(terminAnfrage) {
+        if (terminAnfrage != null && app.einstellungen.istAngemeldet) {
+            nachrichten.gelesenBis(terminAnfrage.nachrichtId)
+            nav.popBackStack(ZIEL_START, inclusive = false)
+        }
     }
 
     // Ein Eingang fuer alle Reiter und die Projektmappe (1.23.0).
@@ -147,6 +189,8 @@ private fun MonteurNavigation(app: MonteurApp) {
             val vm: EinrichtungViewModel = viewModel(factory = EinrichtungViewModel.factory(app))
             EinrichtungScreen(vm, beiFertig = {
                 MonteurVersand.anstossen(app)
+                Nachrichtendienst.tokenMelden(app)
+                nachrichten.laden()
                 nav.navigate(ZIEL_START) { popUpTo(ZIEL_EINRICHTUNG) { inclusive = true } }
             })
         }
@@ -161,6 +205,9 @@ private fun MonteurNavigation(app: MonteurApp) {
                 beiBericht = zuBericht,
                 eingang = eingang,
                 zurKarte = zurKarte,
+                nachrichten = nachrichten,
+                terminAnfrage = terminAnfrage,
+                anfrageErledigt = anfrageErledigt,
             )
         }
 
@@ -296,6 +343,9 @@ private fun StartReiter(
     beiBericht: (BerichtStart) -> Unit,
     eingang: EingangViewModel,
     zurKarte: () -> Unit,
+    nachrichten: NachrichtenViewModel,
+    terminAnfrage: TerminAnfrage?,
+    anfrageErledigt: () -> Unit,
 ) {
     var reiter by rememberSaveable { mutableStateOf(Reiter.HEUTE) }
     val eingangZustand by eingang.zustand.collectAsState()
@@ -307,6 +357,56 @@ private fun StartReiter(
     var menue by remember { mutableStateOf(false) }
     var abmeldenFrage by remember { mutableStateOf(false) }
     val wartend by app.korb.anzahl.collectAsState()
+    val nachrichtenZustand by nachrichten.zustand.collectAsState()
+
+    // Termin aus einer Nachricht oeffnen: Tag zeigen, dann das Termindetail.
+    val terminOeffnen: (String?, String?) -> Unit = { terminId, datum ->
+        reiter = Reiter.HEUTE
+        val tag = beginnOrtszeit(datum)?.toLocalDate()
+        if (tag != null) heute.zeigeTag(tag)
+        if (terminId != null && tag != null) {
+            bereich.launch {
+                val t = runCatching { app.repository.tage(tag.toString(), tag.toString()) }.getOrNull()
+                    ?.flatMap { it.termine }?.firstOrNull { it.id == terminId }
+                val projekt = t?.projekt
+                if (t != null && projekt != null) {
+                    val entwurf = t.berichte.firstOrNull { it.status != MonteurBericht.STATUS_FERTIG }?.id
+                    beiProjekt(projekt.id, t.id, projektTitel(projekt), entwurf)
+                }
+            }
+        }
+    }
+    LaunchedEffect(terminAnfrage) {
+        terminAnfrage?.let {
+            terminOeffnen(it.terminId, it.datum)
+            anfrageErledigt()
+        }
+    }
+    // Neue Nachricht zum Plan: angezeigten Tag neu laden.
+    LaunchedEffect(nachrichtenZustand.stand) { if (nachrichtenZustand.stand > 0) heute.laden() }
+
+    // Einmal nach der Einrichtung um Erlaubnis fuer Benachrichtigungen bitten (Android 13+).
+    var erlaubnisFrage by remember {
+        mutableStateOf(android.os.Build.VERSION.SDK_INT >= 33 && !app.nachrichtenSpeicher.erlaubnisGefragt)
+    }
+    val erlaubnis = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { app.nachrichtenSpeicher.erlaubnisGefragt = true }
+    if (erlaubnisFrage) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.n_erlaubnis_titel)) },
+            text = { Text(stringResource(R.string.n_erlaubnis_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    erlaubnisFrage = false
+                    app.nachrichtenSpeicher.erlaubnisGefragt = true
+                    erlaubnis.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text(stringResource(R.string.m_ok)) }
+            },
+        )
+    }
+
 
     // Jeder 401 fuehrt zurueck zur Einrichtung.
     val abgemeldet = listOf(
@@ -324,7 +424,7 @@ private fun StartReiter(
                 TextButton(onClick = {
                     abmeldenFrage = false
                     bereich.launch {
-                        app.repository.abmelden()
+                        app.abmelden()
                         beiAbmeldung()
                     }
                 }) { Text(stringResource(R.string.m_abmelden), color = MaterialTheme.colorScheme.error) }
@@ -353,7 +453,11 @@ private fun StartReiter(
                         selected = reiter == r,
                         onClick = { reiter = r },
                         icon = {
-                            if (r == Reiter.HEUTE && wartend > 0) {
+                            val ungelesen = nachrichtenZustand.anzahl
+                            if (r == Reiter.HEUTE && ungelesen > 0) {
+                                // Neue Nachrichten zum Plan haben Vorrang vor dem Korb.
+                                BadgedBox(badge = { Badge { Text(ungelesen.toString()) } }) { Icon(symbol, null) }
+                            } else if (r == Reiter.HEUTE && wartend > 0) {
                                 BadgedBox(badge = {
                                     Badge(containerColor = MaterialTheme.colorScheme.gold, contentColor = MaterialTheme.colorScheme.onSecondary) {
                                         Text(wartend.toString())
@@ -391,6 +495,12 @@ private fun StartReiter(
                         eingang.oeffnen(id)
                         zurKarte()
                     },
+                    nachrichten = nachrichtenZustand.ungelesen,
+                    beiNachricht = { n ->
+                        nachrichten.gelesen(n)
+                        terminOeffnen(n.termin_id, n.datum)
+                    },
+                    beiNachrichtGelesen = nachrichten::gelesen,
                     beiTippen = {
                         eingang.beginnen(EingangKontext(datum = heute.zustand.value.anker.takeIf { it != java.time.LocalDate.now() }?.toString()))
                         zurKarte()

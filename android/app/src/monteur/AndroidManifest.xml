@@ -2,6 +2,9 @@
 <!-- Monteur-App (Auftrag 1.22): Heute, Bericht, Zeiten, Urlaub. Kein Chat, keine Ablage. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Benachrichtigungen zu Terminen und Notdienst (Auftrag 1.24), ab Android 13 nachgefragt. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application android:name=".monteur.MonteurApp">
 
         <activity
@@ -14,6 +17,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Push vom Server (Firebase Cloud Messaging). Ohne google-services.json bleibt er stumm. -->
+        <service
+            android:name=".monteur.push.MonteurPushDienst"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Kanal fuer Push ohne eigene channel_id. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="termine" />
     </application>
 
 </manifest>

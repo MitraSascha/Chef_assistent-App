@@ -73,8 +73,13 @@ class MonteurRepository(
 
     suspend fun ich(): Ich = ruf { it.ich() }
 
-    /** Lokal sofort, beim Server nach Moeglichkeit. Fehler beim Server werden verschluckt. */
-    suspend fun abmelden() {
+    /**
+     * Lokal sofort, beim Server nach Moeglichkeit. Fehler beim Server werden verschluckt.
+     * Seit 1.24.0 zuerst das Push-Token entfernen ([pushToken]), sonst bekaeme das Handy
+     * nach dem Abmelden weiter Benachrichtigungen.
+     */
+    suspend fun abmelden(pushToken: String? = null) {
+        if (einstellungen.istAngemeldet && pushToken != null) runCatching { ruf { it.pushAbmelden(PushGeraet(pushToken)) } }
         if (einstellungen.istAngemeldet) runCatching { ruf { it.abmelden() } }
         einstellungen.abmelden()
         zugangVerwerfen()
@@ -171,6 +176,19 @@ class MonteurRepository(
                 anfrageId = anfrageId.toTextTeil(),
             )
         }
+    }
+
+    // --- Benachrichtigungen (1.24.0) ------------------------------------------------
+
+    suspend fun nachrichten(seit: Int? = null): Nachrichten = ruf { it.nachrichten(seit) }
+
+    /** Alle eigenen Nachrichten bis [bis] als gelesen. */
+    suspend fun gelesen(bis: Int) {
+        ruf { it.gelesen(Gelesen(bis)) }
+    }
+
+    suspend fun pushAnmelden(token: String) {
+        ruf { it.pushAnmelden(PushGeraet(token, Build.MODEL)) }
     }
 
     // --- Eingang (1.23.0) ---------------------------------------------------------

@@ -19,6 +19,9 @@ work = "2.11.2"
 media3 = "1.11.1"
 # QR-Einrichtung der Monteur-App (Auftrag 1.22).
 codeScanner = "16.1.0"
+# Push fuer die Monteur-App (Auftrag 1.24), Versionen aus der Firebase-Konsole.
+googleServices = "4.5.0"
+firebaseBom = "35.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -53,8 +56,12 @@ media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "medi
 
 play-code-scanner = { group = "com.google.android.gms", name = "play-services-code-scanner", version.ref = "codeScanner" }
 
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

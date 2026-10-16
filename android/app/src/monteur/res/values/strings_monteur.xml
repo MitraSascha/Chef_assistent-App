@@ -83,5 +83,8 @@
     <string name="m_mehr">%1$d weitere anzeigen</string>
     <string name="m_weniger">Weniger anzeigen</string>
     <string name="m_wird_uebertragen">wird übertragen</string>
+    <string name="n_weitere">+ %1$d weitere</string>
+    <string name="n_erlaubnis_titel">Benachrichtigungen</string>
+    <string name="n_erlaubnis_text">Damit du neue Termine und Notdienste sofort bekommst.</string>
     <string name="m_foto_von">Foto %1$d von %2$d</string>
 </resources>

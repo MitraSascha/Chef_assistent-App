@@ -67,6 +67,17 @@ import de.chefassistent.app.data.ApiFehler
 import de.chefassistent.app.monteur.MonteurApp
 import de.chefassistent.app.monteur.data.Geo
 import de.chefassistent.app.monteur.data.Karte
+import de.chefassistent.app.monteur.data.MonteurNachricht
+import de.chefassistent.app.monteur.data.NACHRICHT_ENTFALLEN
+import de.chefassistent.app.monteur.data.NACHRICHT_NEU
+import de.chefassistent.app.monteur.data.NACHRICHT_NOTDIENST
+import de.chefassistent.app.monteur.data.NACHRICHT_VERSCHOBEN
+import androidx.compose.material.icons.outlined.EditCalendar
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.NotificationImportant
+import androidx.compose.material.icons.outlined.Update
+import androidx.compose.runtime.key
 import de.chefassistent.app.monteur.data.KorbMeldung
 import de.chefassistent.app.monteur.data.MonteurBericht
 import de.chefassistent.app.monteur.data.MonteurTag
@@ -149,6 +160,12 @@ class HeuteViewModel(private val app: MonteurApp) : ViewModel() {
         laden()
     }
 
+    /** Aus einer Nachricht: diesen Tag zeigen (Tagesansicht). */
+    fun zeigeTag(tag: LocalDate) {
+        _zustand.update { it.copy(anker = tag, woche = false, tage = null) }
+        laden()
+    }
+
     fun heute() {
         _zustand.update { it.copy(anker = LocalDate.now(), tage = null) }
         laden()
@@ -186,6 +203,10 @@ fun HeuteReiter(
     beiKarteId: (String) -> Unit = {},
     /** Seit 1.23.0: Tippen statt Sprechen - oeffnet die Eingabe des Eingangs. */
     beiTippen: () -> Unit = { beiBericht(BerichtStart()) },
+    /** Seit 1.24.0: ungelesene Nachrichten zum Plan, ganz oben. */
+    nachrichten: List<MonteurNachricht> = emptyList(),
+    beiNachricht: (MonteurNachricht) -> Unit = {},
+    beiNachrichtGelesen: (MonteurNachricht) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val wartend by viewModel.wartend.collectAsStateWithLifecycle()
@@ -228,6 +249,9 @@ fun HeuteReiter(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    if (nachrichten.isNotEmpty()) {
+                        item(key = "nachrichten") { NachrichtenLeiste(nachrichten, beiNachricht, beiNachrichtGelesen) }
+                    }
                     if (offene.isNotEmpty()) {
                         item(key = "offene") { OffeneKarten(offene, beiKarte) }
                     }
@@ -430,6 +454,82 @@ private fun BerichtChip(termin: TagTermin) {
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = schrift)
+    }
+}
+
+/**
+ * Ungelesene Nachrichten (Auftrag 1.24, 7.): je Karte Symbol nach Art (Notdienst rot),
+ * Titel fett, Text eine Zeile. Mehr als 3 → „+ N weitere“. Antippen oeffnet den Termin,
+ * Wegwischen markiert nur als gelesen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NachrichtenLeiste(
+    nachrichten: List<MonteurNachricht>,
+    beiNachricht: (MonteurNachricht) -> Unit,
+    beiGelesen: (MonteurNachricht) -> Unit,
+) {
+    val alleZustand = androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val alle = alleZustand.value
+    val sichtbar = if (alle) nachrichten else nachrichten.take(3)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        sichtbar.forEach { n ->
+            key(n.id) {
+                val wisch = androidx.compose.material3.rememberSwipeToDismissBoxState(
+                    confirmValueChange = { wert ->
+                        if (wert != androidx.compose.material3.SwipeToDismissBoxValue.Settled) beiGelesen(n)
+                        true
+                    },
+                )
+                androidx.compose.material3.SwipeToDismissBox(state = wisch, backgroundContent = {}) {
+                    NachrichtKarte(n) { beiNachricht(n) }
+                }
+            }
+        }
+        if (nachrichten.size > 3) {
+            TextButton(onClick = { alleZustand.value = !alle }) {
+                Text(if (alle) stringResource(R.string.m_weniger) else stringResource(R.string.n_weitere, nachrichten.size - 3))
+            }
+        }
+    }
+}
+
+@Composable
+private fun NachrichtKarte(n: MonteurNachricht, beiKlick: () -> Unit) {
+    val farben = MaterialTheme.colorScheme
+    val notdienst = n.istNotdienst
+    val entfallen = n.art == NACHRICHT_ENTFALLEN
+    val symbol = when (n.art) {
+        NACHRICHT_NOTDIENST -> Icons.Outlined.NotificationImportant
+        NACHRICHT_NEU -> Icons.Outlined.EventAvailable
+        NACHRICHT_VERSCHOBEN -> Icons.Outlined.Update
+        NACHRICHT_ENTFALLEN -> Icons.Outlined.EventBusy
+        else -> Icons.Outlined.EditCalendar
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (notdienst) farben.errorContainer else farben.surfaceContainer,
+        contentColor = if (notdienst) farben.onErrorContainer else farben.onSurface,
+        border = if (notdienst) BorderStroke(2.dp, farben.error) else BorderStroke(1.dp, farben.outlineVariant),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = beiKlick),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp).heightIn(min = 40.dp)) {
+            Icon(symbol, null, tint = if (notdienst) farben.error else farben.onSurfaceVariant)
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(
+                    n.titel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = if (entfallen) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+                    color = if (entfallen) farben.onSurfaceVariant else androidx.compose.ui.graphics.Color.Unspecified,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (n.text.isNotBlank()) {
+                    Text(n.text, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
     }
 }
 

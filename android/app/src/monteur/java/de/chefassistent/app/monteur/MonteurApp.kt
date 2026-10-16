@@ -20,6 +20,33 @@ class MonteurApp : Application() {
     /** Berichte, Zeiten und Antraege, die auf Netz warten. Nur eine Instanz. */
     val korb: MonteurKorb by lazy { MonteurKorb(applicationContext) }
 
+    /** Merkzettel fuer Benachrichtigungen (1.24.0). */
+    val nachrichtenSpeicher: de.chefassistent.app.monteur.push.NachrichtenSpeicher by lazy {
+        de.chefassistent.app.monteur.push.NachrichtenSpeicher(applicationContext)
+    }
+
+    private val _nachrichtenSignal = kotlinx.coroutines.flow.MutableStateFlow(0L)
+
+    /** Zaehlt hoch, wenn eine Nachricht per Push oder Abholen kam - die Leiste laedt dann neu. */
+    val nachrichtenSignal: kotlinx.coroutines.flow.StateFlow<Long> = _nachrichtenSignal
+
+    fun nachrichtenGeaendert() {
+        _nachrichtenSignal.value = System.currentTimeMillis()
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        de.chefassistent.app.monteur.push.Benachrichtigungen.kanaeleAnlegen(this)
+    }
+
+    /** Abmelden (1.24.0): Push-Token beim Server entfernen, abmelden, Token loeschen, Abholen stoppen. */
+    suspend fun abmelden() {
+        repository.abmelden(nachrichtenSpeicher.token)
+        de.chefassistent.app.monteur.push.Nachrichtendienst.tokenLoeschen(this)
+        de.chefassistent.app.monteur.push.Nachrichtendienst.abholenAbbestellen(this)
+        nachrichtenSpeicher.leeren()
+    }
+
     /** Nur fuer die versteckte Anmeldung mit Buero-Zugang (Passwort + Code) zum Testen. */
     val bueroZugang: AssistentRepository by lazy { AssistentRepository(applicationContext, einstellungen) }
 }

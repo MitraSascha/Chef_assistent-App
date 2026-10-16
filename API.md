@@ -110,6 +110,9 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | POST | `/v1/monteur/eingang/{id}/passt` | **„Passt“** → je nach Art: Bericht nach HERO, fertiger Bestellschein, Kommentar im Projektverlauf, Zeiten buchen, Urlaub beantragen (1.23.0) |
 | DELETE | `/v1/monteur/eingang/{id}` | Karte verwerfen (1.23.0) |
 | GET | `/v1/monteur/anleitung?pfad=` | Herstelleranleitung (PDF) aus unserer Bibliothek – Treffer einer Antwortkarte (1.23.0) |
+| GET | `/v1/monteur/nachrichten?seit=` | **Benachrichtigungen**: neuer Termin, Notdienst, verschoben, geändert, entfällt; `ungelesen`, `push_aktiv` (neu in 1.24.0) |
+| POST | `/v1/monteur/nachrichten/gelesen` | Nachrichten bis `bis` als gelesen markieren (1.24.0) |
+| POST / DELETE | `/v1/monteur/push` | FCM-Token des Handys hinterlegen (Start, neues Token) / entfernen (Abmelden) (1.24.0) |
 | GET / POST | `/v1/monteure`, `/v1/monteure/{name}/einrichtungscode` | Büro: Monteur-Zugänge anlegen, QR-Code erzeugen (1.22.0) |
 
 ## 0. Anmeldung – neu in 1.10.0
@@ -1243,6 +1246,95 @@ mit `bezug_id` = ID der Antwortkarte. Die KI bekommt vorige Frage und Antwort mi
 `GET /v1/monteur/projekte/{id}` hat neu `verlauf: [{datum, titel, text}]` – die letzten 15 Kommentare im
 HERO-Projektverlauf (Büro und Monteure, neueste zuerst; `titel` oft leer, die Überschrift steht dann in der ersten
 Zeile von `text`). Eigene Meldungen und Materialanforderungen tauchen dort nach dem nächsten Abgleich des HERO-Spiegels auf.
+
+## 5e. Monteur-App: Benachrichtigungen – neu in 1.24.0
+
+Grundsatz wie in 5d: **keine neuen Knöpfe.** Der Monteur muss nichts tun – Nachrichten kommen einfach.
+
+**Was der Server prüft.** Alle **3 Minuten**, auch nachts, liest der Server die Termine von **heute + 3 Tagen**
+aller Monteure (aktive Zugänge mit Rolle `monteur` und HERO-Zuordnung – Büro-Zugänge bekommen keine Nachrichten) **direkt aus HERO** – nicht aus dem HERO-Spiegel, der holt nachts
+erst ab 04:00; ein Notdienst um 23 Uhr käme sonst zu spät. Verglichen wird mit dem zuletzt gemerkten Stand je Monteur
+(Beginn, Ende, Titel, Projekt, Kategorie):
+
+| `art` | Wann | `titel` (Beispiel) |
+|---|---|---|
+| `neu` | Termin ist neu im eigenen Plan | „Neuer Termin morgen 08:00“ |
+| `notdienst` | neuer Termin, Kategorie oder Titel enthält „Notdienst“ | „Notdienst heute 23:10“ |
+| `verschoben` | Beginn hat sich geändert | „Termin verschoben: jetzt Do 23.10. 10:00“ |
+| `geaendert` | Ende, Titel, Projekt oder Kategorie geändert | „Termin geändert heute 13:00“ |
+| `entfallen` | Termin (noch nicht vorbei) ist nicht mehr im Plan – abgesagt, aus dem Fenster verlegt oder an jemand anderen gegeben | „Termin entfällt: morgen 08:00“ |
+
+`text` = Termintitel, bei Projekt „ – Kunde, Adresse“ dahinter; bei `verschoben` „(vorher …)“, bei `entfallen`
+„… ist nicht mehr in deinem Plan (abgesagt, verlegt oder an jemand anderen gegeben).“ Termine, die schon vorbei sind,
+lösen nichts aus. **Der erste Abgleich je Monteur merkt sich nur den Stand** – kein Nachrichtenschwall beim ersten Mal.
+Ein Termin, der aus dem 4-Tage-Fenster heraus verlegt wird, meldet sich als `entfallen`; einer, der hineinwandert, als `neu`.
+
+### Abholen: `GET /v1/monteur/nachrichten?seit=<id>`
+
+```json
+{
+  "nachrichten": [
+    {"id": 42, "art": "notdienst", "titel": "Notdienst heute 23:10",
+     "text": "Notdienst Rohrbruch – Fam. Müller, Hauptstr. 5, 12345 Musterstadt",
+     "termin_id": "hero:98765", "datum": "2026-10-16T23:10",
+     "erstellt": "2026-10-16T21:08:12+00:00", "gelesen": false}
+  ],
+  "ungelesen": 1,
+  "push_aktiv": true
+}
+```
+
+- Neueste zuerst, höchstens die letzten **14 Tage** bzw. **100** Nachrichten. `seit` = größte bekannte `id` → nur
+  Neueres (Standard `0` = alle).
+- `termin_id` wie in `GET /v1/monteur/tage` (`hero:<id>`); `datum` = Beginn des Termins (Ortszeit, ohne Zone),
+  bei `entfallen` der alte Beginn. `erstellt` in UTC.
+- `ungelesen` = Zahl aller ungelesenen Nachrichten → Punkt/Zahl am Reiter „Heute“.
+- `push_aktiv` = `true`, wenn der Server Push über Firebase schicken kann; `false` → App holt selbst ab (siehe unten).
+- Ohne HERO-Anbindung auf dem Server → `503` „Benachrichtigungen sind auf diesem Server nicht eingerichtet.“
+
+### Gelesen: `POST /v1/monteur/nachrichten/gelesen`
+
+`{"bis": 42}` → `204`. Markiert **alle eigenen Nachrichten mit `id <= bis`** als gelesen (wiederholbar). Aufrufen,
+wenn der Monteur die Nachricht gesehen hat: Benachrichtigung angetippt, Karte auf „Heute“ angetippt bzw.
+weggewischt.
+
+### Push-Token: `POST` / `DELETE /v1/monteur/push`
+
+`{"token": "<FCM-Registrierungstoken>", "geraet": "Pixel 8"}` → `204` (`geraet` optional, max. 80 Zeichen).
+- `POST` beim App-Start (nach der Anmeldung) und bei jedem neuen Token (`onNewToken`). Mehrfach senden schadet nicht;
+  ein Token gehört immer zum zuletzt angemeldeten Zugang. Mehrere Handys je Monteur gehen.
+- `DELETE` (gleicher Body) **vor** `POST /v1/abmelden`, damit ein abgegebenes Handy nichts mehr bekommt.
+- Meldet Firebase ein Token als ungültig (App deinstalliert), löscht der Server es selbst.
+
+### Push über Firebase Cloud Messaging
+
+Nur aktiv, wenn auf dem Server das Firebase-Dienstkonto liegt (`FCM_KONTO` in `assistent.env`, eingerichtet mit
+`sudo ~/server-setup/15-push-einrichten.sh <datei.json>`). Gesendet wird über FCM HTTP v1 an alle hinterlegten Tokens
+des Monteurs:
+
+```json
+{"notification": {"title": "Notdienst heute 23:10", "body": "Notdienst Rohrbruch – Fam. Müller, …"},
+ "data": {"art": "notdienst", "termin_id": "hero:98765", "nachricht_id": "42"},
+ "android": {"priority": "high", "notification": {"channel_id": "notdienst", "sound": "default"}}}
+```
+
+- **Zwei Android-Kanäle**, die die App anlegen muss: `termine` (normal, für `neu`, `verschoben`, `geaendert`,
+  `entfallen`) und `notdienst` (hohe Wichtigkeit, Ton – nur `art: "notdienst"`). Ob „Nicht stören“ durchbrochen
+  wird, entscheidet der Monteur in den Kanal-Einstellungen.
+- `data`-Werte sind immer Strings (`nachricht_id` als Text).
+- Jede Nachricht wird höchstens **einmal** gepusht.
+
+**Ruhezeit 21–6 Uhr.** Nachts klingelt nur, was dringend ist: ein `notdienst` oder ein Termin, der **in weniger als
+3 Stunden** beginnt. Alles andere wird um **6 Uhr** gepusht und steht ohnehin sofort in `GET /v1/monteur/nachrichten`.
+
+### Ohne Firebase (`push_aktiv: false`)
+
+Es geht nichts verloren – es klingelt nur nicht bei geschlossener App. Die App holt dann selbst ab:
+- beim Start und beim Zurückholen in den Vordergrund `GET /v1/monteur/nachrichten?seit=<letzte id>`;
+- im Hintergrund periodisch (WorkManager, alle 15 Minuten) und zeigt neue Nachrichten als **lokale**
+  Benachrichtigung auf demselben Kanal (`notdienst` bzw. `termine`), Ruhezeit wie oben selbst beachten.
+
+Auch mit `push_aktiv: true` beim Start/Zurückholen abrufen – die Liste ist die Wahrheit, Push nur der Anstoß.
 
 ## 6. Ablage durchblättern (Ordneransicht)
 

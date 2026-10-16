@@ -8,6 +8,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -85,6 +86,20 @@ interface MonteurApi {
     @Streaming
     @GET("v1/monteur/anleitung")
     suspend fun anleitung(@Query("pfad") pfad: String): Response<ResponseBody>
+
+    // --- Benachrichtigungen (1.24.0) ---
+
+    @GET("v1/monteur/nachrichten")
+    suspend fun nachrichten(@Query("seit") seit: Int? = null): Nachrichten
+
+    @POST("v1/monteur/nachrichten/gelesen")
+    suspend fun gelesen(@Body gelesen: Gelesen): Response<Unit>
+
+    @POST("v1/monteur/push")
+    suspend fun pushAnmelden(@Body geraet: PushGeraet): Response<Unit>
+
+    @HTTP(method = "DELETE", path = "v1/monteur/push", hasBody = true)
+    suspend fun pushAbmelden(@Body geraet: PushGeraet): Response<Unit>
 
     // --- Bericht ---
 

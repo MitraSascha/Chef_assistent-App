@@ -560,3 +560,44 @@ data class Verlaufseintrag(
     val titel: String = "",
     val text: String = "",
 )
+
+// --- Benachrichtigungen (seit 1.24.0, API.md 5e) ------------------------------------
+
+/** Eine Nachricht zum Plan: neuer Termin, Notdienst, verschoben, geaendert, entfallen. */
+@Serializable
+data class MonteurNachricht(
+    val id: Int,
+    /** neu | notdienst | verschoben | geaendert | entfallen */
+    val art: String,
+    val titel: String = "",
+    val text: String = "",
+    /** `hero:<id>` - antippen oeffnet den Termin. */
+    val termin_id: String? = null,
+    /** Beginn des Termins (Ortszeit). */
+    val datum: String? = null,
+    val erstellt: String = "",
+    val gelesen: Boolean = false,
+) {
+    val istNotdienst: Boolean get() = art == NACHRICHT_NOTDIENST
+}
+
+const val NACHRICHT_NEU = "neu"
+const val NACHRICHT_NOTDIENST = "notdienst"
+const val NACHRICHT_VERSCHOBEN = "verschoben"
+const val NACHRICHT_GEAENDERT = "geaendert"
+const val NACHRICHT_ENTFALLEN = "entfallen"
+
+@Serializable
+data class Nachrichten(
+    /** Neueste zuerst, hoechstens 14 Tage / 100. */
+    val nachrichten: List<MonteurNachricht> = emptyList(),
+    val ungelesen: Int = 0,
+    /** `true` = der Server schickt Push; sonst holt die App selbst ab. */
+    val push_aktiv: Boolean = false,
+)
+
+@Serializable
+data class Gelesen(val bis: Int)
+
+@Serializable
+data class PushGeraet(val token: String, val geraet: String? = null)

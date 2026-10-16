@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.23.0"
+    "version": "1.24.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -2915,7 +2915,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Nachricht"
+                    "$ref": "#/components/schemas/assistent__server__Nachricht"
                   },
                   "title": "Response Verlauf V1 Gespraeche  Gid  Get"
                 }
@@ -4630,6 +4630,255 @@
             "description": "Service Unavailable"
           }
         }
+      }
+    },
+    "/v1/monteur/nachrichten": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Nachrichten",
+        "description": "Terminänderungen für mich: neuer Termin, Notdienst, verschoben, geändert, entfällt (Server prüft alle 3 Min.\ndirekt in HERO, auch nachts). Beim App-Start und beim Zurückholen abrufen; Push kommt zusätzlich, wenn aktiv.",
+        "operationId": "nachrichten_v1_monteur_nachrichten_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "seit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Nur Nachrichten mit größerer id",
+              "default": 0,
+              "title": "Seit"
+            },
+            "description": "Nur Nachrichten mit größerer id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Nachrichten"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/nachrichten/gelesen": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Nachrichten Gelesen",
+        "operationId": "nachrichten_gelesen_v1_monteur_nachrichten_gelesen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Gelesen"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/monteur/push": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Push Anmelden",
+        "description": "FCM-Token dieses Handys hinterlegen (beim Start und wenn Firebase ein neues Token meldet).",
+        "operationId": "push_anmelden_v1_monteur_push_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushGeraet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Push Abmelden",
+        "description": "Beim Abmelden: Token entfernen.",
+        "operationId": "push_abmelden_v1_monteur_push_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushGeraet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/monteur/anleitung": {
@@ -9662,6 +9911,20 @@
         ],
         "title": "Freigabe"
       },
+      "Gelesen": {
+        "properties": {
+          "bis": {
+            "type": "integer",
+            "title": "Bis",
+            "description": "Alle Nachrichten bis zu dieser id als gelesen markieren"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bis"
+        ],
+        "title": "Gelesen"
+      },
       "Geo": {
         "properties": {
           "lat": {
@@ -11387,132 +11650,33 @@
         ],
         "title": "MonteurZugang"
       },
-      "Nachricht": {
+      "Nachrichten": {
         "properties": {
-          "id": {
+          "nachrichten": {
+            "items": {
+              "$ref": "#/components/schemas/assistent__monteur_api__Nachricht"
+            },
+            "type": "array",
+            "title": "Nachrichten",
+            "description": "Neueste zuerst, höchstens 14 Tage / 100"
+          },
+          "ungelesen": {
             "type": "integer",
-            "title": "Id"
+            "title": "Ungelesen"
           },
-          "rolle": {
-            "type": "string",
-            "enum": [
-              "nutzer",
-              "assistent",
-              "hinweis"
-            ],
-            "title": "Rolle"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text"
-          },
-          "zeit": {
-            "type": "string",
-            "title": "Zeit"
-          },
-          "dateien": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Dateien"
-          },
-          "links": {
-            "items": {
-              "$ref": "#/components/schemas/DateiLink"
-            },
-            "type": "array",
-            "title": "Links",
-            "description": "Wie bei ChatAntwort (neu in 1.13.0)"
-          },
-          "bestaetigungen": {
-            "items": {
-              "$ref": "#/components/schemas/Bestaetigung"
-            },
-            "type": "array",
-            "title": "Bestaetigungen"
-          },
-          "quellen": {
-            "items": {
-              "$ref": "#/components/schemas/Quelle"
-            },
-            "type": "array",
-            "title": "Quellen"
-          },
-          "modell": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Modell",
-            "description": "Modell, das diese Antwort (nur rolle=assistent) tatsächlich erzeugt hat (bei Wechsel im Zug: das zuletzt verwendete). Neu in 1.20.0"
-          },
-          "denkaufwand": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Denkaufwand",
-            "description": "Tatsächlich verwendeter Denkaufwand, z. B. 'low' (neu in 1.20.0)"
-          },
-          "denkaufwand_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Denkaufwand Name",
-            "description": "Anzeigename dazu, z. B. 'niedrig' (neu in 1.20.0)"
-          },
-          "modell_gewechselt": {
+          "push_aktiv": {
             "type": "boolean",
-            "title": "Modell Gewechselt",
-            "description": "true = im Zug automatisch auf das Arbeitsmodell bzw. einen höheren Denkaufwand gewechselt (neu in 1.20.0)",
-            "default": false
-          },
-          "fortschritt": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Fortschritt"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Verlauf der Bearbeitung (Schritte, Werkzeuge, Denken) – unter der Antwort eingeklappt „Verlauf: 7 Werkzeuge, 1:12 min“ (neu in 1.20.0, bei älteren Nachrichten null)"
-          },
-          "abgebrochen": {
-            "type": "boolean",
-            "title": "Abgebrochen",
-            "description": "true = vom Nutzer abgebrochen (neu in 1.20.0)",
-            "default": false
-          },
-          "zwischenruf": {
-            "type": "boolean",
-            "title": "Zwischenruf",
-            "description": "Nur rolle=nutzer: true = als Zwischenruf während einer laufenden Antwort geschickt (neu in 1.20.0)",
-            "default": false
+            "title": "Push Aktiv",
+            "description": "true = Server schickt Push (Firebase eingerichtet); sonst selbst abholen"
           }
         },
         "type": "object",
         "required": [
-          "id",
-          "rolle",
-          "text",
-          "zeit"
+          "nachrichten",
+          "ungelesen",
+          "push_aktiv"
         ],
-        "title": "Nachricht"
+        "title": "Nachrichten"
       },
       "NotizKurz": {
         "properties": {
@@ -12089,6 +12253,27 @@
           "fotos"
         ],
         "title": "Projektmappe"
+      },
+      "PushGeraet": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Token",
+            "description": "FCM-Registrierungstoken der App"
+          },
+          "geraet": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Geraet",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "PushGeraet"
       },
       "Quelle": {
         "properties": {
@@ -13458,6 +13643,203 @@
           "nachricht_id"
         ],
         "title": "ZwischenrufAntwort"
+      },
+      "assistent__monteur_api__Nachricht": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "neu",
+              "notdienst",
+              "verschoben",
+              "geaendert",
+              "entfallen"
+            ],
+            "title": "Art"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel",
+            "description": "z. B. „Notdienst heute 23:10“, „Termin verschoben: jetzt morgen 10:00“"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "termin_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termin Id",
+            "description": "'hero:<id>' – antippen öffnet den Termin (GET /v1/monteur/tage)"
+          },
+          "datum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datum",
+            "description": "Beginn des Termins (Ortszeit)"
+          },
+          "erstellt": {
+            "type": "string",
+            "title": "Erstellt"
+          },
+          "gelesen": {
+            "type": "boolean",
+            "title": "Gelesen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "art",
+          "titel",
+          "text",
+          "erstellt",
+          "gelesen"
+        ],
+        "title": "Nachricht"
+      },
+      "assistent__server__Nachricht": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "nutzer",
+              "assistent",
+              "hinweis"
+            ],
+            "title": "Rolle"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "zeit": {
+            "type": "string",
+            "title": "Zeit"
+          },
+          "dateien": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dateien"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/DateiLink"
+            },
+            "type": "array",
+            "title": "Links",
+            "description": "Wie bei ChatAntwort (neu in 1.13.0)"
+          },
+          "bestaetigungen": {
+            "items": {
+              "$ref": "#/components/schemas/Bestaetigung"
+            },
+            "type": "array",
+            "title": "Bestaetigungen"
+          },
+          "quellen": {
+            "items": {
+              "$ref": "#/components/schemas/Quelle"
+            },
+            "type": "array",
+            "title": "Quellen"
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell",
+            "description": "Modell, das diese Antwort (nur rolle=assistent) tatsächlich erzeugt hat (bei Wechsel im Zug: das zuletzt verwendete). Neu in 1.20.0"
+          },
+          "denkaufwand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand",
+            "description": "Tatsächlich verwendeter Denkaufwand, z. B. 'low' (neu in 1.20.0)"
+          },
+          "denkaufwand_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denkaufwand Name",
+            "description": "Anzeigename dazu, z. B. 'niedrig' (neu in 1.20.0)"
+          },
+          "modell_gewechselt": {
+            "type": "boolean",
+            "title": "Modell Gewechselt",
+            "description": "true = im Zug automatisch auf das Arbeitsmodell bzw. einen höheren Denkaufwand gewechselt (neu in 1.20.0)",
+            "default": false
+          },
+          "fortschritt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fortschritt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Verlauf der Bearbeitung (Schritte, Werkzeuge, Denken) – unter der Antwort eingeklappt „Verlauf: 7 Werkzeuge, 1:12 min“ (neu in 1.20.0, bei älteren Nachrichten null)"
+          },
+          "abgebrochen": {
+            "type": "boolean",
+            "title": "Abgebrochen",
+            "description": "true = vom Nutzer abgebrochen (neu in 1.20.0)",
+            "default": false
+          },
+          "zwischenruf": {
+            "type": "boolean",
+            "title": "Zwischenruf",
+            "description": "Nur rolle=nutzer: true = als Zwischenruf während einer laufenden Antwort geschickt (neu in 1.20.0)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "rolle",
+          "text",
+          "zeit"
+        ],
+        "title": "Nachricht"
       }
     },
     "securitySchemes": {

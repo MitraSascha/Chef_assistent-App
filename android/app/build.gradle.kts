@@ -6,6 +6,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Firebase (Push) nur fuer die Monteur-App (Auftrag 1.24). Ohne src/monteur/google-services.json
+// wird das Plugin gar nicht angewendet - dann baut die App ohne Push und holt Nachrichten selbst ab.
+// Die Buero-App hat keine Firebase-Datei: ihre google-services-Tasks werden abgeschaltet.
+if (file("src/monteur/google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    tasks.matching { it.name.contains("GoogleServices") && it.name.contains("Buero") }.configureEach { enabled = false }
+}
+
 android {
     namespace = "de.chefassistent.app"
     compileSdk = 37
@@ -96,6 +104,8 @@ dependencies {
 
     // QR-Code der Einrichtung, ueber Google Play-Dienste: braucht keine Kamera-Berechtigung.
     "monteurImplementation"(libs.play.code.scanner)
+    "monteurImplementation"(platform(libs.firebase.bom))
+    "monteurImplementation"(libs.firebase.messaging)
 
     implementation(libs.markwon.core)
     implementation(libs.markwon.tables)
