@@ -813,7 +813,7 @@ Anlass: Fragen zu Bildern und Baustellendoku mit 10+ Fotos. Ein Wunsch ans Backe
 - **Grenze 5** (`MAX_FOTOS`, Vertrag). Was darüber hinausgeht, meldet die App („Höchstens 5 Fotos auf einmal – N nicht übernommen.“). Vorher flog still das älteste Foto raus.
 - **Projektmappe** („Foto/Video/Datei“): neu „Fotos aus der Galerie“ (Fotos und Videos, mehrere, eine Beschreibung für alle, jede Datei einzeln über den Korb) und nach einem Kamerafoto „Hochladen + nächstes Foto“ (Serienaufnahme). Keine Grenze.
 
-**Am Gerät ungeprüft** (Handy war beim Bauen nicht angeschlossen).
+Am Gerät geprüft (2026-10-16): Galerie-Knopf links neben dem Mikrofon, 2 Fotos aus der Galerie → Eingabe „2 von 5 Fotos“, 4 weitere → 5 von 5 und „Höchstens 5 Fotos auf einmal – 1 nicht übernommen.“, nichts gesendet. Projektmappe: Menüpunkt „Fotos aus der Galerie“, 2 Fotos → Dialog „2 Dateien · 6,1 MB“, abgebrochen, Korb leer. **Ungeprüft:** echter Upload mehrerer Dateien, „Hochladen + nächstes Foto“ (Kamera per adb).
 
 ### Monteur: Vorgeschichte (seit v1.26.0)
 
