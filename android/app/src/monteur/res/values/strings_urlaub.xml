@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App: Reiter „Urlaub“ (Auftrag 1.22, Abschnitt 5). -->
+<resources>
+    <string name="u_titel">Urlaub</string>
+    <string name="u_jahr_zurueck">Vorjahr</string>
+    <string name="u_jahr_vor">Nächstes Jahr</string>
+
+    <!-- Stand -->
+    <string name="u_verfuegbar">Tage verfügbar</string>
+    <string name="u_genehmigt_kurz">genehmigt</string>
+    <string name="u_beantragt_kurz">beantragt</string>
+    <string name="u_jahresurlaub">Jahresurlaub</string>
+    <string name="u_leer_wert">–</string>
+
+    <!-- Arten -->
+    <string name="u_art_urlaub">Urlaub</string>
+    <string name="u_art_ueberstunden">Überstundenausgleich</string>
+    <string name="u_art_sonderurlaub">Sonderurlaub</string>
+    <string name="u_art_unbezahlt">Unbezahlt</string>
+    <string name="u_art_krank">Krank</string>
+    <string name="u_art_kind_krank">Kind krank</string>
+
+    <!-- Status -->
+    <string name="u_status_entwurf">Entwurf</string>
+    <string name="u_status_beantragt">Beantragt</string>
+    <string name="u_status_genehmigt">Genehmigt</string>
+    <string name="u_status_abgelehnt">Abgelehnt</string>
+    <string name="u_status_wartet">Wartet auf Netz</string>
+
+    <!-- Tage -->
+    <string name="u_tag_eins">%1$s Tag</string>
+    <string name="u_tage">%1$s Tage</string>
+    <string name="u_halber_tag_marke">½</string>
+
+    <!-- Liste -->
+    <string name="u_eintraege">Anträge %1$d</string>
+    <string name="u_leer">Noch keine Anträge in diesem Jahr.</string>
+    <string name="u_wischen_hinweis">Beantragt: nach links wischen zum Zurückziehen.</string>
+    <string name="u_zurueckziehen">Zurückziehen</string>
+    <string name="u_zurueckziehen_frage">Antrag zurückziehen?</string>
+    <string name="u_zurueckziehen_text">%1$s, %2$s. Das Büro sieht den Antrag danach nicht mehr.</string>
+    <string name="u_zurueckgezogen">Antrag zurückgezogen.</string>
+    <string name="u_abbrechen">Abbrechen</string>
+    <string name="u_fusszeile">Genehmigt wird im Büro. Die Entscheidung kommt per Mail von HERO.</string>
+
+    <!-- Knöpfe -->
+    <string name="u_beantragen_knopf">Urlaub beantragen</string>
+    <string name="u_krank_knopf">Krank melden</string>
+    <string name="u_tippen">Tippen statt sprechen</string>
+    <string name="u_tippen_feld">z. B. nächste Woche Donnerstag und Freitag frei</string>
+    <string name="u_tippen_senden">Verstehen</string>
+
+    <!-- Formular -->
+    <string name="u_formular_urlaub">Urlaub beantragen</string>
+    <string name="u_formular_krank">Krank melden</string>
+    <string name="u_zeitraum">Zeitraum</string>
+    <string name="u_zeitraum_waehlen">Zeitraum wählen</string>
+    <string name="u_art">Art</string>
+    <string name="u_halb_anfang">Halber Tag am Anfang</string>
+    <string name="u_halb_ende">Halber Tag am Ende</string>
+    <string name="u_kommentar">Kommentar (optional)</string>
+    <string name="u_senden_urlaub">Beantragen</string>
+    <string name="u_senden_krank">Krank melden</string>
+    <string name="u_uebernehmen">Übernehmen</string>
+
+    <!-- Rückmeldungen -->
+    <string name="u_beantragt_meldung">Antrag ist eingereicht.</string>
+    <string name="u_krank_meldung">Krankmeldung ist eingereicht.</string>
+    <string name="u_wartet_meldung">Wartet auf Netz – wird automatisch gesendet.</string>
+
+    <!-- Verstehen -->
+    <string name="u_versteht">Wird verstanden …</string>
+    <string name="u_vorschlag_titel">Vorschlag</string>
+    <string name="u_vorschlag_frage">%1$s %2$s, %3$s?</string>
+    <string name="u_vorschlag_frage_ohne_tage">%1$s %2$s?</string>
+    <string name="u_vorschlag_gesagt">„%1$s“</string>
+    <string name="u_vorschlag_beantragen">Beantragen</string>
+    <string name="u_vorschlag_aendern">Ändern</string>
+    <string name="u_vorschlag_verwerfen">Verwerfen</string>
+    <string name="u_zeiten_hinweis">Das klingt nach Arbeitszeit – bitte im Reiter Zeiten eintragen.</string>
+    <string name="u_nicht_verstanden">Daraus ließ sich kein Antrag machen. Bitte nochmal anders sagen oder „Urlaub beantragen“ nehmen.</string>
+    <string name="u_aufnahme_offen">Die Aufnahme kam nicht an: %1$s</string>
+    <string name="u_nochmal">Nochmal senden</string>
+    <string name="u_schliessen">Schließen</string>
+</resources>
