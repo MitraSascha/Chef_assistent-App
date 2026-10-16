@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.21.0"
+    "version": "1.22.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -4081,10 +4081,2314 @@
           }
         ]
       }
+    },
+    "/v1/monteur/einrichten": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Monteur Einrichten",
+        "description": "Monteur-App einmalig einrichten: Code aus dem QR-Code gegen eine Sitzung (cs_-Token) tauschen.\nOhne Anmeldung aufrufbar; jeder Code gilt einmal und 7 Tage.",
+        "operationId": "monteur_einrichten_v1_monteur_einrichten_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Einrichtung"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonteurSitzung"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/tage": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Monteur Tage",
+        "description": "Eigene HERO-Termine je Tag mit Kunde, Adresse (Navigation), Telefon, Beschreibung und Berichtsstand.",
+        "operationId": "monteur_tage_v1_monteur_tage_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "von",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD, Standard heute",
+              "title": "Von"
+            },
+            "description": "YYYY-MM-DD, Standard heute"
+          },
+          {
+            "name": "bis",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD einschließlich, Standard = von; max. 14 Tage",
+              "title": "Bis"
+            },
+            "description": "YYYY-MM-DD einschließlich, Standard = von; max. 14 Tage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MonteurTag"
+                  },
+                  "title": "Response Monteur Tage V1 Monteur Tage Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/monteur/berichte": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Bericht Neu",
+        "description": "Diktat (jede Sprache, auch Stichworte) -> Berichtsentwurf auf Deutsch: Text „Ausgeführte Arbeiten“ in\nFachsprache, Stunden, Material mit Katalogabgleich, Zeiten, Hinweise, Rückfragen. Ohne termin_id/projekt_nr\nsucht der Server den passenden Termin selbst (Uhrzeit + Plan). In HERO landet erst bei …/abschliessen etwas.",
+        "operationId": "bericht_neu_v1_monteur_berichte_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_bericht_neu_v1_monteur_berichte_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonteurBericht"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Berichte",
+        "description": "Eigene Berichte (Standard: heute).",
+        "operationId": "berichte_v1_monteur_berichte_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "von",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Von"
+            }
+          },
+          {
+            "name": "bis",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bis"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MonteurBericht"
+                  },
+                  "title": "Response Berichte V1 Monteur Berichte Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/berichte/{bid}": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Bericht Holen",
+        "operationId": "bericht_holen_v1_monteur_berichte__bid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonteurBericht"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Bericht Aendern",
+        "description": "Entwurf von Hand korrigieren; Material: Artikel aus den Vorschlägen wählen (artikel_nr).",
+        "operationId": "bericht_aendern_v1_monteur_berichte__bid__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BerichtAenderung"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonteurBericht"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Bericht Verwerfen",
+        "operationId": "bericht_verwerfen_v1_monteur_berichte__bid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/berichte/{bid}/diktat": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Bericht Diktat",
+        "description": "Ergänzen oder korrigieren per Sprache (z. B. Antwort auf eine Rückfrage) – die KI baut den Entwurf neu.",
+        "operationId": "bericht_diktat_v1_monteur_berichte__bid__diktat_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_bericht_diktat_v1_monteur_berichte__bid__diktat_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonteurBericht"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/v1/monteur/berichte/{bid}/abschliessen": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Bericht Abschliessen",
+        "description": "„Passt“: fertiger Baustellenbericht in HERO (BER-Nummer, PDF, Positionen per Klick in die Rechnung),\nKundenunterschrift, Büro-Hinweise als Notiz, Zeiten in die Zeiterfassung. Wiederholbar (kein zweiter Bericht).",
+        "operationId": "bericht_abschliessen_v1_monteur_berichte__bid__abschliessen_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Abschluss"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonteurBericht"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/monteur/projekte/{pid}": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Projektmappe",
+        "description": "Projekt zum Termin: Notizen aus HERO, Unterlagen (Angebote, Pläne, Aufmaße, Berichte …), Fotos, Telefon.\nRechnungen, Mahnungen und Kalkulationen sind für Monteure gesperrt.\nMonteure sehen nur Projekte, auf denen sie eingeteilt sind (90 Tage zurück, 30 voraus) – sonst 404.",
+        "operationId": "projektmappe_v1_monteur_projekte__pid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Projektmappe"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/dateien/{uuid}": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Projektdatei",
+        "description": "PDF oder Foto aus der Projektmappe (inline anzeigen).",
+        "operationId": "projektdatei_v1_monteur_dateien__uuid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          },
+          {
+            "name": "vorschau",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Fotos: verkleinert (480 px, JPEG) für Listen",
+              "default": false,
+              "title": "Vorschau"
+            },
+            "description": "Fotos: verkleinert (480 px, JPEG) für Listen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/zeiten": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Zeiten",
+        "description": "Zeiten des Tages direkt aus HERO, Summen und laufende Stempeluhr.",
+        "operationId": "zeiten_v1_monteur_zeiten_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "datum",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD, Standard heute",
+              "title": "Datum"
+            },
+            "description": "YYYY-MM-DD, Standard heute"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tageszeiten"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Zeit Neu",
+        "description": "Zeitabschnitt in HERO eintragen (Status neu – bis zum Einreichen änderbar).",
+        "operationId": "zeit_neu_v1_monteur_zeiten_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZeitNeu"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zeiteintrag"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/v1/monteur/zeiten/{zid}": {
+      "patch": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Zeit Aendern",
+        "operationId": "zeit_aendern_v1_monteur_zeiten__zid__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "zid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Zid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZeitAenderung"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zeiteintrag"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Zeit Loeschen",
+        "operationId": "zeit_loeschen_v1_monteur_zeiten__zid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "zid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Zid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/zeiten/{datum}/einreichen": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Tag Einreichen",
+        "description": "Tag bestätigen: alle neuen Zeiten werden in HERO eingereicht (danach nur noch im Büro änderbar).",
+        "operationId": "tag_einreichen_v1_monteur_zeiten__datum__einreichen_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "datum",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Datum"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tageszeiten"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/v1/monteur/stempel": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Stempeln",
+        "description": "Stempeluhr: start / stopp / wechsel (z. B. Arbeit -> Fahrt). Die Uhrzeit nimmt der Server.",
+        "operationId": "stempeln_v1_monteur_stempel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StempelAktion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tageszeiten"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/monteur/stundenkonto": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Stundenkonto",
+        "operationId": "stundenkonto_v1_monteur_stundenkonto_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "von",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Standard 1. des Monats",
+              "title": "Von"
+            },
+            "description": "Standard 1. des Monats"
+          },
+          {
+            "name": "bis",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Standard heute",
+              "title": "Bis"
+            },
+            "description": "Standard heute"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stundenkonto"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/abwesenheiten": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Abwesenheiten",
+        "description": "Urlaubsstand (Jahresurlaub, genehmigt, beantragt, verfügbar) und eigene Abwesenheiten des Jahres.",
+        "operationId": "abwesenheiten_v1_monteur_abwesenheiten_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jahr",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Jahr"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Abwesenheiten"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Abwesenheit Neu",
+        "description": "Urlaub o. Ä. in HERO beantragen (eingereicht; genehmigt wird im HERO-Web, HERO mailt die Entscheidung).",
+        "operationId": "abwesenheit_neu_v1_monteur_abwesenheiten_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbwesenheitNeu"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Abwesenheit"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/v1/monteur/abwesenheiten/{aid}": {
+      "delete": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Abwesenheit Zurueck",
+        "description": "Antrag zurückziehen (nur solange nicht entschieden).",
+        "operationId": "abwesenheit_zurueck_v1_monteur_abwesenheiten__aid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Aid"
+            }
+          },
+          {
+            "name": "jahr",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Jahr des Beginns",
+              "title": "Jahr"
+            },
+            "description": "Jahr des Beginns"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/verstehen": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Verstehen",
+        "description": "Sprache -> Vorschläge für Zeiten („Feierabend, halbe Stunde Pause“) oder Urlaub („nächste Woche Do und Fr\nfrei“). Bucht nichts – die App zeigt die Vorschläge zum Bestätigen.",
+        "operationId": "verstehen_v1_monteur_verstehen_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_verstehen_v1_monteur_verstehen_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Verstanden"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/monteure": {
+      "get": {
+        "tags": [
+          "Monteure (Büro)"
+        ],
+        "summary": "Monteure Liste",
+        "operationId": "monteure_liste_v1_monteure_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MonteurZugang"
+                  },
+                  "type": "array",
+                  "title": "Response Monteure Liste V1 Monteure Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Monteure (Büro)"
+        ],
+        "summary": "Monteur Neu",
+        "description": "Monteur-Zugang anlegen und gleich den ersten Einrichtungscode (QR) erzeugen.",
+        "operationId": "monteur_neu_v1_monteure_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonteurNeu"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Einrichtungscode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/monteure/{name}/einrichtungscode": {
+      "post": {
+        "tags": [
+          "Monteure (Büro)"
+        ],
+        "summary": "Monteur Code",
+        "description": "Neuen Einrichtungscode (neues Handy) – frühere, unbenutzte Codes werden ungültig.",
+        "operationId": "monteur_code_v1_monteure__name__einrichtungscode_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Einrichtungscode"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Abschluss": {
+        "properties": {
+          "unterschrift_png": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unterschrift Png",
+            "description": "Kundenunterschrift als PNG, base64 (auch data:-URL); null = ohne"
+          },
+          "unterschrift_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unterschrift Name",
+            "description": "Name des Unterschreibenden (Standard: Kunde)"
+          },
+          "zeiten_buchen": {
+            "type": "boolean",
+            "title": "Zeiten Buchen",
+            "description": "Zeiten aus dem Entwurf in die HERO-Zeiterfassung buchen",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "Abschluss"
+      },
+      "AbwVorschlag": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "urlaub",
+              "ueberstunden",
+              "krank",
+              "kind_krank",
+              "sonderurlaub",
+              "unbezahlt"
+            ],
+            "title": "Art"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "title": "Bis"
+          },
+          "halber_tag_anfang": {
+            "type": "boolean",
+            "title": "Halber Tag Anfang"
+          },
+          "halber_tag_ende": {
+            "type": "boolean",
+            "title": "Halber Tag Ende"
+          },
+          "kommentar": {
+            "type": "string",
+            "title": "Kommentar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "von",
+          "bis",
+          "halber_tag_anfang",
+          "halber_tag_ende",
+          "kommentar"
+        ],
+        "title": "AbwVorschlag"
+      },
+      "Abwesenheit": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "art": {
+            "type": "string",
+            "title": "Art"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "entwurf | beantragt | genehmigt | abgelehnt"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "title": "Bis"
+          },
+          "halber_tag_anfang": {
+            "type": "boolean",
+            "title": "Halber Tag Anfang"
+          },
+          "halber_tag_ende": {
+            "type": "boolean",
+            "title": "Halber Tag Ende"
+          },
+          "kommentar": {
+            "type": "string",
+            "title": "Kommentar"
+          },
+          "tage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "art",
+          "status",
+          "von",
+          "bis",
+          "halber_tag_anfang",
+          "halber_tag_ende",
+          "kommentar",
+          "tage"
+        ],
+        "title": "Abwesenheit"
+      },
+      "AbwesenheitNeu": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "urlaub",
+              "ueberstunden",
+              "krank",
+              "kind_krank",
+              "sonderurlaub",
+              "unbezahlt"
+            ],
+            "title": "Art"
+          },
+          "von": {
+            "type": "string",
+            "format": "date",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date",
+            "title": "Bis"
+          },
+          "halber_tag_anfang": {
+            "type": "boolean",
+            "title": "Halber Tag Anfang",
+            "default": false
+          },
+          "halber_tag_ende": {
+            "type": "boolean",
+            "title": "Halber Tag Ende",
+            "default": false
+          },
+          "kommentar": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Kommentar",
+            "default": ""
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "von",
+          "bis"
+        ],
+        "title": "AbwesenheitNeu"
+      },
+      "Abwesenheiten": {
+        "properties": {
+          "jahr": {
+            "type": "integer",
+            "title": "Jahr"
+          },
+          "stand": {
+            "$ref": "#/components/schemas/Urlaubsstand"
+          },
+          "eintraege": {
+            "items": {
+              "$ref": "#/components/schemas/Abwesenheit"
+            },
+            "type": "array",
+            "title": "Eintraege"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jahr",
+          "stand",
+          "eintraege"
+        ],
+        "title": "Abwesenheiten"
+      },
       "AngebotAntwort": {
         "properties": {
           "punkt": {
@@ -4176,6 +6480,29 @@
           "code"
         ],
         "title": "Anmeldung"
+      },
+      "Artikel": {
+        "properties": {
+          "nr": {
+            "type": "string",
+            "title": "Nr"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "nr",
+          "name"
+        ],
+        "title": "Artikel"
       },
       "Aufgabe": {
         "properties": {
@@ -4558,6 +6885,193 @@
         ],
         "title": "Ausgefuehrt"
       },
+      "BerichtAenderung": {
+        "properties": {
+          "taetigkeit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taetigkeit"
+          },
+          "anstehend": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anstehend"
+          },
+          "monteur_stunden": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 24.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monteur Stunden"
+          },
+          "helfer_stunden": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 24.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Helfer Stunden"
+          },
+          "anfahrt": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfahrt"
+          },
+          "kleinmaterial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kleinmaterial"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MaterialAenderung"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material",
+            "description": "Vollständige neue Liste"
+          },
+          "zeiten": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ZeitAbschnitt"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeiten"
+          },
+          "hinweise_buero": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hinweise Buero"
+          },
+          "rueckfragen": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rueckfragen"
+          }
+        },
+        "type": "object",
+        "title": "BerichtAenderung"
+      },
+      "BerichtKurz": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "entwurf",
+              "fertig"
+            ],
+            "title": "Status"
+          },
+          "hero_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Nr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "BerichtKurz"
+      },
+      "BerichtProjekt": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nr": {
+            "type": "string",
+            "title": "Nr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nr"
+        ],
+        "title": "BerichtProjekt"
+      },
       "Bestaetigung": {
         "properties": {
           "id": {
@@ -4581,6 +7095,115 @@
           "werkzeug"
         ],
         "title": "Bestaetigung"
+      },
+      "Body_bericht_diktat_v1_monteur_berichte__bid__diktat_post": {
+        "properties": {
+          "audio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "title": "Body_bericht_diktat_v1_monteur_berichte__bid__diktat_post"
+      },
+      "Body_bericht_neu_v1_monteur_berichte_post": {
+        "properties": {
+          "audio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio",
+            "description": "Diktat (m4a/aac, mp3, wav, webm, ogg)"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "Statt audio: getippter Text"
+          },
+          "termin_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termin Id",
+            "description": "'hero:<id>' aus GET /v1/monteur/tage. Weder Termin noch Projekt: der Server nimmt den Termin, bei dem der Monteur laut Plan gerade ist"
+          },
+          "projekt_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Nr",
+            "description": "Ohne Termin: Projektnummer, z. B. SAN-1243"
+          },
+          "datum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datum",
+            "description": "YYYY-MM-DD, Standard heute"
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id",
+            "description": "Ausgangskorb: gleiche ID = derselbe Bericht (wird dessen id)"
+          }
+        },
+        "type": "object",
+        "title": "Body_bericht_neu_v1_monteur_berichte_post"
       },
       "Body_dokument_v1_dokumente_post": {
         "properties": {
@@ -4742,6 +7365,47 @@
           "audio"
         ],
         "title": "Body_sprache_v1_sprache_post"
+      },
+      "Body_verstehen_v1_monteur_verstehen_post": {
+        "properties": {
+          "audio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "datum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datum",
+            "description": "Gemeinter Tag für Zeiten, Standard heute"
+          }
+        },
+        "type": "object",
+        "title": "Body_verstehen_v1_monteur_verstehen_post"
       },
       "Body_video_v1_videos_post": {
         "properties": {
@@ -5203,6 +7867,69 @@
         ],
         "title": "DokumentAntwort"
       },
+      "Einrichtung": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Code",
+            "description": "Einrichtungscode aus dem QR-Code (z. B. ABCD-EFGH-JKLM)"
+          },
+          "geraet": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Geraet",
+            "description": "Gerätename für die Geräteliste",
+            "default": "Monteur-App"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "Einrichtung"
+      },
+      "Einrichtungscode": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Einmal gültig, 7 Tage"
+          },
+          "gueltig_bis": {
+            "type": "string",
+            "title": "Gueltig Bis"
+          },
+          "qr_inhalt": {
+            "type": "string",
+            "title": "Qr Inhalt",
+            "description": "mitra-monteur:<Server-URL>#<Code>"
+          },
+          "qr_svg": {
+            "type": "string",
+            "title": "Qr Svg",
+            "description": "QR-Code als SVG zum Anzeigen/Ausdrucken"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "anzeigename",
+          "code",
+          "gueltig_bis",
+          "qr_inhalt",
+          "qr_svg"
+        ],
+        "title": "Einrichtungscode"
+      },
       "Einsatz": {
         "properties": {
           "id": {
@@ -5614,6 +8341,85 @@
         ],
         "title": "EntscheidungAntwort"
       },
+      "Entwurf": {
+        "properties": {
+          "taetigkeit": {
+            "type": "string",
+            "title": "Taetigkeit",
+            "description": "Text „Ausgeführte Arbeiten“"
+          },
+          "anstehend": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Anstehend"
+          },
+          "monteur_stunden": {
+            "type": "number",
+            "title": "Monteur Stunden"
+          },
+          "helfer_stunden": {
+            "type": "number",
+            "title": "Helfer Stunden"
+          },
+          "anfahrt": {
+            "type": "boolean",
+            "title": "Anfahrt",
+            "description": "Anfahrtskosten pauschal"
+          },
+          "kleinmaterial": {
+            "type": "boolean",
+            "title": "Kleinmaterial",
+            "description": "Klein- & Dichtmaterial pauschal"
+          },
+          "material": {
+            "items": {
+              "$ref": "#/components/schemas/Material"
+            },
+            "type": "array",
+            "title": "Material"
+          },
+          "zeiten": {
+            "items": {
+              "$ref": "#/components/schemas/ZeitAbschnitt"
+            },
+            "type": "array",
+            "title": "Zeiten",
+            "description": "Werden beim Abschließen in die HERO-Zeiterfassung gebucht (Status neu)"
+          },
+          "hinweise_buero": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise Buero",
+            "description": "Kommt als Notiz an den Bericht in HERO, nicht aufs PDF"
+          },
+          "rueckfragen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rueckfragen",
+            "description": "Offene Fragen der KI an den Monteur"
+          }
+        },
+        "type": "object",
+        "required": [
+          "taetigkeit",
+          "anstehend",
+          "monteur_stunden",
+          "helfer_stunden",
+          "anfahrt",
+          "kleinmaterial",
+          "material",
+          "zeiten",
+          "hinweise_buero",
+          "rueckfragen"
+        ],
+        "title": "Entwurf"
+      },
       "Ereignis": {
         "properties": {
           "nr": {
@@ -5810,6 +8616,36 @@
         "type": "object",
         "title": "Fortschritt"
       },
+      "Foto": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "datum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datum"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "name",
+          "datum"
+        ],
+        "title": "Foto"
+      },
       "FotoAntwort": {
         "properties": {
           "foto": {
@@ -5852,6 +8688,24 @@
           "wurzeln"
         ],
         "title": "Freigabe"
+      },
+      "Geo": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "Geo"
       },
       "Geraet": {
         "properties": {
@@ -6561,6 +9415,16 @@
           "version": {
             "type": "string",
             "title": "Version"
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "buero",
+              "monteur"
+            ],
+            "title": "Rolle",
+            "description": "monteur = nur /v1/monteur/… (neu in 1.22.0)",
+            "default": "buero"
           }
         },
         "type": "object",
@@ -6801,6 +9665,127 @@
         ],
         "title": "KalenderTermin"
       },
+      "Material": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Wie diktiert"
+          },
+          "menge": {
+            "type": "number",
+            "title": "Menge"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit"
+          },
+          "suchtext": {
+            "type": "string",
+            "title": "Suchtext",
+            "default": ""
+          },
+          "artikel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Artikel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gewählter Katalogartikel (Gut Mollenhauer); null = freie Position"
+          },
+          "vorschlaege": {
+            "items": {
+              "$ref": "#/components/schemas/Artikel"
+            },
+            "type": "array",
+            "title": "Vorschlaege",
+            "description": "Treffer der Katalogsuche zur Auswahl"
+          },
+          "rueckfrage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rueckfrage",
+            "description": "Unklar (z. B. welche Dimension) – vor dem Abschließen klären"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "menge",
+          "einheit",
+          "vorschlaege"
+        ],
+        "title": "Material"
+      },
+      "MaterialAenderung": {
+        "properties": {
+          "index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index",
+            "description": "Position im bisherigen Entwurf (behält Vorschläge); null = neu"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "menge": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Menge"
+          },
+          "einheit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Einheit"
+          },
+          "artikel_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artikel Nr",
+            "description": "Nur mitschicken, um zu wählen: nr aus vorschlaege; null = freie Position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "menge"
+        ],
+        "title": "MaterialAenderung"
+      },
       "ModellAuswahl": {
         "properties": {
           "modelle": {
@@ -6938,6 +9923,240 @@
         },
         "type": "object",
         "title": "ModellWahl"
+      },
+      "MonteurBericht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "entwurf",
+              "fertig"
+            ],
+            "title": "Status"
+          },
+          "datum": {
+            "type": "string",
+            "title": "Datum"
+          },
+          "termin_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termin Id"
+          },
+          "projekt": {
+            "$ref": "#/components/schemas/BerichtProjekt"
+          },
+          "diktat": {
+            "type": "string",
+            "title": "Diktat"
+          },
+          "entwurf": {
+            "$ref": "#/components/schemas/Entwurf"
+          },
+          "hero_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Id",
+            "description": "HERO-Dokument-ID, sobald fertig"
+          },
+          "hero_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Nr",
+            "description": "z. B. BER-1330"
+          },
+          "hinweise": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise",
+            "description": "Nach dem Abschließen: was nicht ganz geklappt hat (Zeiten, Unterschrift …)"
+          },
+          "erstellt": {
+            "type": "string",
+            "title": "Erstellt"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "datum",
+          "termin_id",
+          "projekt",
+          "diktat",
+          "entwurf",
+          "hinweise",
+          "erstellt",
+          "geaendert"
+        ],
+        "title": "MonteurBericht"
+      },
+      "MonteurNeu": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Name",
+            "description": "Anmeldename, z. B. igor"
+          },
+          "anzeigename": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Anzeigename"
+          },
+          "hero_partner": {
+            "type": "integer",
+            "title": "Hero Partner",
+            "description": "HERO-Mitarbeiter-ID (aus GET /v1/personen)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "anzeigename",
+          "hero_partner"
+        ],
+        "title": "MonteurNeu"
+      },
+      "MonteurSitzung": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "cs_-Sitzung: als Bearer mitschicken; verfällt nach 60 Tagen ohne Nutzung"
+          },
+          "geraet_id": {
+            "type": "integer",
+            "title": "Geraet Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename"
+          },
+          "gueltig_tage": {
+            "type": "integer",
+            "title": "Gueltig Tage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "geraet_id",
+          "name",
+          "anzeigename",
+          "gueltig_tage"
+        ],
+        "title": "MonteurSitzung"
+      },
+      "MonteurTag": {
+        "properties": {
+          "datum": {
+            "type": "string",
+            "title": "Datum"
+          },
+          "wochentag": {
+            "type": "string",
+            "title": "Wochentag"
+          },
+          "termine": {
+            "items": {
+              "$ref": "#/components/schemas/TagTermin"
+            },
+            "type": "array",
+            "title": "Termine"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datum",
+          "wochentag",
+          "termine"
+        ],
+        "title": "MonteurTag"
+      },
+      "MonteurZugang": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename"
+          },
+          "hero_partner": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Partner"
+          },
+          "aktiv": {
+            "type": "boolean",
+            "title": "Aktiv"
+          },
+          "geraete": {
+            "type": "integer",
+            "title": "Geraete"
+          },
+          "zuletzt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "anzeigename",
+          "hero_partner",
+          "aktiv",
+          "geraete",
+          "zuletzt"
+        ],
+        "title": "MonteurZugang"
       },
       "Nachricht": {
         "properties": {
@@ -7462,6 +10681,81 @@
         ],
         "title": "ProjektAngaben"
       },
+      "Projektmappe": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nr": {
+            "type": "string",
+            "title": "Nr"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "kunde": {
+            "type": "string",
+            "title": "Kunde"
+          },
+          "adresse": {
+            "type": "string",
+            "title": "Adresse"
+          },
+          "geo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Geo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "telefon": {
+            "items": {
+              "$ref": "#/components/schemas/Telefon"
+            },
+            "type": "array",
+            "title": "Telefon"
+          },
+          "notizen": {
+            "type": "string",
+            "title": "Notizen",
+            "description": "Notizfeld des Projekts in HERO (Büro-Notizen), leer = keine"
+          },
+          "unterlagen": {
+            "items": {
+              "$ref": "#/components/schemas/Unterlage"
+            },
+            "type": "array",
+            "title": "Unterlagen",
+            "description": "Alles außer Rechnungen/Mahnungen/Kalkulationen – nach Art, je Art neueste zuerst; Angebote nur in der aktuellen Fassung"
+          },
+          "fotos": {
+            "items": {
+              "$ref": "#/components/schemas/Foto"
+            },
+            "type": "array",
+            "title": "Fotos",
+            "description": "Projektfotos aus HERO, neueste zuerst"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nr",
+          "titel",
+          "kunde",
+          "adresse",
+          "telefon",
+          "notizen",
+          "unterlagen",
+          "fotos"
+        ],
+        "title": "Projektmappe"
+      },
       "Quelle": {
         "properties": {
           "titel": {
@@ -7534,6 +10828,138 @@
           "text"
         ],
         "title": "SpracheAntwort"
+      },
+      "Stempel": {
+        "properties": {
+          "beginn": {
+            "type": "string",
+            "title": "Beginn"
+          },
+          "art": {
+            "type": "string",
+            "title": "Art"
+          },
+          "projekt_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Id"
+          },
+          "kommentar": {
+            "type": "string",
+            "title": "Kommentar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "beginn",
+          "art",
+          "kommentar"
+        ],
+        "title": "Stempel"
+      },
+      "StempelAktion": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "enum": [
+              "start",
+              "stopp",
+              "wechsel"
+            ],
+            "title": "Aktion",
+            "description": "wechsel = laufenden Abschnitt buchen + neuen starten"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "arbeit",
+              "fahrt",
+              "pause",
+              "material",
+              "buero",
+              "vor_ort"
+            ],
+            "title": "Art",
+            "default": "arbeit"
+          },
+          "projekt_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Nr"
+          },
+          "projekt_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Id"
+          },
+          "kommentar": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Kommentar",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion"
+        ],
+        "title": "StempelAktion"
+      },
+      "Stundenkonto": {
+        "properties": {
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "title": "Bis"
+          },
+          "soll_minuten": {
+            "type": "integer",
+            "title": "Soll Minuten"
+          },
+          "bestaetigt_minuten": {
+            "type": "integer",
+            "title": "Bestaetigt Minuten"
+          },
+          "eingereicht_minuten": {
+            "type": "integer",
+            "title": "Eingereicht Minuten"
+          },
+          "saldo_minuten": {
+            "type": "integer",
+            "title": "Saldo Minuten"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von",
+          "bis",
+          "soll_minuten",
+          "bestaetigt_minuten",
+          "eingereicht_minuten",
+          "saldo_minuten"
+        ],
+        "title": "Stundenkonto"
       },
       "SuchErgebnis": {
         "properties": {
@@ -7633,6 +11059,215 @@
           "geaendert"
         ],
         "title": "SuchTreffer"
+      },
+      "TagProjekt": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "HERO-Projekt-ID"
+          },
+          "nr": {
+            "type": "string",
+            "title": "Nr"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "kunde": {
+            "type": "string",
+            "title": "Kunde"
+          },
+          "adresse": {
+            "type": "string",
+            "title": "Adresse",
+            "description": "Baustellenadresse – für die Navigation"
+          },
+          "geo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Geo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "telefon": {
+            "items": {
+              "$ref": "#/components/schemas/Telefon"
+            },
+            "type": "array",
+            "title": "Telefon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nr",
+          "titel",
+          "kunde",
+          "adresse",
+          "telefon"
+        ],
+        "title": "TagProjekt"
+      },
+      "TagTermin": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "'hero:<id>' – für POST /v1/monteur/berichte (termin_id)"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "beginn": {
+            "type": "string",
+            "title": "Beginn",
+            "description": "Ortszeit ISO; ganztägig nur YYYY-MM-DD"
+          },
+          "ende": {
+            "type": "string",
+            "title": "Ende"
+          },
+          "ganztag": {
+            "type": "boolean",
+            "title": "Ganztag"
+          },
+          "kategorie": {
+            "type": "string",
+            "title": "Kategorie"
+          },
+          "beschreibung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beschreibung",
+            "description": "Beschreibung/Notiz aus HERO"
+          },
+          "kollegen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Kollegen",
+            "description": "Weitere eingeteilte Mitarbeiter"
+          },
+          "projekt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TagProjekt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "berichte": {
+            "items": {
+              "$ref": "#/components/schemas/BerichtKurz"
+            },
+            "type": "array",
+            "title": "Berichte",
+            "description": "Leer = „Bericht fehlt“"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "titel",
+          "beginn",
+          "ende",
+          "ganztag",
+          "kategorie",
+          "kollegen",
+          "berichte"
+        ],
+        "title": "TagTermin"
+      },
+      "Tageszeiten": {
+        "properties": {
+          "datum": {
+            "type": "string",
+            "title": "Datum"
+          },
+          "eintraege": {
+            "items": {
+              "$ref": "#/components/schemas/Zeiteintrag"
+            },
+            "type": "array",
+            "title": "Eintraege"
+          },
+          "arbeit_minuten": {
+            "type": "integer",
+            "title": "Arbeit Minuten"
+          },
+          "pause_minuten": {
+            "type": "integer",
+            "title": "Pause Minuten"
+          },
+          "eingereicht": {
+            "type": "boolean",
+            "title": "Eingereicht",
+            "description": "true = Tag eingereicht, nur noch im Büro änderbar"
+          },
+          "stempel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Stempel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Laufende Stempeluhr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datum",
+          "eintraege",
+          "arbeit_minuten",
+          "pause_minuten",
+          "eingereicht"
+        ],
+        "title": "Tageszeiten"
+      },
+      "Telefon": {
+        "properties": {
+          "nummer": {
+            "type": "string",
+            "title": "Nummer"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Kontakt (Kunde bzw. Ansprechpartner)"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "mobil",
+              "festnetz"
+            ],
+            "title": "Art"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nummer",
+          "name",
+          "art"
+        ],
+        "title": "Telefon"
       },
       "Termin": {
         "properties": {
@@ -7807,6 +11442,124 @@
         ],
         "title": "Ueberschneidung"
       },
+      "Unterlage": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "title": "Art",
+            "description": "Angebot | Auftragsbestätigung | Aufmaß | Unterlage (Pläne, hochgeladene PDFs) | Dokument | Bericht | Reparaturauftrag | Bestellschein | Lieferschein | Brief"
+          },
+          "nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nr",
+            "description": "z. B. ANG-762, AB-38, BER-1324; null bei hochgeladenen Unterlagen"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Dateiname"
+          },
+          "datum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datum"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Status in HERO (Erstellt, Versendet, Angenommen …)"
+          },
+          "datei": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datei",
+            "description": "uuid für GET /v1/monteur/dateien/{uuid}; null = PDF noch nicht im Archiv"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "name",
+          "datum",
+          "status"
+        ],
+        "title": "Unterlage"
+      },
+      "Urlaubsstand": {
+        "properties": {
+          "jahresurlaub": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jahresurlaub"
+          },
+          "genehmigt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genehmigt"
+          },
+          "beantragt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beantragt"
+          },
+          "verfuegbar": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verfuegbar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jahresurlaub",
+          "genehmigt",
+          "beantragt",
+          "verfuegbar"
+        ],
+        "title": "Urlaubsstand"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -7846,6 +11599,57 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "Verstanden": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Erkannter bzw. gesendeter Text"
+          },
+          "datum": {
+            "type": "string",
+            "title": "Datum"
+          },
+          "zeiten": {
+            "items": {
+              "$ref": "#/components/schemas/ZeitAbschnitt"
+            },
+            "type": "array",
+            "title": "Zeiten",
+            "description": "Vorschläge – erst mit POST /v1/monteur/zeiten buchen"
+          },
+          "abwesenheit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AbwVorschlag"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vorschlag – erst mit POST /v1/monteur/abwesenheiten beantragen"
+          },
+          "rueckfrage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rueckfrage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "datum",
+          "zeiten",
+          "rueckfrage"
+        ],
+        "title": "Verstanden"
       },
       "VideoAntwort": {
         "properties": {
@@ -7928,6 +11732,256 @@
           "text"
         ],
         "title": "VorlesenAnfrage"
+      },
+      "ZeitAbschnitt": {
+        "properties": {
+          "beginn": {
+            "type": "string",
+            "title": "Beginn",
+            "description": "HH:MM"
+          },
+          "ende": {
+            "type": "string",
+            "title": "Ende",
+            "description": "HH:MM"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "arbeit",
+              "fahrt",
+              "pause",
+              "material"
+            ],
+            "title": "Art"
+          }
+        },
+        "type": "object",
+        "required": [
+          "beginn",
+          "ende",
+          "art"
+        ],
+        "title": "ZeitAbschnitt"
+      },
+      "ZeitAenderung": {
+        "properties": {
+          "beginn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beginn"
+          },
+          "ende": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ende"
+          },
+          "art": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "arbeit",
+                  "fahrt",
+                  "pause",
+                  "material",
+                  "buero",
+                  "vor_ort"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Art"
+          },
+          "projekt_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Nr"
+          },
+          "kommentar": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kommentar"
+          }
+        },
+        "type": "object",
+        "title": "ZeitAenderung"
+      },
+      "ZeitNeu": {
+        "properties": {
+          "beginn": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Beginn",
+            "description": "Ortszeit, z. B. 2026-10-20T07:30"
+          },
+          "ende": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ende"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "arbeit",
+              "fahrt",
+              "pause",
+              "material",
+              "buero",
+              "vor_ort"
+            ],
+            "title": "Art"
+          },
+          "projekt_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Nr"
+          },
+          "projekt_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Id"
+          },
+          "kommentar": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Kommentar",
+            "default": ""
+          },
+          "anfrage_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage Id",
+            "description": "Ausgangskorb: gleiche ID = kein zweiter Eintrag"
+          }
+        },
+        "type": "object",
+        "required": [
+          "beginn",
+          "ende",
+          "art"
+        ],
+        "title": "ZeitNeu"
+      },
+      "Zeiteintrag": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "beginn": {
+            "type": "string",
+            "title": "Beginn"
+          },
+          "ende": {
+            "type": "string",
+            "title": "Ende"
+          },
+          "art": {
+            "type": "string",
+            "title": "Art",
+            "description": "arbeit | fahrt | pause | material | buero | vor_ort | sonstige"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "neu",
+              "eingereicht",
+              "bestaetigt",
+              "geloescht"
+            ],
+            "title": "Status"
+          },
+          "projekt_nr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Nr"
+          },
+          "projekt_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projekt Id"
+          },
+          "kommentar": {
+            "type": "string",
+            "title": "Kommentar"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "beginn",
+          "ende",
+          "art",
+          "status",
+          "kommentar",
+          "minuten"
+        ],
+        "title": "Zeiteintrag"
       },
       "ZweiFaktorEinrichtung": {
         "properties": {

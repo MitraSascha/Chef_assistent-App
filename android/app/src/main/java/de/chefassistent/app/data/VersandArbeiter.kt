@@ -18,7 +18,6 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import de.chefassistent.app.ChefAssistentApp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -56,7 +55,7 @@ class VersandArbeiter(
 ) : CoroutineWorker(kontext, parameter) {
 
     override suspend fun doWork(): Result {
-        val anwendung = applicationContext as? ChefAssistentApp ?: return Result.failure()
+        val anwendung = applicationContext as? Koerbe ?: return Result.failure()
         val repository = anwendung.repository
 
         if (!repository.einstellungen.istAngemeldet) {

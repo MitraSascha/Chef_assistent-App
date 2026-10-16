@@ -4,6 +4,7 @@ import android.app.Application
 import de.chefassistent.app.data.AssistentRepository
 import de.chefassistent.app.data.Ausgangskorb
 import de.chefassistent.app.data.Einstellungen
+import de.chefassistent.app.data.Koerbe
 import de.chefassistent.app.data.Medienkorb
 
 /**
@@ -12,9 +13,9 @@ import de.chefassistent.app.data.Medienkorb
  * Bewusst ohne DI-Bibliothek: es gibt genau zwei Abhaengigkeiten, und die
  * Oberflaeche kennt ohnehin nur [AssistentRepository].
  */
-class ChefAssistentApp : Application() {
+class ChefAssistentApp : Application(), Koerbe {
 
-    val repository: AssistentRepository by lazy {
+    override val repository: AssistentRepository by lazy {
         AssistentRepository(
             context = applicationContext,
             einstellungen = Einstellungen(applicationContext),
@@ -22,8 +23,8 @@ class ChefAssistentApp : Application() {
     }
 
     /** Sprachnotizen, die auf Netz warten. */
-    val ausgangskorb: Ausgangskorb by lazy { Ausgangskorb(applicationContext) }
+    override val ausgangskorb: Ausgangskorb by lazy { Ausgangskorb(applicationContext) }
 
     /** Fotos und Videos, die auf den Versand warten. */
-    val medienkorb: Medienkorb by lazy { Medienkorb(applicationContext) }
+    override val medienkorb: Medienkorb by lazy { Medienkorb(applicationContext) }
 }

@@ -85,6 +85,23 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/suche?q=&ordner=&typ=&max=` | **Suche über die ganze Ablage** (neu in 1.13.0) |
 | GET | `/v1/freigabe` | Netzwerkpfade der Ablage für Windows |
 | GET | `/v1/verbrauch` | Token-Verbrauch je Monat |
+| POST | `/v1/monteur/einrichten` | **Monteur-App:** Einrichtungscode (QR) → Sitzung `cs_…` (ohne Anmeldung, neu in 1.22.0) |
+| GET | `/v1/monteur/tage?von=&bis=` | Eigene Termine je Tag mit Kunde, Adresse, Telefon, Beschreibung, Berichtsstand (1.22.0) |
+| GET | `/v1/monteur/projekte/{id}` | Projektmappe: Notizen, Unterlagen (Angebote, Pläne, Aufmaße, Berichte – keine Rechnungen), Fotos (1.22.0) |
+| GET | `/v1/monteur/dateien/{uuid}?vorschau=` | PDF/Foto aus der Projektmappe (Vorschau 480 px) (1.22.0) |
+| POST | `/v1/monteur/berichte` | Diktat/Text → Berichtsentwurf (Termin wird selbst erkannt) (1.22.0) |
+| GET | `/v1/monteur/berichte`, `/v1/monteur/berichte/{id}` | Eigene Berichte (1.22.0) |
+| POST | `/v1/monteur/berichte/{id}/diktat` | Entwurf per Sprache ergänzen/korrigieren (1.22.0) |
+| PATCH / DELETE | `/v1/monteur/berichte/{id}` | Entwurf korrigieren (Artikel wählen) / verwerfen (1.22.0) |
+| POST | `/v1/monteur/berichte/{id}/abschliessen` | „Passt“ → **fertiger Baustellenbericht in HERO** + Unterschrift + Zeiten (1.22.0) |
+| GET / POST | `/v1/monteur/zeiten` | Zeiten des Tages (aus HERO) / Zeitabschnitt eintragen (1.22.0) |
+| PATCH / DELETE | `/v1/monteur/zeiten/{id}` | Zeit ändern / löschen, solange nicht eingereicht (1.22.0) |
+| POST | `/v1/monteur/zeiten/{datum}/einreichen` | Tag bestätigen → in HERO eingereicht (1.22.0) |
+| POST | `/v1/monteur/stempel` | Stempeluhr start / stopp / wechsel (1.22.0) |
+| GET | `/v1/monteur/stundenkonto` | Soll, bestätigt, Saldo (1.22.0) |
+| GET / POST / DELETE | `/v1/monteur/abwesenheiten` | Urlaubsstand + Anträge / beantragen / zurückziehen (1.22.0) |
+| POST | `/v1/monteur/verstehen` | Sprache → Vorschläge für Zeiten oder Urlaub (bucht nichts) (1.22.0) |
+| GET / POST | `/v1/monteure`, `/v1/monteure/{name}/einrichtungscode` | Büro: Monteur-Zugänge anlegen, QR-Code erzeugen (1.22.0) |
 
 ## 0. Anmeldung – neu in 1.10.0
 
@@ -975,6 +992,80 @@ im Dialog anzeigen. `503` = auf diesem Server nicht eingerichtet.
 
 **Im Chat** geht es ohne App-Änderung: „Trag Julian Montag 8 Uhr Wartung bei Müller ein“ → der Assistent schlägt den
 Termin vor (mit Überschneidungen) → die bekannten Ja/Nein-Knöpfe (Abschnitt 2).
+
+## 5c. Monteur-App – neu in 1.22.0
+
+Eigene, schlanke App für die Monteure (Gradle-Flavor `monteur` mit eigener Paket-ID; Netz, Ausgangskorb und
+Bausteine wie in der Büro-App). Grundsatz: **Handy raus, sagen oder tippen, was gemacht wurde – den Rest macht die KI.**
+
+**Rolle.** Monteur-Zugänge (`GET /v1/ich` → `"rolle": "monteur"`) erreichen **nur** `/v1/monteur/…`, `/v1/ich`,
+`/v1/abmelden` und `/v1/gesund`; alles andere → `403`. Büro-Zugänge (`"rolle": "buero"`) dürfen die
+Monteur-Endpunkte zum Testen ebenfalls nutzen (mit ihrer eigenen HERO-Zuordnung; ohne Zuordnung `409`).
+
+**Einrichtung (einmal je Handy).** Das Büro legt den Monteur an (`POST /v1/monteure` oder
+`chef-assistent-benutzer monteur-anlegen igor "Igor Gregorczuk" 142455`) und zeigt den QR-Code. Inhalt:
+`mitra-monteur:<Server-URL>#<Code>` (Code `ABCD-EFGH-JKLM`, einmal gültig, 7 Tage). Die App scannt, nimmt die
+Server-URL vor dem `#` und ruft `POST /v1/monteur/einrichten {"code","geraet"}` → `{"token":"cs_…",…}`. Abtippen
+des Codes muss auch gehen (Groß-/Kleinschreibung und Bindestriche egal). Falscher/benutzter/abgelaufener Code → `401`,
+zu viele Versuche → `429`. Sitzung verfällt nach 60 Tagen ohne Nutzung → `401` → „Bitte im Büro neuen QR-Code holen“.
+
+**Heute.** `GET /v1/monteur/tage?von=YYYY-MM-DD&bis=…` (max. 14 Tage, Standard heute) →
+`[{"datum","wochentag","termine":[{"id":"hero:…","titel","beginn","ende","ganztag","kategorie","beschreibung",
+"kollegen":[…],"projekt":{"id","nr","titel","kunde","adresse","geo":{"lat","lng"}|null,"telefon":[{"nummer","name","art"}]}|null,
+"berichte":[{"id","status","hero_nr"}]}]}]`. `berichte` leer → „Bericht fehlt“. Adresse → Navigation (`geo:` bzw.
+Maps-Intent), Telefon → Wählen.
+
+**Projektmappe** (Termin antippen → Projekt, wie in HERO). `GET /v1/monteur/projekte/{projekt.id}` →
+`{"id","nr","titel","kunde","adresse","geo","telefon",[…],"notizen": "<Notizfeld des Projekts in HERO>",
+"unterlagen":[{"art","nr","name","datum","status","datei"}],"fotos":[{"uuid","name","datum"}]}`. `unterlagen` =
+alles außer Finanzen: Angebot (nur aktuelle Fassung), Auftragsbestätigung, Aufmaß, Unterlage (Pläne, hochgeladene
+PDFs), Dokument, Bericht, Reparaturauftrag, Bestellschein, Lieferschein, Brief – nach Art, je Art neueste zuerst.
+**Rechnungen, Stornos, Mahnungen und Kalkulationen sind für Monteure gesperrt** (auch beim direkten Dateiabruf).
+Dateien: `GET /v1/monteur/dateien/{uuid}` (PDF/Bild inline), Fotos-Liste mit `?vorschau=true` (JPEG, 480 px).
+Monteure sehen nur Projekte, auf denen sie eingeteilt sind (Termine 90 Tage zurück bis 30 voraus) oder zu denen sie
+einen Bericht geschrieben haben – sonst `404`. `datei: null` = PDF ist noch nicht im Archiv (Spiegel lädt nach).
+
+**Bericht.** Ablauf wie Angebote, aber für den Monteur so kurz wie möglich:
+1. `POST /v1/monteur/berichte` (multipart): `audio` **oder** `text`, optional `termin_id` / `projekt_nr` / `datum`,
+   `anfrage_id` (= Berichts-ID, Ausgangskorb). **Ohne Termin und Projekt sucht der Server selbst** den Termin, bei
+   dem der Monteur laut Plan gerade ist (läuft jetzt ±1 Std. > zuletzt begonnen > nächster); nachgetragene Tage → der
+   letzte Termin ohne fertigen Bericht. Kein Termin mit Projekt an dem Tag → `422`.
+   Diktat in **jeder Sprache**, auch Stichworte („WC demontiert weil undicht, Waschtisch kaputt deswegen neu, 3 Std“):
+   die KI schreibt den Text „Ausgeführte Arbeiten“ in sauberem Deutsch (Fachsprache, vorlegbar bei Hausverwaltung/
+   Versicherung), rechnet Stunden, legt bei nur genannter Dauer die Zeiten ab Terminbeginn, gleicht Material mit dem
+   Katalog (Gut Mollenhauer) ab und fragt bei Unklarem nach. Antwort `MonteurBericht` mit `entwurf`:
+   `taetigkeit, anstehend[], monteur_stunden, helfer_stunden, anfahrt, kleinmaterial, material[{text,menge,einheit,
+   artikel{nr,name,einheit}|null, vorschlaege[], rueckfrage}], zeiten[{beginn,ende,art}], hinweise_buero[], rueckfragen[]`.
+2. Korrigieren: per Sprache `POST …/{id}/diktat` (z. B. Antwort auf „Welches Eckventil, 1/2 oder 3/8?“) oder von
+   Hand `PATCH …/{id}` (Felder wie im Entwurf; `material` = vollständige Liste `[{index, menge, text?, einheit?,
+   artikel_nr?}]` – `artikel_nr` aus `vorschlaege` wählt, `null` = freie Position).
+3. Kunde unterschreibt (optional) → `POST …/{id}/abschliessen {"unterschrift_png": base64|data-URL|null,
+   "unterschrift_name", "zeiten_buchen": true}`. Der Server legt einen **fertigen Baustellenbericht** in HERO an
+   (BER-Nummer, PDF, Kunde als Empfänger, Positionen Kundendienst/Baustellenmonteur + Monteurhelfer in Std,
+   Anfahrtskosten, Klein- & Dichtmaterial, Material als Katalogartikel → im Büro **per Klick in die Rechnung**),
+   setzt die Unterschrift, hängt `hinweise_buero` als Notiz an und bucht `zeiten` in die Zeiterfassung (Status neu).
+   Wiederholbar: nie ein zweiter Bericht. Offene Material-Rückfrage → `409`. Danach `status: "fertig"`, `hero_nr`;
+   `hinweise[]` nennt, was nicht ganz geklappt hat (z. B. „Preis fehlt: …“) – anzeigen.
+
+**Zeiten** (in HERO geführt). `GET /v1/monteur/zeiten?datum=` → `{"eintraege":[{"id","beginn","ende","art",
+"status":"neu|eingereicht|bestaetigt","projekt_nr","kommentar","minuten"}],"arbeit_minuten","pause_minuten",
+"eingereicht","stempel":{…}|null}`. Eintragen `POST /v1/monteur/zeiten {beginn,ende (Ortszeit),art,projekt_nr?,
+kommentar?,anfrage_id?}`, ändern/löschen nur mit Status `neu` (sonst `409`). **Abends** „Tag bestätigen“ →
+`POST /v1/monteur/zeiten/{datum}/einreichen` (danach nur noch im Büro änderbar). Stempeluhr:
+`POST /v1/monteur/stempel {"aktion":"start|stopp|wechsel","art","projekt_nr?"}` (Uhrzeit nimmt der Server).
+`GET /v1/monteur/stundenkonto?von=&bis=` → Minuten Soll/bestätigt/eingereicht/Saldo.
+Regeln (stehen auch in der KI): Fahrt von zu Hause zur ersten Baustelle und Heimfahrt zählen nicht; Notdienst von
+Motorstart bis Ankunft zu Hause.
+
+**Urlaub.** `GET /v1/monteur/abwesenheiten?jahr=` → `{"stand":{"jahresurlaub","genehmigt","beantragt","verfuegbar"},
+"eintraege":[{"id","art","status":"beantragt|genehmigt|abgelehnt","von","bis","halber_tag_anfang","halber_tag_ende",
+"kommentar","tage"}]}`. Beantragen `POST {art: urlaub|ueberstunden|krank|kind_krank|sonderurlaub|unbezahlt, von, bis,
+halber_tag_anfang?, halber_tag_ende?, kommentar?, anfrage_id?}`; zurückziehen `DELETE …/{id}?jahr=` (nur
+unentschieden). Genehmigt wird im HERO-Web; HERO mailt die Entscheidung selbst.
+
+**Sprache für Zeiten/Urlaub.** `POST /v1/monteur/verstehen` (multipart `audio`|`text`, `datum?`) →
+`{"text","datum","zeiten":[…],"abwesenheit":{…}|null,"rueckfrage"}` – nur Vorschläge, die App zeigt sie zum
+Bestätigen und bucht dann mit den Endpunkten oben („Feierabend, halbe Stunde Pause“, „nächste Woche Do und Fr frei“).
 
 ## 6. Ablage durchblättern (Ordneransicht)
 

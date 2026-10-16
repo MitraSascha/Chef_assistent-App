@@ -18,6 +18,22 @@ android {
         versionName = "0.1.0"
     }
 
+    // Zwei Apps aus einem Projekt (Auftrag 1.22): die Buero-App (Chef-Assistent)
+    // und die schlanke Monteur-App. Datenschicht, Farben und Bausteine liegen in
+    // src/main, die Oberflaechen in src/buero bzw. src/monteur.
+    flavorDimensions += "app"
+    productFlavors {
+        create("buero") {
+            dimension = "app"
+            applicationId = "de.chefassistent.app"
+        }
+        create("monteur") {
+            dimension = "app"
+            applicationId = "de.mitra.monteur"
+            versionName = "0.1.0"
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -77,6 +93,9 @@ dependencies {
     implementation(libs.retrofit.serialization)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
+
+    // QR-Code der Einrichtung, ueber Google Play-Dienste: braucht keine Kamera-Berechtigung.
+    "monteurImplementation"(libs.play.code.scanner)
 
     implementation(libs.markwon.core)
     implementation(libs.markwon.tables)
