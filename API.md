@@ -37,7 +37,7 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | DELETE | `/v1/geraete/{id}` | Gerät abmelden (z. B. verlorenes Handy) |
 | GET | `/v1/ich` | Wer bin ich, welches Modell |
 | GET | `/v1/modelle` | **Modellwahl**: wählbare Modelle und Denkstufen, was „Automatisch“ heißt (neu in 1.20.0) |
-| PATCH | `/v1/gespraeche/{id}` | Modell/Denkaufwand eines Gesprächs setzen (neu in 1.20.0) |
+| PATCH | `/v1/gespraeche/{id}` | Modell/Denkaufwand eines Gesprächs setzen (neu in 1.20.0), Gespräch **anheften** (neu in 1.21.0) |
 | POST | `/v1/chat` | Textnachricht → Antwort |
 | GET | `/v1/chat/{anfrage_id}?seit=` | Stand/Ergebnis einer Chat-Anfrage abholen (neu in 1.17.0), mit **Fortschritt** (neu in 1.20.0) |
 | POST | `/v1/chat/{anfrage_id}/abbrechen` | Laufende Antwort stoppen (neu in 1.20.0) |
@@ -71,7 +71,7 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/angebote/{id}/ugl?titelzeilen=` | UGL-Datei für den CRM-Import herunterladen |
 | GET | `/v1/bestaetigungen` | Alle offenen Ja/Nein-Fragen |
 | POST | `/v1/bestaetigungen/{id}` | Ja/Nein beantworten |
-| GET | `/v1/gespraeche` | Liste der Gespräche (neueste zuerst) |
+| GET | `/v1/gespraeche?q=` | Liste der Gespräche (angeheftete zuerst, dann neueste); `q` = **Suche im Titel** über alle (neu in 1.21.0) |
 | GET | `/v1/gespraeche/{id}` | Verlauf eines Gesprächs |
 | DELETE | `/v1/gespraeche/{id}` | Gespräch löschen |
 | GET | `/v1/termine?von=&bis=&person=&alle=` | Kalender direkt (z.B. für eine Tagesansicht) |
@@ -291,6 +291,23 @@ normale Nachricht schreiben“ – dann den Text als neue Nachricht senden.
 Fremde oder unbekannte `anfrage_id` → `404` (wie beim Abholen). Abwärtskompatibel: Wer `fortschritt` nicht liest und
 nie abbricht, merkt nichts. `status: "abgebrochen"` kommt nur vor, wenn jemand (auch in der Weboberfläche) gestoppt
 hat – unbekannten Status mit gesetzter `antwort` wie `fertig` behandeln.
+
+## 1e. Gesprächsliste: anheften, suchen, nach Zeit gruppieren – neu in 1.21.0
+
+Anlass: Die Liste der Gespräche wird lang. Wie bei ChatGPT/Claude gibt es jetzt **angeheftete** Gespräche oben, eine
+**Suche** über alle Titel und die Liste wird in der Oberfläche **nach Zeit gruppiert**.
+
+- `GET /v1/gespraeche` liefert je Gespräch zusätzlich `angeheftet` (bool). Reihenfolge: **angeheftete zuerst**, dann
+  `geaendert` absteigend, höchstens 100 Einträge. Angeheftete sind also immer dabei, auch wenn sie alt sind.
+- `GET /v1/gespraeche?q=heizung keller` → nur Gespräche, deren Titel **alle Wörter** enthält (Groß/klein egal bei
+  a–z), über **alle** Gespräche, nicht nur die neuesten 100. `%` und `_` gelten als normale Zeichen. Leeres `q` = normale Liste.
+- `PATCH /v1/gespraeche/{id}` mit `{"angeheftet": true}` bzw. `false` → Antwort = Eintrag wie in der Liste. Ändert
+  `geaendert` **nicht** (das Gespräch rutscht in seiner Zeitgruppe nicht nach oben). Lässt sich mit `modell`/`denkaufwand`
+  kombinieren; weggelassen = unverändert. Fremdes Gespräch → `404`.
+
+**Gruppen (macht die Oberfläche selbst, nach `geaendert` in Ortszeit):** Angeheftet · Heute · Gestern · Letzte 7 Tage ·
+Letzte 30 Tage · danach je Monat („September 2026“). Monatsgruppen starten eingeklappt; auf-/zugeklappt wird je Gruppe
+gemerkt. Unter jedem Titel klein: Uhrzeit (heute/gestern), Wochentag + Datum (7 Tage) bzw. Datum.
 
 ## 1b. Lange Anfragen sicher – neu in 1.17.0
 
@@ -1052,13 +1069,26 @@ Minute erneuert, nach Änderungen über den Assistenten (Fotos, neue Dateien, Ve
 
 `https://<server>/` liefert eine fertige Weboberfläche (Chat, Sprechen, Bestätigungen, Fotos/Videos/Dokumente per Ziehen &
 Ablegen, Ordneransicht). Im Browser nutzbar und in Chrome über „App installieren“ als eigenes Fenster. In der
-**Windows-Hülle** öffnen Datei-Klicks direkt den Explorer auf M: – Auftrag dafür: [WINDOWS-HUELLE.md](WINDOWS-HUELLE.md).
+**Windows-Hülle** öffnen „Im Programm öffnen“/„Im Explorer zeigen“ direkt Word, Acrobat & Co. bzw. den Explorer auf M: –
+Auftrag dafür: [WINDOWS-HUELLE.md](WINDOWS-HUELLE.md).
+
+Aufbau seit 1.21.0 (Neugestaltung):
+- **Links** Seitenleiste (ausblendbar): „Neues Gespräch“, Suche (Strg+K), Bereiche Chat · Kalender · GU-Plantafel,
+  darunter Ablage · Offen (öffnen das Panel rechts), dann die gruppierte Gesprächsliste (1e) mit Anheften/Löschen beim
+  Überfahren.
+- **Mitte** die gewählte Ansicht: Chat (mittige Spalte, Eingabe als Karte mit Anhang, Projekt anheften, Modellwahl,
+  Mikrofon), **Kalender** (Woche als Spalten, Tag als Liste) oder GU-Plantafel.
+- **Vorschau neben dem Chat**: „Ansehen“ an einer Datei (oder Klick in der Ablage) zeigt PDF (pdf.js, Seiten als
+  Bilder, Zoom), Fotos, Videos, Text und Notizen (Markdown) neben dem Chat; Breite ziehbar, Esc schließt.
+- **Rechts** Panel mit Reitern Ablage · Offen · Heute (eigene Termine von heute), Breite ziehbar (Maus, Pfeiltasten,
+  Doppelklick = Standard), Strg+B blendet es ein/aus. Breiten, Reiter und eingeklappte Gruppen merkt sich das Gerät.
+- Linien-Symbole statt Emojis, hell/dunkel nach Systemeinstellung, Schrift Segoe UI Variable (Windows 11).
 
 ## 8. Verlauf
 
-`GET /v1/gespraeche` → `[{"id","titel","erstellt","geaendert","laeuft","modell","denkaufwand"}]` (`laeuft` seit 1.17.0, siehe 1b; `modell`/`denkaufwand` = Wahl des Gesprächs seit 1.20.0, siehe 1c)
+`GET /v1/gespraeche?q=` → `[{"id","titel","erstellt","geaendert","laeuft","modell","denkaufwand","angeheftet"}]` (`laeuft` seit 1.17.0, siehe 1b; `modell`/`denkaufwand` = Wahl des Gesprächs seit 1.20.0, siehe 1c; `angeheftet` und `q` seit 1.21.0, siehe 1e)
 `GET /v1/gespraeche/{id}` → `[{"id","rolle","text","zeit","dateien","links","bestaetigungen","quellen","modell","denkaufwand","denkaufwand_name","modell_gewechselt"}]` (`links` wie im Chat, seit 1.13.0; Modellfelder bei `assistent` seit 1.20.0)
-`PATCH /v1/gespraeche/{id}` → Modell/Denkaufwand setzen (1c)
+`PATCH /v1/gespraeche/{id}` → Modell/Denkaufwand setzen (1c), anheften (1e)
 Seit 1.20.0 außerdem: `fortschritt` und `abgebrochen` bei `assistent`-Nachrichten, `zwischenruf` bei `nutzer`-Nachrichten (1d).
 `dateien` einer `nutzer`-Nachricht = mitgeschickte Bilder (seit 1.5.0).
 `rolle`: `nutzer` | `assistent` | `hinweis` (Systemzeile wie „Ausgeführt: … verschoben“ – klein/grau anzeigen).

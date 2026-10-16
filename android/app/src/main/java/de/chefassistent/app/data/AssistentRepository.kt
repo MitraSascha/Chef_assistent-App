@@ -555,6 +555,13 @@ class AssistentRepository(
 
     suspend fun gespraeche(): List<GespraechKurz> = ruf { it.gespraeche() }
 
+    /** Seit v1.21.0: Gespraeche, deren Titel alle Woerter aus [text] enthaelt. */
+    suspend fun gespraecheSuchen(text: String): List<GespraechKurz> = ruf { it.gespraeche(text) }
+
+    /** Seit v1.21.0: oben anheften bzw. loesen. Aendert `geaendert` nicht. */
+    suspend fun gespraechAnheften(gespraechId: String, angeheftet: Boolean): GespraechKurz =
+        ruf { it.gespraechEinstellen(gespraechId, ModellWahl(angeheftet = angeheftet)) }
+
     suspend fun verlauf(gespraechId: String): List<Nachricht> = ruf { it.verlauf(gespraechId) }
 
     suspend fun gespraechLoeschen(gespraechId: String) {

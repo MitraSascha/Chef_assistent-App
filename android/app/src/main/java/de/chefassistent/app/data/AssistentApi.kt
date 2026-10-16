@@ -221,8 +221,9 @@ interface AssistentApi {
         @Body entscheidung: Entscheidung,
     ): EntscheidungAntwort
 
+    /** `q` seit v1.21.0: Suche im Titel ueber alle Gespraeche, alle Woerter muessen vorkommen. */
     @GET("v1/gespraeche")
-    suspend fun gespraeche(): List<GespraechKurz>
+    suspend fun gespraeche(@Query("q") q: String? = null): List<GespraechKurz>
 
     @GET("v1/gespraeche/{gid}")
     suspend fun verlauf(@Path("gid") gid: String): List<Nachricht>

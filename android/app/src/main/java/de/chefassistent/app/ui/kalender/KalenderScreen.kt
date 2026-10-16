@@ -109,7 +109,8 @@ private sealed class Zeile(val schluessel: String) {
 @Composable
 fun KalenderScreen(
     viewModel: KalenderViewModel,
-    beiZurueck: () -> Unit,
+    /** `null` = Reiter der unteren Leiste, kein Zurueck-Pfeil (seit v1.21.0). */
+    beiZurueck: (() -> Unit)?,
     beiAbmeldung: () -> Unit,
     beiOrdner: (String) -> Unit,
 ) {

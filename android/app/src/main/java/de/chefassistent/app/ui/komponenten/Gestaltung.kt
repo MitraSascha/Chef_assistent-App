@@ -68,7 +68,8 @@ import de.chefassistent.app.R
 /** Seitenrand fuer Listen in Gruppen. */
 val SEITENRAND = 16.dp
 
-private val AUSSEN = 26.dp
+/** Karten 12 dp (Auftrag 1.21, B1), vorher 26 dp nach One UI. */
+private val AUSSEN = 12.dp
 
 /** Einzug der Trennlinie bei Eintraegen mit Symbol (Symbol + Abstand). */
 val EINZUG_MIT_SYMBOL = 72.dp

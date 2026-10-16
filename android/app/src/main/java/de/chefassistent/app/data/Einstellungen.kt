@@ -150,6 +150,18 @@ class Einstellungen(context: Context) {
             ?: listOf(PERSON_ICH)
         set(wert) = speicher.edit().putString(SCHLUESSEL_KALENDER_PERSONEN, wert.joinToString(TRENNER)).apply()
 
+    /**
+     * Gruppen der Gespraechsliste, die vom Standard abweichen (seit v1.21.0):
+     * Monate starten eingeklappt, alle anderen offen. Wer hier steht, ist umgeklappt.
+     */
+    var umgeklappteGruppen: Set<String>
+        get() = speicher.getString(SCHLUESSEL_UMGEKLAPPT, null)
+            ?.split(TRENNER)
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+            .orEmpty()
+        set(wert) = speicher.edit().putString(SCHLUESSEL_UMGEKLAPPT, wert.joinToString(TRENNER)).apply()
+
     val istAngemeldet: Boolean get() = !token.isNullOrBlank()
 
     fun abmelden() {
@@ -167,6 +179,7 @@ class Einstellungen(context: Context) {
         private const val SCHLUESSEL_KONTEXTE = "letzte_kontexte"
         private const val SCHLUESSEL_GESEHENE_AUFTRAEGE = "gesehene_auftraege"
         private const val SCHLUESSEL_KALENDER_PERSONEN = "kalender_personen"
+        private const val SCHLUESSEL_UMGEKLAPPT = "umgeklappte_gruppen"
 
         /** Zeilenumbruch als Trenner: in einem Projektnamen kommt keiner vor. */
         private const val TRENNER = "\n"

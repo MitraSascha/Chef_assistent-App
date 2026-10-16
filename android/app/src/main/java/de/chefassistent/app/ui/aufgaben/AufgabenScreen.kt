@@ -69,7 +69,8 @@ private val KURZDATUM = DateTimeFormatter.ofPattern("dd.MM.")
 @Composable
 fun AufgabenScreen(
     viewModel: AufgabenViewModel,
-    beiZurueck: () -> Unit,
+    /** `null` = Reiter der unteren Leiste, kein Zurueck-Pfeil (seit v1.21.0). */
+    beiZurueck: (() -> Unit)?,
     beiAbmeldung: () -> Unit,
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()

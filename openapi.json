@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.20.0"
+    "version": "1.21.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -2742,38 +2742,70 @@
           "Chat"
         ],
         "summary": "Gespraeche",
+        "description": "Die eigenen Gespräche: angeheftete zuerst, sonst zuletzt geändert zuerst; höchstens 100.",
         "operationId": "gespraeche_v1_gespraeche_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Nur Gespräche, deren Titel alle Wörter enthält – über alle, nicht nur die neuesten 100 (neu in 1.21.0)",
+              "title": "Q"
+            },
+            "description": "Nur Gespräche, deren Titel alle Wörter enthält – über alle, nicht nur die neuesten 100 (neu in 1.21.0)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/GespraechKurz"
                   },
-                  "type": "array",
                   "title": "Response Gespraeche V1 Gespraeche Get"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
                 }
               }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/v1/gespraeche/{gid}": {
@@ -2782,7 +2814,7 @@
           "Chat"
         ],
         "summary": "Gespraech Einstellen",
-        "description": "Modell und Denkaufwand dieses Gesprächs wählen (neu in 1.20.0). 'auto' = Automatisch (Standard). Gilt ab der\nnächsten Nachricht – eine gerade laufende arbeitet mit der alten Einstellung zu Ende.",
+        "description": "Modell und Denkaufwand dieses Gesprächs wählen (neu in 1.20.0). 'auto' = Automatisch (Standard). Gilt ab der\nnächsten Nachricht – eine gerade laufende arbeitet mit der alten Einstellung zu Ende. Außerdem: Gespräch oben\nanheften bzw. lösen (`angeheftet`, neu in 1.21.0) – ändert die Reihenfolge, nicht „geändert“.",
         "operationId": "gespraech_einstellen_v1_gespraeche__gid__patch",
         "security": [
           {
@@ -5908,6 +5940,12 @@
             "title": "Denkaufwand",
             "description": "Im Chat gewählter Denkaufwand: 'auto' oder ein Wert aus GET /v1/modelle (neu in 1.20.0)",
             "default": "auto"
+          },
+          "angeheftet": {
+            "type": "boolean",
+            "title": "Angeheftet",
+            "description": "true = oben in der Liste angeheftet; angeheftete kommen zuerst (neu in 1.21.0)",
+            "default": false
           }
         },
         "type": "object",
@@ -6884,6 +6922,18 @@
             ],
             "title": "Denkaufwand",
             "description": "'auto' oder ein Wert aus GET /v1/modelle (denkstufen[].wert); weglassen = unverändert"
+          },
+          "angeheftet": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Angeheftet",
+            "description": "true = Gespräch oben anheften, false = lösen; weglassen = unverändert (neu in 1.21.0)"
           }
         },
         "type": "object",

@@ -178,6 +178,11 @@ data class ChatZustand(
     val liestVor: String? = null,
     val gespraeche: List<GespraechKurz> = emptyList(),
     val gespraecheLaden: Boolean = false,
+    /** Seit v1.21.0: Titelsuche in der Gespraechsliste. `null` = keine Suche, normale Liste. */
+    val gespraechTreffer: List<GespraechKurz>? = null,
+    val gespraechSucheLaeuft: Boolean = false,
+    /** Gruppen der Gespraechsliste, die vom Standard abweichen (Monate zu, Rest offen). */
+    val umgeklappteGruppen: Set<String> = emptySet(),
     /** true = Stimme vom Server (`POST /v1/vorlesen`), false = Android-Sprachausgabe. */
     val serverStimme: Boolean = true,
     /** Gewaehlte OpenAI-Stimme, `null` = Servervorgabe. */
@@ -305,6 +310,7 @@ class ChatViewModel(
             stimme = repository.einstellungen.stimme,
             diktatPruefen = repository.einstellungen.diktatPruefen,
             letzteKontexte = repository.einstellungen.letzteKontexte,
+            umgeklappteGruppen = repository.einstellungen.umgeklappteGruppen,
         )
     )
     val zustand: StateFlow<ChatZustand> = _zustand.asStateFlow()
@@ -2184,12 +2190,73 @@ class ChatViewModel(
         _zustand.value.gespraeche.firstOrNull { it.id == id }
     }
 
+    private var gespraechSucheJob: Job? = null
+
+    /**
+     * Seit v1.21.0: Titelsuche ueber alle Gespraeche. Ab 2 Zeichen, 250 ms
+     * entprellt, die vorige Anfrage wird abgebrochen. Kuerzer = normale Liste.
+     */
+    fun gespraecheSuchen(eingabe: String) {
+        gespraechSucheJob?.cancel()
+        val q = eingabe.trim()
+        if (q.length < 2) {
+            _zustand.update { it.copy(gespraechTreffer = null, gespraechSucheLaeuft = false) }
+            return
+        }
+        _zustand.update { it.copy(gespraechSucheLaeuft = true) }
+        gespraechSucheJob = viewModelScope.launch {
+            delay(HERO_SUCHE_PAUSE_MS)
+            try {
+                val treffer = repository.gespraecheSuchen(q)
+                _zustand.update { it.copy(gespraechTreffer = treffer, gespraechSucheLaeuft = false) }
+            } catch (fehler: ApiFehler) {
+                _zustand.update { it.copy(gespraechSucheLaeuft = false) }
+                behandleFehler(fehler)
+            }
+        }
+    }
+
+    fun gespraechSucheBeenden() {
+        gespraechSucheJob?.cancel()
+        _zustand.update { it.copy(gespraechTreffer = null, gespraechSucheLaeuft = false) }
+    }
+
+    /** Seit v1.21.0: oben anheften bzw. loesen, danach die Liste neu laden. */
+    fun gespraechAnheften(id: String, angeheftet: Boolean) {
+        viewModelScope.launch {
+            try {
+                val eintrag = repository.gespraechAnheften(id, angeheftet)
+                _zustand.update { z ->
+                    z.copy(
+                        gespraeche = z.gespraeche.map { if (it.id == id) eintrag else it },
+                        gespraechTreffer = z.gespraechTreffer?.map { if (it.id == id) eintrag else it },
+                    )
+                }
+                gespraecheLaden()
+            } catch (fehler: ApiFehler) {
+                behandleFehler(fehler)
+            }
+        }
+    }
+
+    /** Gruppe der Gespraechsliste auf-/zuklappen und den Zustand merken. */
+    fun gruppeUmklappen(schluessel: String) {
+        val neu = _zustand.value.umgeklappteGruppen.let {
+            if (schluessel in it) it - schluessel else it + schluessel
+        }
+        repository.einstellungen.umgeklappteGruppen = neu
+        _zustand.update { it.copy(umgeklappteGruppen = neu) }
+    }
+
     fun gespraechLoeschen(id: String) {
         viewModelScope.launch {
             try {
                 repository.gespraechLoeschen(id)
                 _zustand.update { alt ->
-                    val neu = alt.copy(gespraeche = alt.gespraeche.filterNot { it.id == id })
+                    val neu = alt.copy(
+                        gespraeche = alt.gespraeche.filterNot { it.id == id },
+                        gespraechTreffer = alt.gespraechTreffer?.filterNot { it.id == id },
+                    )
                     // Das offene Gespraech wurde geloescht - Chat leeren.
                     if (alt.gespraechId == id) neu.copy(gespraechId = null, eintraege = emptyList()) else neu
                 }

@@ -118,6 +118,9 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
@@ -216,6 +219,12 @@ fun ChatScreen(
     beiGeraete: () -> Unit,
     geteilt: Geteilt? = null,
     geteiltErledigt: () -> Unit = {},
+    /**
+     * Seit v1.21.0 ist die Gespraechsliste die Startseite des Reiters Chat. Der
+     * Zustand liegt bei der Navigation, weil dort die untere Leiste haengt.
+     */
+    listeOffen: Boolean = false,
+    beiListeOffen: (Boolean) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val kontext = LocalContext.current
@@ -361,6 +370,7 @@ fun ChatScreen(
 
     // Aus "Teilen" einer anderen App: einmal uebernehmen, dann abhaken.
     LaunchedEffect(geteilt) {
+        if (geteilt != null) beiListeOffen(false)
         when (val inhalt = geteilt) {
             is Geteilt.Dokument -> viewModel.dokumentGewaehlt(inhalt.uri)
             is Geteilt.Text -> viewModel.geteilterText(inhalt.text)
@@ -398,6 +408,13 @@ fun ChatScreen(
     BackHandler(enabled = schublade.isOpen) {
         bereich.launch { schublade.close() }
     }
+    // Aus dem Gespraech fuehrt Zurueck in die Liste, erst von dort aus der App.
+    BackHandler(enabled = !listeOffen && !schublade.isOpen) {
+        beiListeOffen(true)
+    }
+    LaunchedEffect(listeOffen) {
+        if (listeOffen) viewModel.gespraecheLaden()
+    }
 
     LaunchedEffect(zustand.abgemeldet) {
         if (zustand.abgemeldet) beiAbmeldung()
@@ -427,11 +444,10 @@ fun ChatScreen(
 
     ModalNavigationDrawer(
         drawerState = schublade,
+        // Im Gespraech oeffnet nur die Liste die Schublade, sonst stoert das Wischen beim Lesen.
+        gesturesEnabled = listeOffen || schublade.isOpen,
         drawerContent = {
             GespraechSchublade(
-                gespraeche = zustand.gespraeche,
-                aktuellesGespraech = zustand.gespraechId,
-                laedt = zustand.gespraecheLaden,
                 serverStimme = zustand.serverStimme,
                 stimme = zustand.stimme,
                 diktatPruefen = zustand.diktatPruefen,
@@ -441,15 +457,6 @@ fun ChatScreen(
                 beiStimmeWaehlen = viewModel::stimmeWaehlen,
                 beiOpenAiStimme = viewModel::openAiStimmeWaehlen,
                 beiDiktatPruefen = viewModel::diktatPruefenSetzen,
-                beiNeu = {
-                    viewModel.neuesGespraech()
-                    bereich.launch { schublade.close() }
-                },
-                beiOeffnen = { id ->
-                    viewModel.gespraechOeffnen(id)
-                    bereich.launch { schublade.close() }
-                },
-                beiLoeschen = viewModel::gespraechLoeschen,
                 beiTermine = {
                     bereich.launch { schublade.close() }
                     beiTermine()
@@ -489,6 +496,36 @@ fun ChatScreen(
             )
         },
     ) {
+        if (listeOffen) {
+            GespraechListe(
+                gespraeche = zustand.gespraeche,
+                treffer = zustand.gespraechTreffer,
+                laedt = zustand.gespraecheLaden,
+                sucheLaeuft = zustand.gespraechSucheLaeuft,
+                aktuellesGespraech = zustand.gespraechId,
+                umgeklappt = zustand.umgeklappteGruppen,
+                snackbar = snackbar,
+                beiMenue = {
+                    viewModel.notizenZaehlen()
+                    bereich.launch { schublade.open() }
+                },
+                beiSuche = viewModel::gespraecheSuchen,
+                beiSucheBeenden = viewModel::gespraechSucheBeenden,
+                beiOeffnen = { id ->
+                    if (id != zustand.gespraechId) viewModel.gespraechOeffnen(id)
+                    beiListeOffen(false)
+                },
+                beiNeu = {
+                    viewModel.neuesGespraech()
+                    beiListeOffen(false)
+                },
+                beiAnheften = viewModel::gespraechAnheften,
+                beiLoeschen = viewModel::gespraechLoeschen,
+                beiUmklappen = viewModel::gruppeUmklappen,
+            )
+            return@ModalNavigationDrawer
+        }
+        val offenesGespraech = zustand.gespraeche.firstOrNull { it.id == zustand.gespraechId }
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surface,
             topBar = {
@@ -499,19 +536,33 @@ fun ChatScreen(
                     ),
                     title = {
                         Text(
-                            stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.titleLarge,
+                            offenesGespraech?.titel?.takeIf { it.isNotBlank() }
+                                ?: stringResource(R.string.chat_neues_gespraech),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            viewModel.notizenZaehlen()
-                            bereich.launch { schublade.open() }
-                        }) {
-                            Icon(Icons.Default.Menu, stringResource(R.string.chat_gespraeche))
+                        IconButton(onClick = { beiListeOffen(true) }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.liste_zurueck_zur_liste))
                         }
                     },
                     actions = {
+                        // Seit v1.21.0: anheften, gedrueckt = angeheftet. Fehlt bei altem Server.
+                        if (offenesGespraech?.angeheftet != null) {
+                            IconToggleButton(
+                                checked = offenesGespraech.istAngeheftet,
+                                onCheckedChange = { viewModel.gespraechAnheften(offenesGespraech.id, it) },
+                            ) {
+                                Icon(
+                                    if (offenesGespraech.istAngeheftet) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                                    stringResource(
+                                        if (offenesGespraech.istAngeheftet) R.string.liste_loesen else R.string.liste_anheften
+                                    ),
+                                )
+                            }
+                        }
                         // Nur wenn es etwas zu sehen gibt - sonst reicht die Schublade.
                         if (zustand.auftraegeOffen > 0) {
                             IconButton(onClick = beiAuftraege) {
@@ -732,9 +783,6 @@ fun ChatScreen(
 
 @Composable
 private fun GespraechSchublade(
-    gespraeche: List<GespraechKurz>,
-    aktuellesGespraech: String?,
-    laedt: Boolean,
     serverStimme: Boolean,
     stimme: String?,
     diktatPruefen: Boolean,
@@ -744,9 +792,6 @@ private fun GespraechSchublade(
     beiStimmeWaehlen: (Boolean) -> Unit,
     beiOpenAiStimme: (String?) -> Unit,
     beiDiktatPruefen: (Boolean) -> Unit,
-    beiNeu: () -> Unit,
-    beiOeffnen: (String) -> Unit,
-    beiLoeschen: (String) -> Unit,
     beiTermine: () -> Unit,
     beiVerbrauch: () -> Unit,
     auftraegeOffen: Int,
@@ -759,36 +804,6 @@ private fun GespraechSchublade(
     beiAngebote: (() -> Unit)?,
     beiGeraete: () -> Unit,
 ) {
-    var zuLoeschen by remember { mutableStateOf<GespraechKurz?>(null) }
-
-    zuLoeschen?.let { gespraech ->
-        val titel = gespraech.titel?.takeIf { it.isNotBlank() }
-            ?: stringResource(R.string.chat_ohne_titel)
-        AlertDialog(
-            onDismissRequest = { zuLoeschen = null },
-            title = { Text(stringResource(R.string.loeschen_titel)) },
-            text = { Text(stringResource(R.string.loeschen_frage, titel)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        beiLoeschen(gespraech.id)
-                        zuLoeschen = null
-                    }
-                ) {
-                    Text(
-                        text = stringResource(R.string.loeschen_ja),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { zuLoeschen = null }) {
-                    Text(stringResource(R.string.loeschen_abbrechen))
-                }
-            },
-        )
-    }
-
     // Aufbau wie die Samsung-Einstellungen: Gruppen als runde Karten, farbige
     // Kreise vor den Eintraegen. Alles in einer Liste, damit die Schublade auch
     // mit vielen Gespraechen komplett scrollt.
@@ -826,18 +841,6 @@ private fun GespraechSchublade(
                     style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.padding(start = 12.dp, top = 24.dp, bottom = 20.dp),
                 )
-            }
-
-            item(key = "neu") {
-                GruppenKarte {
-                    SchubladenZeile(
-                        symbol = Icons.Default.Add,
-                        farbe = MaterialTheme.colorScheme.primary,
-                        symbolFarbe = MaterialTheme.colorScheme.onPrimary,
-                        titel = stringResource(R.string.chat_neues_gespraech),
-                        beiKlick = beiNeu,
-                    )
-                }
             }
 
             if (wartend.isNotEmpty()) {
@@ -943,66 +946,6 @@ private fun GespraechSchublade(
                         }
                     }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        GruppenTitel(stringResource(R.string.chat_gespraeche), modifier = Modifier.weight(1f))
-                        if (laedt) {
-                            CircularProgressIndicator(Modifier.padding(end = 20.dp, top = 12.dp).size(16.dp), strokeWidth = 2.dp)
-                        }
-                    }
-                    if (gespraeche.isEmpty() && !laedt) {
-                        LeerHinweis(stringResource(R.string.chat_keine_gespraeche))
-                    }
-                }
-            }
-
-            itemsIndexed(gespraeche, key = { _, g -> g.id }) { index, gespraech ->
-                val aktiv = gespraech.id == aktuellesGespraech
-                GruppenBlock(
-                    index = index,
-                    anzahl = gespraeche.size,
-                    farbe = if (aktiv) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { beiOeffnen(gespraech.id) }
-                            .padding(start = 20.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = gespraech.titel?.takeIf { it.isNotBlank() }
-                                    ?: stringResource(R.string.chat_ohne_titel),
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            geaendertText(gespraech.geaendert)?.let {
-                                Text(
-                                    text = it,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        // Seit v1.17.0: der Assistent arbeitet dort gerade (API.md 1b).
-                        if (gespraech.laeuft) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.padding(horizontal = 8.dp).size(18.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        }
-                        // Loeschen geht an den Server und ist nicht umkehrbar.
-                        // Ein Fehlgriff in einer Liste ist zu leicht - deshalb
-                        // immer erst nachfragen.
-                        IconButton(onClick = { zuLoeschen = gespraech }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                stringResource(R.string.chat_gespraech_loeschen),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
                 }
             }
         }

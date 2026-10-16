@@ -17,96 +17,114 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Gedecktes Gruen-Teal wie im App-Symbol. Kein dynamisches Material-You-Schema:
- * die App wird in Werkstatt und Buero benutzt, da ist ein vorhersagbarer,
- * kontraststarker Look mehr wert als Anpassung an das Handy-Hintergrundbild.
+ * Farben seit v1.21.0 (Auftrag 1.21, B1): dieselbe Handschrift wie die
+ * Weboberflaeche (`/web/app.css`). Ruhige helle Flaeche, Navy als Hauptfarbe,
+ * Gold als Akzent. Kein dynamisches Material-You-Schema.
  *
- * Aufbau nach One UI 8 und Material 3 Expressive (2026-09-28): Der Hintergrund
- * ist eine ruhige Flaeche ([surface]), Inhalte liegen darauf in helleren bzw.
- * im Dunkeln etwas aufgehellten Bloecken ([surfaceContainer]). Trennlinien
- * braucht es dann kaum noch. Die `surfaceContainer*`-Stufen muessen hier stehen:
- * sonst nimmt Material die Vorgabe aus dem Baseline-Schema, und die ist violett.
+ * Zuordnung zu Material: `surface` = Hintergrund, `surfaceContainer` = Flaeche
+ * (Karten, Leisten), `primaryContainer` = eigene Nachricht, `secondary` = Gold,
+ * `secondaryContainer` = Hinweis-/Fragekarte. Die `surfaceContainer*`-Stufen
+ * muessen hier stehen, sonst nimmt Material die violette Vorgabe.
+ *
+ * **`primary` ist im Dunkeln das helle Linkblau, nicht `#2F5878`.** Material
+ * nimmt `primary` auch als Textfarbe (Textknoepfe, Links), und `#2F5878` hat auf
+ * `#1B232A` nur etwa 2:1 Kontrast. Gefuellte Flaechen in der Hauptfarbe (Senden,
+ * Neues Gespraech, Ansehen, M-Zeichen) nehmen deshalb [hauptflaeche].
  */
-private val Gruen = Color(0xFF1F6F5C)
-private val GruenHell = Color(0xFF6FD8BC)
-private val Sand = Color(0xFF7A5B2E)
-private val SandHell = Color(0xFFE8C48A)
+private val Navy = Color(0xFF1B3244)
+private val NavyDunkel = Color(0xFF2F5878)
+private val Gold = Color(0xFFDA9C4D)
 
 private val HellesSchema = lightColorScheme(
-    primary = Gruen,
+    primary = Navy,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFB8EEDC),
-    onPrimaryContainer = Color(0xFF00201A),
-    secondary = Sand,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFFFDDB0),
-    onSecondaryContainer = Color(0xFF291800),
-    tertiary = Color(0xFF3B6470),
+    primaryContainer = Color(0xFFE8EEF3),
+    onPrimaryContainer = Color(0xFF1D2327),
+    secondary = Gold,
+    onSecondary = Navy,
+    secondaryContainer = Color(0xFFFBF0DF),
+    onSecondaryContainer = Color(0xFF8A5A17),
+    tertiary = Color(0xFF2A5F86),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFBFE9F8),
-    onTertiaryContainer = Color(0xFF001F27),
-    background = Color(0xFFF1F4F2),
-    onBackground = Color(0xFF191C1B),
-    surface = Color(0xFFF1F4F2),
-    onSurface = Color(0xFF191C1B),
-    surfaceVariant = Color(0xFFDBE5E0),
-    onSurfaceVariant = Color(0xFF3F4945),
+    tertiaryContainer = Color(0xFFE2E7EC),
+    onTertiaryContainer = Color(0xFF1D2327),
+    background = Color(0xFFF6F5F2),
+    onBackground = Color(0xFF1D2327),
+    surface = Color(0xFFF6F5F2),
+    onSurface = Color(0xFF1D2327),
+    surfaceVariant = Color(0xFFEEF0F2),
+    onSurfaceVariant = Color(0xFF5B6570),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFFBFCFB),
+    surfaceContainerLow = Color(0xFFFAF9F7),
     surfaceContainer = Color.White,
-    surfaceContainerHigh = Color(0xFFE6ECE9),
-    surfaceContainerHighest = Color(0xFFDDE4E1),
+    surfaceContainerHigh = Color(0xFFEFEDE8),
+    surfaceContainerHighest = Color(0xFFE9E7E2),
     surfaceBright = Color.White,
-    surfaceDim = Color(0xFFD8DEDB),
-    inverseSurface = Color(0xFF2D3130),
-    inverseOnSurface = Color(0xFFEFF1EF),
-    inversePrimary = GruenHell,
-    error = Color(0xFFBA1A1A),
+    surfaceDim = Color(0xFFE9E7E2),
+    inverseSurface = Color(0xFF1D2327),
+    inverseOnSurface = Color(0xFFF6F5F2),
+    inversePrimary = Color(0xFF8CC0EA),
+    error = Color(0xFFB3261E),
     onError = Color.White,
-    errorContainer = Color(0xFFFFDAD6),
-    onErrorContainer = Color(0xFF410002),
-    outline = Color(0xFF6F7975),
-    outlineVariant = Color(0xFFD3DBD7),
+    errorContainer = Color(0xFFFBE7E5),
+    onErrorContainer = Color(0xFF8C1D18),
+    outline = Color(0xFFCFCAC0),
+    outlineVariant = Color(0xFFE3E0D9),
 )
 
 private val DunklesSchema = darkColorScheme(
-    primary = GruenHell,
-    onPrimary = Color(0xFF00382D),
-    primaryContainer = Color(0xFF005143),
-    onPrimaryContainer = Color(0xFFB8EEDC),
-    secondary = SandHell,
-    onSecondary = Color(0xFF442B00),
-    secondaryContainer = Color(0xFF5F4100),
-    onSecondaryContainer = Color(0xFFFFDDB0),
-    tertiary = Color(0xFFA3CDDC),
-    onTertiary = Color(0xFF033541),
-    tertiaryContainer = Color(0xFF224C58),
-    onTertiaryContainer = Color(0xFFBFE9F8),
-    // Fast schwarz wie bei Samsung: spart auf OLED Strom und laesst die
-    // Bloecke darueber sichtbar abheben.
-    background = Color.Black,
-    onBackground = Color(0xFFE1E3E1),
-    surface = Color.Black,
-    onSurface = Color(0xFFE1E3E1),
-    surfaceVariant = Color(0xFF3F4945),
-    onSurfaceVariant = Color(0xFFBFC9C4),
-    surfaceContainerLowest = Color.Black,
-    surfaceContainerLow = Color(0xFF131817),
-    surfaceContainer = Color(0xFF1A1D1D),
-    surfaceContainerHigh = Color(0xFF242A28),
-    surfaceContainerHighest = Color(0xFF2F3533),
-    surfaceBright = Color(0xFF343A38),
-    surfaceDim = Color.Black,
-    inverseSurface = Color(0xFFE1E3E1),
-    inverseOnSurface = Color(0xFF2D3130),
-    inversePrimary = Gruen,
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF899390),
-    outlineVariant = Color(0xFF3A413F),
+    primary = Color(0xFF8CC0EA),
+    onPrimary = Color(0xFF0F1418),
+    primaryContainer = Color(0xFF24323E),
+    onPrimaryContainer = Color(0xFFE6E8EA),
+    secondary = Gold,
+    onSecondary = Navy,
+    secondaryContainer = Color(0xFF33291B),
+    onSecondaryContainer = Color(0xFFE8B673),
+    tertiary = Color(0xFF8CC0EA),
+    onTertiary = Color(0xFF0F1418),
+    tertiaryContainer = Color(0xFF26323C),
+    onTertiaryContainer = Color(0xFFE6E8EA),
+    background = Color(0xFF12181D),
+    onBackground = Color(0xFFE6E8EA),
+    surface = Color(0xFF12181D),
+    onSurface = Color(0xFFE6E8EA),
+    surfaceVariant = Color(0xFF232D35),
+    onSurfaceVariant = Color(0xFF9AA4AD),
+    surfaceContainerLowest = Color(0xFF0F1418),
+    surfaceContainerLow = Color(0xFF182027),
+    surfaceContainer = Color(0xFF1B232A),
+    surfaceContainerHigh = Color(0xFF232D35),
+    surfaceContainerHighest = Color(0xFF2A343D),
+    surfaceBright = Color(0xFF2A343D),
+    surfaceDim = Color(0xFF0F1418),
+    inverseSurface = Color(0xFFE6E8EA),
+    inverseOnSurface = Color(0xFF12181D),
+    inversePrimary = Navy,
+    error = Color(0xFFF2A49C),
+    onError = Color(0xFF601410),
+    errorContainer = Color(0xFF3A2220),
+    onErrorContainer = Color(0xFFF2A49C),
+    outline = Color(0xFF3A4651),
+    outlineVariant = Color(0xFF2A343D),
 )
+
+private val ColorScheme.istDunkel: Boolean get() = background.luminance() < 0.5f
+
+/** Gefuellte Flaechen in der Hauptfarbe: Senden, Neues Gespraech, Ansehen, M-Zeichen. Text darauf weiss. */
+val ColorScheme.hauptflaeche: Color get() = if (istDunkel) NavyDunkel else Navy
+
+/** Akzent fuer Zaehler, Fokus und „laeuft“. Nie als Textfarbe auf Weiss, nur als Flaeche oder Punkt. */
+val ColorScheme.gold: Color get() = Gold
+
+/** Aktiver Eintrag in Listen und Navigation. */
+val ColorScheme.auswahl: Color get() = if (istDunkel) Color(0xFF26323C) else Color(0xFFE2E7EC)
+
+/** Untere Navigationsleiste (Seitenleiste im Web). */
+val ColorScheme.navigationsflaeche: Color get() = if (istDunkel) Color(0xFF0F1418) else Color(0xFFEFEDE8)
+
+/** Links im Fliesstext. */
+val ColorScheme.link: Color get() = if (istDunkel) Color(0xFF8CC0EA) else Color(0xFF2A5F86)
 
 /** Kraeftigere Titel wie in One UI und Material 3 Expressive, Fliesstext unveraendert. */
 private val Schrift = Typography(
@@ -117,33 +135,33 @@ private val Schrift = Typography(
     titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold),
     titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
     titleSmall = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
-    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+    // Text 15 sp, leise Zeilen 12-13 sp (Auftrag 1.21, B1).
+    bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
     bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
+    bodySmall = TextStyle(fontSize = 12.5.sp, lineHeight = 17.sp),
     labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
     labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
 )
 
 /**
- * Grosszuegige Rundungen: Karten und Dialoge mit 24-28 dp wie die "focus blocks"
- * in One UI. Knoepfe sind in Material 3 ohnehin pillenfoermig.
+ * Rundungen nach Auftrag 1.21 (B1): Knoepfe 8-10 dp, Karten 12 dp, Eingabe 18 dp.
+ * Dialoge und Sheets behalten `extraLarge`.
  */
 private val Formen = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(28.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(18.dp),
+    extraLarge = RoundedCornerShape(24.dp),
 )
 
 /**
  * Warnfarbe Bernstein, z. B. fuer teure Modelle (Auftrag 1.20). Material 3 kennt
  * keine eigene Warnstufe, und `error` (rot) soll Fehlern vorbehalten bleiben.
- * Hell ein dunkles Orange (Kontrast etwa 5:1 auf Weiss), dunkel ein helles
- * Bernstein auf Schwarz. Unterschieden wird am Hintergrund des Schemas.
+ * Werte wie `--warnung` der Weboberflaeche. Unterschieden wird am Hintergrund des Schemas.
  */
 val ColorScheme.warnung: Color
-    get() = if (background.luminance() < 0.5f) Color(0xFFFFB74D) else Color(0xFFA14F00)
+    get() = if (istDunkel) Color(0xFFF0A14A) else Color(0xFFB45309)
 
 @Composable
 fun ChefAssistentTheme(

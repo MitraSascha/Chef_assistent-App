@@ -558,7 +558,14 @@ data class GespraechKurz(
     val modell: String = MODELL_AUTO,
     /** Seit v1.20.0: im Gespraech gewaehlter Denkaufwand. */
     val denkaufwand: String = MODELL_AUTO,
-)
+    /**
+     * Seit v1.21.0: oben angeheftet. `null` heisst alter Server ohne das Feld:
+     * gilt als nicht angeheftet, Anheften wird dann gar nicht angeboten.
+     */
+    val angeheftet: Boolean? = null,
+) {
+    val istAngeheftet: Boolean get() = angeheftet == true
+}
 
 @Serializable
 data class Nachricht(
@@ -1250,6 +1257,8 @@ data class Denkstufe(
 data class ModellWahl(
     val modell: String? = null,
     val denkaufwand: String? = null,
+    /** Seit v1.21.0: oben anheften bzw. loesen. */
+    val angeheftet: Boolean? = null,
 )
 
 // --- Fortschritt, Stopp, Zwischenruf (seit v1.20.0, API.md 1d) ---------------
