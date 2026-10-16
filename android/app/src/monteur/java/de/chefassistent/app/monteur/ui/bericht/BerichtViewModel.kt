@@ -83,6 +83,8 @@ data class BerichtZustand(
     val offeneAufnahme: String? = null,
     /** Ergaenzung, die nicht ankam. */
     val offenesDiktat: String? = null,
+    /** Getippte Ergaenzung bzw. Antwort auf eine Rueckfrage; bleibt bei Fehlern stehen. */
+    val ergaenzung: String = "",
     val unterschrift: Unterschrift? = null,
     /** Wichtige Meldung als Dialog, z. B. 409 beim Abschliessen (offene Rueckfrage). */
     val hinweisDialog: String? = null,
@@ -474,6 +476,32 @@ class BerichtViewModel(
                     }
                     else -> _meldungen.trySend(fehler.anzeigetext)
                 }
+            } finally {
+                _zustand.update { it.copy(diktatLaeuft = false) }
+            }
+        }
+    }
+
+    fun ergaenzungAendern(text: String) = _zustand.update { it.copy(ergaenzung = text) }
+
+    /**
+     * Wie [diktatSenden], nur getippt - fuer alle, die lieber tippen, und fuer die
+     * laute Werkstatt. Gleicher Endpunkt (`…/diktat` mit `text`), die KI baut den
+     * Entwurf neu. Der Text bleibt bei Fehlern im Feld.
+     */
+    fun ergaenzungSenden() {
+        val id = berichtId ?: return
+        val text = _zustand.value.ergaenzung.trim()
+        if (text.isEmpty() || _zustand.value.gesperrt) return
+        _zustand.update { it.copy(diktatLaeuft = true) }
+        viewModelScope.launch {
+            try {
+                ausstehendeSenden()
+                val neu = repository.berichtDiktat(id, text = text)
+                _zustand.update { it.copy(ergaenzung = "") }
+                uebernehmen(neu, null)
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) abmelden() else _meldungen.trySend(fehler.anzeigetext)
             } finally {
                 _zustand.update { it.copy(diktatLaeuft = false) }
             }

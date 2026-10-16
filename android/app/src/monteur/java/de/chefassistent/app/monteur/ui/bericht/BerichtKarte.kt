@@ -180,6 +180,29 @@ internal fun BerichtKarte(viewModel: BerichtViewModel, zustand: BerichtZustand) 
                 }
             }
 
+            // Ergaenzen oder Rueckfrage beantworten - getippt. Steht direkt unter den
+            // Rueckfragen, damit man die Frage beim Antworten sieht.
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(if (e.rueckfragen.isNotEmpty()) R.string.b_antworten_titel else R.string.b_ergaenzen_titel),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+            )
+            OutlinedTextField(
+                value = zustand.ergaenzung,
+                onValueChange = viewModel::ergaenzungAendern,
+                placeholder = { Text(stringResource(R.string.b_ergaenzen_platzhalter)) },
+                enabled = !gesperrt,
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedButton(
+                onClick = viewModel::ergaenzungSenden,
+                enabled = !gesperrt && zustand.ergaenzung.isNotBlank(),
+                shape = KNOPF_FORM,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.b_ergaenzen_senden)) }
+
             zustand.unterschrift?.let { u ->
                 Spacer(Modifier.height(16.dp))
                 UnterschriftVorschau(u, gesperrt, beiNeu = { unterschreiben = true }, beiEntfernen = viewModel::unterschriftEntfernen)

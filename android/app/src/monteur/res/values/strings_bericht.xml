@@ -90,4 +90,8 @@
     <!-- Fertig -->
     <string name="b_fertig">Bericht ist in HERO</string>
     <string name="b_fertig_hinweise">Bitte beachten</string>
+    <string name="b_antworten_titel">Rückfrage beantworten</string>
+    <string name="b_ergaenzen_titel">Ergänzen oder korrigieren</string>
+    <string name="b_ergaenzen_platzhalter">z. B. „um 7:45 losgefahren“ oder „2 Eckventile 1/2 Zoll“</string>
+    <string name="b_ergaenzen_senden">Ergänzung senden</string>
 </resources>
