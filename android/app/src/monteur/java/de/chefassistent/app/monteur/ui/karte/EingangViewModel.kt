@@ -20,6 +20,8 @@ import de.chefassistent.app.monteur.data.FotoAuswahl
 import de.chefassistent.app.monteur.data.GeradeAufgenommen
 import de.chefassistent.app.monteur.data.GeradeFoto
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withTimeoutOrNull
 import de.chefassistent.app.monteur.data.Protokoll
 import de.chefassistent.app.monteur.ui.bericht.Unterschrift
@@ -200,7 +202,18 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         }
     }
 
+    private val entwurfPrefs = app.getSharedPreferences(MonteurApp.EINGABE_PREFS, android.content.Context.MODE_PRIVATE)
+
     init {
+        // Ungesendete Fotos ueberleben Zurueck, neue Eingaben und das Beenden der App.
+        val gespeichert = entwurfPrefs.getString(MonteurApp.EINGABE_FOTOS, "").orEmpty()
+            .split('\n').filter { it.isNotBlank() && File(it).exists() }
+        if (gespeichert.isNotEmpty()) _zustand.update { it.copy(fotos = gespeichert) }
+        viewModelScope.launch {
+            _zustand.map { it.fotos }.distinctUntilChanged().collect { liste ->
+                entwurfPrefs.edit().putString(MonteurApp.EINGABE_FOTOS, liste.joinToString("\n")).apply()
+            }
+        }
         // Kam eine Karte aus dem Korb an, steht sie in den offenen Karten.
         viewModelScope.launch {
             app.korb.gemeldet.collect { liste -> if (liste.any { it.karteId != null }) offeneLaden() }
@@ -211,7 +224,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
 
     /** Neue Eingabe in [kontext] beginnen (z. B. aus der Projektmappe) - verwirft nichts Gesendetes. */
     fun beginnen(kontext: EingangKontext) {
-        fotosVerwerfen()
+        // Ungesendete Fotos bleiben stehen (nichts darf verloren gehen) - sie gehen mit der naechsten Eingabe.
         eingabe.zuruecksetzen()
         _zustand.update {
             it.copy(phase = EingangPhase.EINGABE, kontext = kontext, text = "", karte = null, verlauf = emptyList(), kartenFotos = emptyList(), passtFehler = null, projektFotos = emptyList())
@@ -234,7 +247,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         _zustand.update { z ->
             val neu = if (z.phase == EingangPhase.EINGABE) z else z.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), text = "")
             val frei = (MAX_FOTOS - neu.fotos.size - neu.projektFotos.size).coerceAtLeast(0)
-            val rein = dateien.take(frei)
+            val rein = dateien.take(frei).map(::dauerhaft)
             zuviel = dateien.size - rein.size
             neu.copy(fotos = neu.fotos + rein.map(File::getAbsolutePath), kontext = kontext ?: neu.kontext)
         }
@@ -269,6 +282,13 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         }
     }
 
+    /** Aus dem Cache in den dauerhaften Ordner - Android raeumt den Cache sonst irgendwann leer. */
+    private fun dauerhaft(datei: File): File {
+        if (datei.path.startsWith(app.eingabeFotoOrdner.path)) return datei
+        val ziel = File(File(app.eingabeFotoOrdner, "${System.nanoTime()}").apply { mkdirs() }, datei.name)
+        return if (datei.renameTo(ziel)) ziel else runCatching { datei.copyTo(ziel); datei.delete(); ziel }.getOrDefault(datei)
+    }
+
     fun projektFotoEntfernen(uuid: String) = _zustand.update { it.copy(projektFotos = it.projektFotos.filterNot { r -> r.uuid == uuid }) }
 
     fun fotoEntfernen(pfad: String) {
@@ -282,11 +302,16 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
      */
     fun senden(aufnahme: File? = null, text: String? = null, kontext: EingangKontext? = null) {
         val z = _zustand.value
+        val k = kontext ?: z.kontext
         if (z.phase == EingangPhase.LAEUFT) {
-            aufnahme?.delete()
+            // Die vorige Eingabe laeuft noch: diese geht in den Korb und kommt gleich danach dran.
+            val t = text?.trim()?.takeIf { it.isNotEmpty() }
+            if (aufnahme != null || t != null) {
+                einreihen(MonteurRepository.neueAnfrageId(), aufnahme, t, emptyList(), k, null, null, nurKorb = true)
+                _meldungen.trySend(NACHGEREIHT)
+            }
             return
         }
-        val k = kontext ?: z.kontext
         val getippt = (text ?: z.text).trim().takeIf { it.isNotEmpty() }
         val fotos = z.fotos.map(::File).filter { it.exists() }
         val projektFotoIds = z.projektFotos.map(ProjektFotoRef::uuid)
@@ -305,9 +330,10 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
             )
         }
         viewModelScope.launch {
-            // Noch nicht oben? Kurz warten - meist dauert der Upload Sekunden.
+            val netz = app.hatNetz()
+            // Noch nicht oben? Mit Netz kurz warten - meist dauert der Upload Sekunden. Ohne Netz nie.
             val offen = gerade.filter { it.fotoId == null }.map(GeradeFoto::id)
-            if (offen.isNotEmpty()) {
+            if (offen.isNotEmpty() && netz) {
                 withTimeoutOrNull(FOTO_ID_WARTEN_MS) {
                     app.gerade.fotos.first { l -> offen.all { id -> l.firstOrNull { it.id == id }?.fotoId != null } }
                 }
@@ -319,8 +345,8 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
                 app.gerade.alsVerwendet(gerade.map(GeradeFoto::id))
                 _auswahl.value = FotoAuswahl()
             }
-            if (nochOffen.isNotEmpty()) {
-                // Upload haengt (Funkloch): alles in den Korb, er loest die IDs nach dem Upload auf.
+            if (nochOffen.isNotEmpty() || !netz) {
+                // Funkloch: sofort in den Korb, der Monteur wartet nie. Der Korb loest die IDs nach dem Upload auf.
                 einreihen(anfrage, aufnahme, getippt, fotos, k, berichtId, bezug, fotoIds, nochOffen)
                 return@launch
             }
@@ -378,6 +404,8 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         bezug: String?,
         fotoIds: List<String> = emptyList(),
         geradeIds: List<String> = emptyList(),
+        /** `true`: die laufende Eingabe nicht anfassen (Phase bleibt, wie sie ist). */
+        nurKorb: Boolean = false,
     ) {
         viewModelScope.launch {
             try {
@@ -395,9 +423,11 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
                     )
                 }
                 MonteurVersand.anstossen(app)
-                _zustand.update { it.copy(phase = EingangPhase.WARTET, fotos = emptyList(), projektFotos = emptyList(), text = "") }
+                if (!nurKorb) {
+                    _zustand.update { it.copy(phase = EingangPhase.WARTET, fotos = emptyList(), projektFotos = emptyList(), text = "") }
+                }
             } catch (_: Exception) {
-                _zustand.update { it.copy(phase = EingangPhase.EINGABE) }
+                if (!nurKorb) _zustand.update { it.copy(phase = EingangPhase.EINGABE) }
                 _meldungen.trySend(KORB_FEHLER)
             }
         }
@@ -563,16 +593,11 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
     /** Karte zu, lokale Fotos weg. */
     fun schliessen() {
         // Vorschauen „gerade aufgenommen“ gehoeren der Leiste, nicht der Karte.
-        _zustand.value.kartenFotos.filterNot { "/${GeradeAufgenommen.ORDNER}/" in it }.forEach { File(it).delete() }
-        fotosVerwerfen()
+        // Nur Fotos, die mit der Karte gesendet wurden - der Entwurf (fotos) bleibt unangetastet.
+        _zustand.value.kartenFotos.filterNot { "/${GeradeAufgenommen.ORDNER}/" in it || it in _zustand.value.fotos }.forEach { File(it).delete() }
         eingabe.zuruecksetzen()
         _zustand.update { it.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), kartenFotos = emptyList(), text = "", passtFehler = null, projektFotos = emptyList()) }
         offeneLaden()
-    }
-
-    private fun fotosVerwerfen() {
-        _zustand.value.fotos.forEach { File(it).delete() }
-        _zustand.update { it.copy(fotos = emptyList()) }
     }
 
     /** `GET /v1/monteur/eingang`, offene Karten als Erinnerung auf „Heute“. Fehler bleiben still. */
@@ -592,17 +617,13 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         _abgemeldet.value = true
     }
 
-    override fun onCleared() {
-        // Nicht gesendete Fotos sind beim Beenden verloren - wie eine nicht gesendete Nachricht.
-        _zustand.value.fotos.forEach { File(it).delete() }
-    }
-
     companion object {
         /** Seit 1.29.0 bis 50 neue Fotos je Eingang; die KI sieht die letzten 5. */
         const val MAX_FOTOS = 50
 
         /** So lange wartet Sprechen auf die `foto_id` eines gerade hochladenden Fotos. */
-        const val FOTO_ID_WARTEN_MS = 15_000L
+        const val FOTO_ID_WARTEN_MS = 5_000L
+        private const val NACHGEREIHT = "Die vorige Eingabe läuft noch – diese kommt gleich danach dran."
         private const val ZU_VIELE_FOTOS = "Höchstens %d Fotos auf einmal – %d nicht übernommen."
         private const val KORB_FEHLER = "Konnte nicht zwischengespeichert werden. Bitte nochmal senden."
 

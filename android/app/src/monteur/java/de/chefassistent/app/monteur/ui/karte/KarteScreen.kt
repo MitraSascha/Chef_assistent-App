@@ -181,7 +181,7 @@ fun KarteScreen(
                     val gerade = app.gerade.fuerProjekt(zustand.kontext.projektId, alle)
                     Eingabe(zustand, viewModel, gerade, auswahl.gemeint(gerade).map { it.id }.toSet())
                 }
-                EingangPhase.LAEUFT -> Laeuft(zustand.beginn)
+                EingangPhase.LAEUFT -> Laeuft(zustand.beginn, beiZurueck)
                 EingangPhase.WARTET -> Wartet(schliessen)
                 EingangPhase.KARTE -> if (karte != null) {
                     Column(
@@ -322,7 +322,7 @@ fun FotoReihe(fotos: List<String>) {
 }
 
 @Composable
-private fun Laeuft(beginn: Long) {
+private fun Laeuft(beginn: Long, beiWeiter: () -> Unit) {
     var jetzt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(beginn) {
         while (true) {
@@ -345,6 +345,16 @@ private fun Laeuft(beginn: Long) {
             modifier = Modifier.padding(top = 8.dp),
         )
         LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 20.dp))
+        // Niemand soll warten muessen: die Antwort kommt unter „Noch zu bestätigen“.
+        TextButton(onClick = beiWeiter, modifier = Modifier.padding(top = 20.dp).heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.k_weiter_arbeiten))
+        }
+        Text(
+            stringResource(R.string.k_weiter_hinweis),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

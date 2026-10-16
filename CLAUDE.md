@@ -823,6 +823,16 @@ Am Gerät geprüft (2026-10-16, `UNB-795`):
 - Auf „Heute“: Leiste zum laufenden Termin. Regal markiert, Automatik abgewählt, „Tippen“ → Eingabe zeigt die Leiste → „Lagerregal Werkstatt“ → Karte `foto` mit genau diesem Foto → „Passt“ → Datei umbenannt in `… Sascha (5) Lagerregal in der Werkstatt.jpg`, nichts doppelt.
 - Vorher mit 1.28: Karte `foto` mit geändertem Titel, Frage mit Foto samt „Passt – Foto ablegen“.
 
+**Nichts verloren, nie warten (Vorgabe des Nutzers, 2026-10-16: „es darf niemals etwas verloren gehen“, „es gibt nichts Schlimmeres, als wenn er 2 Minuten warten muss“):**
+- **Ohne Netz** (`MonteurApp.hatNetz()`, `VALIDATED`) geht eine Eingabe **sofort** in den Korb, kein Versuch gegen den Server, kein Zeitlimit. Auf eine fehlende `foto_id` wird nur mit Netz gewartet, höchstens 5 s.
+- **„KI denkt mit …“** hat „Weiter arbeiten“, die Antwort kommt unter „Noch zu bestätigen“. Eine neue Aufnahme, während die vorige noch läuft, geht in den Korb (früher wurde sie **gelöscht**).
+- **Eingabe-Fotos liegen dauerhaft** in `filesDir/eingabe_fotos` (Liste in `monteur_eingabe`) und überleben Zurück, eine neue Eingabe und das Beenden der App. Sie gehen mit der nächsten Eingabe raus, gelöscht werden sie nur über ✕. Früher gingen sie bei `beginnen()` und `onCleared()` verloren.
+- **Galerie-Kopieren** im Hintergrund (vorher Haupt-Thread).
+- **Netz zurück:** `registerDefaultNetworkCallback` stößt den Korb sofort an, Backoff linear statt exponentiell.
+- Aufräumen beim Start: Cache-Fotos und nicht mehr benutzte Eingabe-Fotos älter als ein Tag.
+
+Am Gerät geprüft (2026-10-16): Foto in der Eingabe → Zurück → App hart beendet → Foto wieder da. Flugmodus → Text + Foto → „Wartet auf Netz“ nach 1,4 s (mit Screenshot), Eingang und Foto verschlüsselt im Korb. Flugmodus aus → nach etwa 50 s von selbst gesendet, Karte unter „Noch zu bestätigen“. **Offen:** Die Projektmappe öffnet sich ohne Netz nicht (kein Zwischenspeicher). Die Kamera auf „Heute“ geht dann aber weiter, die Fotos warten in der Eingabe.
+
 **Ungeprüft:** Sprechen statt Tippen (gleicher Weg), Funkloch mit `gerade_ids`, Vollbild mit Projektfoto (die Mappe zeigte noch keine Fotos aus HERO), Video/Datei über ⋮.
 
 ### Monteur: Vorgeschichte (seit v1.26.0)

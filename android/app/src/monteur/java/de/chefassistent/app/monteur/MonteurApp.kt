@@ -65,7 +65,34 @@ class MonteurApp : Application() {
         super.onCreate()
         de.chefassistent.app.monteur.push.Benachrichtigungen.kanaeleAnlegen(this)
         fotoResteAufraeumen()
+        // Netz zurueck: sofort senden, nicht erst nach dem Backoff von WorkManager.
+        runCatching {
+            getSystemService(android.net.ConnectivityManager::class.java).registerDefaultNetworkCallback(
+                object : android.net.ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: android.net.Network) {
+                        if (einstellungen.istAngemeldet && korb.anzahl.value > 0) {
+                            de.chefassistent.app.monteur.data.MonteurVersand.anstossen(this@MonteurApp)
+                        }
+                    }
+                }
+            )
+        }
     }
+
+    /**
+     * Gibt es gerade ein nutzbares Netz? Ohne geht alles **sofort** in den Korb, statt
+     * dass der Monteur auf ein Zeitlimit wartet. Kann sich irren (Netz da, Server nicht) -
+     * dann greift weiter der Korb nach dem Fehler.
+     */
+    fun hatNetz(): Boolean = runCatching {
+        val cm = getSystemService(android.net.ConnectivityManager::class.java)
+        val f = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        f.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            f.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }.getOrDefault(true)
+
+    /** Fotos der Eingabe, die noch nicht gesendet sind - dauerhaft, nicht im Cache. */
+    val eingabeFotoOrdner: java.io.File get() = java.io.File(filesDir, "eingabe_fotos").apply { mkdirs() }
 
     /**
      * Fotos aus nie gesendeten Eingaben (App beendet, Zurueck statt Senden) bleiben im Cache
@@ -78,6 +105,13 @@ class MonteurApp : Application() {
             java.io.File(cacheDir, "fotos").walkBottomUp().forEach { f ->
                 if (f.lastModified() < grenze && (f.isFile || f.list().isNullOrEmpty())) f.delete()
             }
+            // Dauerhafte Eingabe-Fotos: nur was in keinem Entwurf mehr steht (gesendet, Karte zu).
+            val entwurf = getSharedPreferences(EINGABE_PREFS, MODE_PRIVATE).getString(EINGABE_FOTOS, "").orEmpty().split('\n').toSet()
+            eingabeFotoOrdner.walkBottomUp().forEach { f ->
+                if (f == eingabeFotoOrdner) return@forEach
+                val leer = f.isDirectory && f.list().isNullOrEmpty()
+                if (f.lastModified() < grenze && (leer || (f.isFile && f.path !in entwurf))) f.delete()
+            }
         }.start()
     }
 
@@ -88,6 +122,11 @@ class MonteurApp : Application() {
         de.chefassistent.app.monteur.push.Nachrichtendienst.abholenAbbestellen(this)
         nachrichtenSpeicher.leeren()
         gerade.leeren()
+    }
+
+    companion object {
+        const val EINGABE_PREFS = "monteur_eingabe"
+        const val EINGABE_FOTOS = "fotos"
     }
 
     /** Nur fuer die versteckte Anmeldung mit Buero-Zugang (Passwort + Code) zum Testen. */

@@ -98,7 +98,9 @@ class MonteurVersand(kontext: Context, parameter: WorkerParameters) : CoroutineW
                 }.getOrDefault(false)
                 val auftrag = OneTimeWorkRequestBuilder<MonteurVersand>()
                     .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                    // Linear: nach vielen Fehlversuchen im Funkloch nicht stundenlang warten.
+                    // Kommt das Netz zurueck, stoesst MonteurApp ohnehin sofort an.
+                    .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
                     .build()
                 manager.enqueueUniqueWork(
                     NAME,

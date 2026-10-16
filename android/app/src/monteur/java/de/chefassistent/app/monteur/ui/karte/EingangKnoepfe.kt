@@ -38,6 +38,7 @@ import de.chefassistent.app.R
 import de.chefassistent.app.monteur.ui.AufnahmeSteuerung
 import de.chefassistent.app.monteur.ui.MikrofonKnopf
 import java.io.File
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -125,9 +126,15 @@ fun KameraKnopf(
             if (ok && datei.length() > 0) beiFoto(datei) else datei.delete()
         }
     }
+    val bereich = androidx.compose.runtime.rememberCoroutineScope()
     val galerie = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(GALERIE_MAX)) { uris ->
-        val dateien = uris.mapIndexedNotNull { i, uri -> galerieKopieren(kontext, uri, i) }
-        if (dateien.isNotEmpty()) beiGalerie?.invoke(dateien)
+        // Kopieren im Hintergrund: 20 Fotos zu je 4 MB duerfen die App nicht einfrieren.
+        bereich.launch {
+            val dateien = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                uris.mapIndexedNotNull { i, uri -> galerieKopieren(kontext, uri, i) }
+            }
+            if (dateien.isNotEmpty()) beiGalerie?.invoke(dateien)
+        }
     }
     val ausloesen: () -> Unit = {
             val ordner = File(kontext.cacheDir, "fotos").apply { mkdirs() }
