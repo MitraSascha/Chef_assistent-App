@@ -240,6 +240,28 @@ class MonteurRepository(
         ruf { it.karteVerwerfen(id) }
     }
 
+    @Volatile
+    private var vorlagenCache: List<Protokoll>? = null
+
+    /** Vorlagenliste, einmal je Programmlauf geladen. */
+    suspend fun protokollVorlagen(): List<Protokoll> =
+        vorlagenCache ?: ruf { it.protokollVorlagen() }.also { vorlagenCache = it }
+
+    /** Protokoll-PDF immer frisch laden - die Vorschau zeigt den aktuellen Stand. */
+    suspend fun protokollPdf(karteId: String): File = withContext(Dispatchers.IO) {
+        val ordner = File(context.cacheDir, "protokolle").apply { mkdirs() }
+        ordner.listFiles()?.forEach { it.delete() }
+        val ziel = File(ordner, "Protokoll.pdf")
+        val koerper = ruf { it.protokollPdf(karteId) }.body() ?: throw ApiFehler.UnlesbareAntwort(IOException("leere Antwort"))
+        try {
+            koerper.use { k -> k.byteStream().use { ein -> ziel.outputStream().use { aus -> ein.copyTo(aus) } } }
+        } catch (fehler: IOException) {
+            ziel.delete()
+            throw ApiFehler.KeineVerbindung(fehler)
+        }
+        ziel
+    }
+
     /** Anleitung in den Cache, je Pfad eine Datei (aendert sich nicht). */
     suspend fun anleitung(pfad: String): File = withContext(Dispatchers.IO) {
         val ordner = File(context.cacheDir, "anleitungen").apply { mkdirs() }

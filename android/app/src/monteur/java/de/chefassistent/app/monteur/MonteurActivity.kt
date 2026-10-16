@@ -97,6 +97,7 @@ private const val ZIEL_DATEI = "datei/{uuid}?name={name}"
 private const val ZIEL_VIDEO = "video/{pid}?name={name}"
 private const val ZIEL_KARTE = "karte"
 private const val ZIEL_ANLEITUNG = "anleitung?pfad={pfad}&seite={seite}&titel={titel}"
+private const val ZIEL_PROTOKOLL = "protokoll/{karte}"
 
 /**
  * Monteur-App (Auftrag 1.22): Einrichtung per QR-Code, dann unten drei Reiter
@@ -219,7 +220,19 @@ private fun MonteurNavigation(app: MonteurApp, terminAnfrage: TerminAnfrage?, an
                 beiAnleitung = { t ->
                     nav.navigate("anleitung?pfad=${t.pfad.q()}&seite=${t.seite}&titel=${t.titel.q()}")
                 },
+                beiProtokollPdf = { id -> nav.navigate("protokoll/${android.net.Uri.encode(id)}") },
             )
+        }
+
+        // Protokoll-PDF (1.25): vor „Passt“ Vorschau, danach das an HERO geschickte.
+        composable(ZIEL_PROTOKOLL, arguments = listOf(navArgument("karte") { type = NavType.StringType })) { e ->
+            val id = e.arguments?.getString("karte") ?: return@composable
+            val titel = eingang.zustand.value.karte?.protokoll?.titel?.ifBlank { null } ?: "Protokoll"
+            val vm: AnsehenViewModel = viewModel(
+                key = "protokoll_$id",
+                factory = AnsehenViewModel.factory("$titel.pdf", { app.repository.protokollPdf(id) }, app.repository::lokalAbmelden),
+            )
+            AnsehenScreen(vm, beiZurueck = { nav.popBackStack() }, beiAbmeldung = zurEinrichtung)
         }
 
         composable(

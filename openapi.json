@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.24.0"
+    "version": "1.25.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -4628,6 +4628,108 @@
               }
             },
             "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/monteur/protokolle/vorlagen": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Protokoll Vorlagen",
+        "description": "Alle Protokollvorlagen (leer) – für die Vorlagen-Auswahl in der Karte.",
+        "operationId": "protokoll_vorlagen_v1_monteur_protokolle_vorlagen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Protokoll"
+                  },
+                  "type": "array",
+                  "title": "Response Protokoll Vorlagen V1 Monteur Protokolle Vorlagen Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/monteur/eingang/{eid}/protokoll.pdf": {
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Protokoll Pdf",
+        "description": "Protokoll als PDF: vor „Passt“ Vorschau (ohne Unterschrift), danach das an HERO geschickte PDF.",
+        "operationId": "protokoll_pdf_v1_monteur_eingang__eid__protokoll_pdf_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Eid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -10952,6 +11054,7 @@
               "frage",
               "bestellung",
               "meldung",
+              "protokoll",
               "zeiten",
               "urlaub"
             ],
@@ -11034,6 +11137,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Meldung"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "protokoll": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Protokoll"
               },
               {
                 "type": "null"
@@ -12004,6 +12117,46 @@
               }
             ],
             "description": "urlaub: korrigierter Antrag"
+          },
+          "werte": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Werte",
+            "description": "protokoll: geänderte Werte {k: wert}"
+          },
+          "vorlage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorlage",
+            "description": "protokoll: andere Vorlage wählen (Werte gleicher Schlüssel bleiben)"
+          },
+          "nur_speichern": {
+            "type": "boolean",
+            "title": "Nur Speichern",
+            "description": "protokoll: werte/vorlage nur speichern (für Vorschau oder Vorlagenwechsel) – nichts geht nach HERO, Antwort = aktualisierte Karte",
+            "default": false
           }
         },
         "type": "object",
@@ -12253,6 +12406,124 @@
           "fotos"
         ],
         "title": "Projektmappe"
+      },
+      "Protokoll": {
+        "properties": {
+          "vorlage": {
+            "type": "string",
+            "title": "Vorlage",
+            "description": "druckpruefung_trinkwasser | druckpruefung_heizung | gasleitung | inbetriebnahme_waermeerzeuger | wartung_gastherme"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "grundlage": {
+            "type": "string",
+            "title": "Grundlage",
+            "description": "Norm/Regelwerk, steht auf dem PDF"
+          },
+          "felder": {
+            "items": {
+              "$ref": "#/components/schemas/ProtokollFeld"
+            },
+            "type": "array",
+            "title": "Felder"
+          },
+          "fehlend": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Fehlend",
+            "description": "Leere Pflichtfelder (Beschriftungen) – vor „Passt“ füllen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vorlage",
+          "titel",
+          "grundlage",
+          "felder",
+          "fehlend"
+        ],
+        "title": "Protokoll"
+      },
+      "ProtokollFeld": {
+        "properties": {
+          "k": {
+            "type": "string",
+            "title": "K",
+            "description": "Schlüssel für Passt.werte"
+          },
+          "l": {
+            "type": "string",
+            "title": "L",
+            "description": "Beschriftung"
+          },
+          "t": {
+            "type": "string",
+            "enum": [
+              "text",
+              "zahl",
+              "janein",
+              "auswahl"
+            ],
+            "title": "T"
+          },
+          "e": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "E",
+            "description": "Einheit (bar, min, mbar, °C, %, ppm)"
+          },
+          "o": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "O",
+            "description": "Auswahlwerte"
+          },
+          "p": {
+            "type": "boolean",
+            "title": "P",
+            "description": "Pflichtfeld"
+          },
+          "wert": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wert",
+            "description": "Zahl mit Komma, „ja“/„nein“, Auswahlwert oder Text; null = leer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "k",
+          "l",
+          "t",
+          "p"
+        ],
+        "title": "ProtokollFeld"
       },
       "PushGeraet": {
         "properties": {

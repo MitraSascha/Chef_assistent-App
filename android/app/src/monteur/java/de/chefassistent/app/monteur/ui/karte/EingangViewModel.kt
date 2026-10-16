@@ -16,6 +16,10 @@ import de.chefassistent.app.monteur.data.MaterialAenderung
 import de.chefassistent.app.monteur.data.MonteurRepository
 import de.chefassistent.app.monteur.data.MonteurVersand
 import de.chefassistent.app.monteur.data.Passt
+import de.chefassistent.app.monteur.data.Protokoll
+import de.chefassistent.app.monteur.ui.bericht.Unterschrift
+import de.chefassistent.app.monteur.ui.bericht.Zeichenblock
+import android.util.Base64
 import de.chefassistent.app.monteur.data.PasstAuftrag
 import de.chefassistent.app.monteur.data.ZeitAbschnitt
 import de.chefassistent.app.monteur.data.materialJson
@@ -75,6 +79,10 @@ data class EingangZustand(
     val sendet: Boolean = false,
     /** Offene Karten der letzten 7 Tage („Noch zu bestaetigen“ auf Heute). */
     val offene: List<Karte> = emptyList(),
+    /** Protokollvorlagen fuer den Wechsel im Kartenkopf (1.25.0). */
+    val vorlagen: List<Protokoll> = emptyList(),
+    /** Nach `409` beim Protokoll: dieses Feld (`k`) anspringen. Zaehlt hoch, damit es erneut greift. */
+    val springeZu: Pair<String, Int>? = null,
 )
 
 /**
@@ -94,11 +102,20 @@ class KartenEingabe {
     /** Urlaub: korrigierter Antrag. */
     var abwesenheit by mutableStateOf<AbwVorschlag?>(null)
 
+    /** Protokoll: nur geaenderte Werte `k → wert` (`null` = leeren). */
+    var werte by mutableStateOf<Map<String, String?>>(emptyMap())
+
+    /** Protokoll: Kundenunterschrift, optional. */
+    var unterschrift by mutableStateOf<Unterschrift?>(null)
+
     fun passt(): Passt = Passt(
         text = text,
         material = material?.let(::materialJson),
         zeiten = zeiten,
         abwesenheit = abwesenheit,
+        werte = werteJson(werte),
+        unterschrift_png = unterschrift?.let { Base64.encodeToString(it.png, Base64.NO_WRAP) },
+        unterschrift_name = unterschrift?.name?.ifBlank { null },
     )
 
     fun zuruecksetzen() {
@@ -106,6 +123,8 @@ class KartenEingabe {
         text = null
         zeiten = null
         abwesenheit = null
+        werte = emptyMap()
+        unterschrift = null
     }
 }
 
@@ -131,6 +150,11 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
 
     /** Aenderungen auf der offenen Karte; je Karte neu. */
     val eingabe = KartenEingabe()
+
+    /** Unterschrift fuers Protokoll - gleicher Dialog wie beim Bericht. */
+    val zeichenblock = Zeichenblock("") { png, name -> eingabe.unterschrift = Unterschrift(png, name) }
+
+    private var sprung = 0
 
     init {
         // Kam eine Karte aus dem Korb an, steht sie in den offenen Karten.
@@ -272,6 +296,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
     /** Karte aus „Noch zu bestaetigen“ oder aus einer Korb-Meldung oeffnen. */
     fun oeffnen(karte: Karte) {
         eingabe.zuruecksetzen()
+        zeichenblockVorbereiten(karte)
         _zustand.update { it.copy(phase = EingangPhase.KARTE, karte = karte, verlauf = emptyList(), kartenFotos = emptyList(), passtFehler = null) }
     }
 
@@ -287,6 +312,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
 
     private fun zeigen(karte: Karte) {
         eingabe.zuruecksetzen()
+        zeichenblockVorbereiten(karte)
         _zustand.update { it.copy(phase = EingangPhase.KARTE, karte = karte, passtFehler = null) }
         offeneLaden()
     }
@@ -305,6 +331,11 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
                 zeigen(repository.passt(karte.id, daten))
             } catch (fehler: ApiFehler) {
                 when {
+                    // Protokoll: Pflichtwerte fehlen. Die Werte sind gespeichert - Karte neu laden.
+                    fehler is ApiFehler.Beschaeftigt && karte.art == Karte.ART_PROTOKOLL -> protokollNachladen(karte, fehler.anzeigetext)
+                    // Protokoll: HERO hat abgelehnt. Karte bleibt, „Passt“ wiederholt (gleiche Werte).
+                    fehler is ApiFehler.KiNichtErreichbar && karte.art == Karte.ART_PROTOKOLL ->
+                        _zustand.update { it.copy(passtFehler = fehler.anzeigetext) }
                     fehler is ApiFehler.Beschaeftigt || fehler is ApiFehler.Ungueltig ->
                         _zustand.update { it.copy(passtFehler = fehler.anzeigetext) }
                     fehler is ApiFehler.NichtAngemeldet || fehler.istVoruebergehend -> {
@@ -315,6 +346,78 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
                     }
                     else -> _zustand.update { it.copy(passtFehler = fehler.anzeigetext) }
                 }
+            } finally {
+                _zustand.update { it.copy(sendet = false) }
+            }
+        }
+    }
+
+    // --- Protokoll (1.25.0) ----------------------------------------------------------------
+
+    private fun zeichenblockVorbereiten(karte: Karte) {
+        zeichenblock.stricheLoeschen()
+        zeichenblock.unterschriftName = karte.projekt?.kunde.orEmpty()
+    }
+
+    /** Nach `409`: gespeicherten Stand holen, lokale Werte sind jetzt auf dem Server. */
+    private suspend fun protokollNachladen(karte: Karte, text: String) {
+        _meldungen.trySend(text)
+        val neu = try {
+            repository.karte(karte.id)
+        } catch (_: ApiFehler) {
+            null
+        }
+        if (neu != null) {
+            eingabe.werte = emptyMap()
+            val erstes = neu.protokoll?.let { p -> p.felder.firstOrNull { it.l in p.fehlend }?.k }
+            _zustand.update {
+                // Kein roter Kasten: „Es fehlen noch …“ steht live in der Karte und bleibt aktuell.
+                it.copy(karte = neu, passtFehler = null, springeZu = erstes?.let { k -> k to ++sprung })
+            }
+        } else {
+            _zustand.update { it.copy(passtFehler = text) }
+        }
+    }
+
+    /** Vorlagen fuer das Dropdown, einmal je Programmlauf. Fehler still. */
+    fun vorlagenLaden() {
+        if (_zustand.value.vorlagen.isNotEmpty()) return
+        viewModelScope.launch {
+            try {
+                val liste = repository.protokollVorlagen()
+                _zustand.update { it.copy(vorlagen = liste) }
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) abmelden()
+            }
+        }
+    }
+
+    /** Andere Vorlage: sofort speichern (`nur_speichern`), nichts geht nach HERO. */
+    fun vorlageWechseln(vorlage: String) {
+        val karte = _zustand.value.karte ?: return
+        if (karte.protokoll?.vorlage == vorlage) return
+        speichern(karte, Passt(werte = werteJson(eingabe.werte), vorlage = vorlage, nur_speichern = true)) {}
+    }
+
+    /** Vor der Vorschau: Geaendertes speichern, dann das PDF zeigen. */
+    fun vorschau(beiFertig: (karteId: String) -> Unit) {
+        val karte = _zustand.value.karte ?: return
+        val werte = werteJson(eingabe.werte)
+        if (!karte.istOffen || werte == null) return beiFertig(karte.id)
+        speichern(karte, Passt(werte = werte, nur_speichern = true)) { beiFertig(karte.id) }
+    }
+
+    private fun speichern(karte: Karte, daten: Passt, danach: () -> Unit) {
+        if (_zustand.value.sendet) return
+        _zustand.update { it.copy(sendet = true, passtFehler = null) }
+        viewModelScope.launch {
+            try {
+                val neu = repository.passt(karte.id, daten)
+                eingabe.werte = emptyMap()
+                _zustand.update { it.copy(karte = neu) }
+                danach()
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) abmelden() else _meldungen.trySend(fehler.anzeigetext)
             } finally {
                 _zustand.update { it.copy(sendet = false) }
             }

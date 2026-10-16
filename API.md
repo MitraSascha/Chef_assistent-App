@@ -104,11 +104,13 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/monteur/stundenkonto` | Soll, bestätigt, Saldo (1.22.0) |
 | GET / POST / DELETE | `/v1/monteur/abwesenheiten` | Urlaubsstand + Anträge / beantragen / zurückziehen (1.22.0) |
 | POST | `/v1/monteur/verstehen` | Sprache → Vorschläge für Zeiten oder Urlaub (bucht nichts) (1.22.0) |
-| POST | `/v1/monteur/eingang` | **Ein Eingang für alles**: Sprache/Text/Fotos → KI erkennt Bericht, Frage, Bestellung, Meldung, Zeiten, Urlaub → **eine Karte** (neu in 1.23.0) |
+| POST | `/v1/monteur/eingang` | **Ein Eingang für alles**: Sprache/Text/Fotos → KI erkennt Bericht, Frage, Bestellung, Meldung, Protokoll (1.25.0), Zeiten, Urlaub → **eine Karte** (neu in 1.23.0) |
 | GET | `/v1/monteur/eingang` | Eigene Karten der letzten 7 Tage, neueste zuerst (z. B. offene nach App-Neustart) (1.23.0) |
 | GET | `/v1/monteur/eingang/{id}` | Eine Karte (1.23.0) |
-| POST | `/v1/monteur/eingang/{id}/passt` | **„Passt“** → je nach Art: Bericht nach HERO, fertiger Bestellschein, Kommentar im Projektverlauf, Zeiten buchen, Urlaub beantragen (1.23.0) |
+| POST | `/v1/monteur/eingang/{id}/passt` | **„Passt“** → je nach Art: Bericht nach HERO, fertiger Bestellschein, Kommentar im Projektverlauf, Prüfprotokoll als PDF nach HERO (1.25.0), Zeiten buchen, Urlaub beantragen (1.23.0) |
 | DELETE | `/v1/monteur/eingang/{id}` | Karte verwerfen (1.23.0) |
+| GET | `/v1/monteur/protokolle/vorlagen` | Alle Protokollvorlagen (leer) für die Auswahl (neu in 1.25.0) |
+| GET | `/v1/monteur/eingang/{id}/protokoll.pdf` | Protokoll als PDF: vor „Passt“ Vorschau (ohne Unterschrift), danach das an HERO geschickte PDF (neu in 1.25.0) |
 | GET | `/v1/monteur/anleitung?pfad=` | Herstelleranleitung (PDF) aus unserer Bibliothek – Treffer einer Antwortkarte (1.23.0) |
 | GET | `/v1/monteur/nachrichten?seit=` | **Benachrichtigungen**: neuer Termin, Notdienst, verschoben, geändert, entfällt; `ungelesen`, `push_aktiv` (neu in 1.24.0) |
 | POST | `/v1/monteur/nachrichten/gelesen` | Nachrichten bis `bis` als gelesen markieren (1.24.0) |
@@ -1122,6 +1124,7 @@ immer mit **„Passt“**.
 | `frage` | Foto vom Typenschild + „was heißt F.28?“ | Nichts – die Antwort ist das Ergebnis (Karte ist sofort `erledigt`) |
 | `bestellung` | „Mir fehlen noch 3 Eckventile 1/2 Zoll“ | **fertiger Bestellschein** (BS-Nummer, Empfänger Gut Mollenhauer) im HERO-Projekt – Positionen per Klick ins Angebot/die Rechnung, Büro bestellt per IDS – + Kommentar im Projektverlauf |
 | `meldung` | „Kunde nicht da“ (+ Foto der Tür), „komme 20 Min später“, „Wasserschaden entdeckt, Angebot nötig“ | **Kommentar im HERO-Projektverlauf**, Fotos ins HERO-Projekt |
+| `protokoll` (1.25.0) | „Druckprobe Trinkwasser 10 bar, 30 Minuten, dicht“, Foto vom Manometer/Messausdruck | **PDF mit Mitra-Briefkopf** als Dokument „Protokolle“ im HERO-Projekt, Fotos als Anlage im PDF – siehe [Protokolle](#protokolle--neu-in-1250) |
 | `zeiten` | „Feierabend, halbe Stunde Pause“ | Zeitabschnitte in HERO gebucht (Status neu) |
 | `urlaub` | „Nächste Woche Donnerstag und Freitag frei“ | Antrag in HERO |
 
@@ -1147,7 +1150,7 @@ ist es `bericht`. Mit `bezug_id` auf eine Frage-Karte ist es immer `frage` (Nach
 gehen mit). **Nur Fotos ohne Text** → `frage` („Was ist das, was muss ich wissen?“); `meldung` nur, wenn die KI das am
 Foto eindeutig erkennt.
 
-**Projekt.** Für `bericht`, `bestellung` und `meldung` (bei `frage` nur, wenn `termin_id`/`projekt_nr` mitkommt):
+**Projekt.** Für `bericht`, `bestellung`, `meldung` und `protokoll` (bei `frage` nur, wenn `termin_id`/`projekt_nr` mitkommt):
 offener Bericht (`bericht_id`) > `projekt_nr` > `termin_id` > **der Termin, bei dem der Monteur laut Plan gerade ist**
 (wie bei Berichten in 5c). Kein Termin mit Projekt an dem Tag → `422` „bitte Termin oder Projekt wählen“ (eine Frage
 geht dann ohne Projekt). Fremdes Projekt → `404`. Das erkannte Projekt steht in `projekt` – die App zeigt es deutlich.
@@ -1164,7 +1167,7 @@ geht dann ohne Projekt). Fremdes Projekt → `404`. Das erkannte Projekt steht i
   "bestellung": {"material": [{"text": "Eckventil 1/2", "menge": 3, "einheit": "Stk", "suchtext": "Eckventil 1/2 3/8",
                                "artikel": {"nr": "…", "name": "…", "einheit": "Stk"}, "vorschlaege": […], "rueckfrage": null}],
                  "hinweis": "bis morgen früh"},
-  "meldung": null, "zeiten": null, "abwesenheit": null,
+  "meldung": null, "protokoll": null, "zeiten": null, "abwesenheit": null,
   "rueckfrage": null, "ergebnis": null
 }
 ```
@@ -1179,6 +1182,7 @@ oder `null`), `ergebnis` (`null` bis „Passt“). Je nach `art` ist **genau ein
 | `frage` | `antwort` | `{text, quellen:[{titel, url}], anleitungen:[{pfad, seite, titel}], artikel:[{nr, name, einheit}]}` – `text` kurz, Schritte nummeriert, in der Sprache der Frage; `quellen` = Internet (Herstellerseiten, Datenblätter, **YouTube**); `anleitungen` = Treffer in unserer Anleitungsbibliothek; `artikel` = Katalog (Gut Mollenhauer) mit Artikelnummer, **keine Preise** |
 | `bestellung` | `bestellung` | `{material:[Material wie im Bericht], hinweis}` – `hinweis` = Termin/Dringlichkeit/Lieferort, wenn gesagt |
 | `meldung` | `meldung` | `{art, text}` – `art`: `nicht_angetroffen`, `verspaetung`, `mangel`, `nachtrag`, `sonstiges`; `text` von der KI sauber formuliert (Deutsch, Uhrzeit), kommt so in den Projektverlauf |
+| `protokoll` | `protokoll` | `{vorlage, titel, grundlage, felder:[{k, l, t, e, o, p, wert}], fehlend:[…]}` – Aufbau in [Protokolle](#protokolle--neu-in-1250); `rueckfrage` fragt nach fehlenden Pflichtwerten |
 | `zeiten` | `zeiten` | `[{beginn: "HH:MM", ende, art}]`, `art`: `lager`, `fahrt`, `arbeit`, `material`, `pause` (Regeln in 5c) |
 | `urlaub` | `abwesenheit` | `{art, von, bis, halber_tag_anfang, halber_tag_ende, kommentar}` |
 
@@ -1195,6 +1199,7 @@ Alle Felder optional – nur schicken, was der Monteur auf der Karte geändert h
 | `frage` | – (kein „Passt“ nötig; Aufruf schadet nicht, liefert die Karte) | – |
 | `bestellung` | `material`: **vollständige** neue Liste `[{index, menge, text?, einheit?, artikel_nr?}]` wie beim Bericht (`index` = Position in der Karte, `null` = neu; `artikel_nr` aus `vorschlaege` oder `GET /v1/monteur/artikel`, `null` = freie Position) | `{hero: "Bestellschein BS-… im Projekt", hero_id, hero_nr, hinweise[]}` |
 | `meldung` | `text` (max. 2000 Zeichen): korrigierter Text | `{hero: "Kommentar im Projektverlauf", hinweise[]}` |
+| `protokoll` | `werte`: geänderte/ergänzte Werte `{k: wert}` (nur die geänderten, `null` = leeren); `vorlage`: andere Vorlage; `unterschrift_png`, `unterschrift_name` (Kunde) | `{hero: "Protokoll im Projekt", hero_id, datei, hinweise[]}` |
 | `zeiten` | `zeiten`: korrigierte Abschnitte `[{beginn, ende, art}]` | `{gebucht: <Anzahl>, hinweise[]}` |
 | `urlaub` | `abwesenheit`: korrigierter Antrag | `{abwesenheit_id, hinweise[]}` |
 
@@ -1212,6 +1217,7 @@ Was der Server macht:
   abgelehnt“): „<Titel> – <Name> (TT.MM.JJJJ HH:MM):“ + Text. Titel je Art: Kunde nicht angetroffen, Verspätung,
   Mangel/Schaden, Nachtrag/Zusatzwunsch, Meldung. Fotos gehen über „Nach HERO hochladen“ in **wenigen Minuten ins
   HERO-Projekt**; klappt ein Foto nicht, steht es in `hinweise`. HERO lehnt ab → `502` (Karte bleibt `offen`).
+- **protokoll:** siehe [Protokolle](#protokolle--neu-in-1250) – fehlt noch ein Pflichtwert → `409` „Es fehlen noch: …“.
 - **zeiten:** bucht jeden Abschnitt in HERO (Status neu). `arbeit`/`material` mit dem Projekt der Karte, `lager`
   immer ohne Projekt.
 - **urlaub:** beantragt in HERO (wie `POST /v1/monteur/abwesenheiten`). Kein Zeitraum → `422`.
@@ -1227,6 +1233,7 @@ doppelt gebucht (Zeiten/Urlaub zusätzlich mit eigener `anfrage_id` je Eintrag).
 - `GET /v1/monteur/eingang` → eigene Karten der letzten 7 Tage (ohne verworfene, max. 50, neueste zuerst) – nach dem
   App-Start offene Karten (`status: "offen"`) wieder zeigen.
 - `GET /v1/monteur/eingang/{id}` → eine Karte.
+- `GET /v1/monteur/eingang/{id}/protokoll.pdf` → PDF (inline) des Protokolls (1.25.0), siehe unten.
 - `GET /v1/monteur/anleitung?pfad=<antwort.anleitungen[].pfad>` → PDF (inline) aus unserer Anleitungsbibliothek
   (nur `Intern/Anleitungen`, sonst `404`). Seite `seite` im Viewer anspringen (`#page=<seite>`).
 
@@ -1246,6 +1253,154 @@ mit `bezug_id` = ID der Antwortkarte. Die KI bekommt vorige Frage und Antwort mi
 `GET /v1/monteur/projekte/{id}` hat neu `verlauf: [{datum, titel, text}]` – die letzten 15 Kommentare im
 HERO-Projektverlauf (Büro und Monteure, neueste zuerst; `titel` oft leer, die Überschrift steht dann in der ersten
 Zeile von `text`). Eigene Meldungen und Materialanforderungen tauchen dort nach dem nächsten Abgleich des HERO-Spiegels auf.
+
+### Protokolle – neu in 1.25.0
+
+Prüf- und Inbetriebnahmeprotokolle laufen über denselben Eingang – **kein eigener Knopf, keine Formularseite je
+Vorlage**. Der Monteur sagt z. B. „Druckprobe Trinkwasser 10 bar, 30 Minuten, dicht“ oder fotografiert Manometer,
+Display, Messausdruck oder Typenschild (mit „Protokoll“ dazu). Die KI wählt die Vorlage, trägt die Werte ein (auch
+von Fotos abgelesen, nichts erfunden – Unsicheres bleibt leer) und fragt in `rueckfrage` nach fehlenden Pflichtwerten.
+Ohne erkennbares Projekt → `422` „Zu welchem Projekt? …“ wie bei `meldung`/`bestellung`.
+
+**Karte (`protokoll`).**
+
+```json
+"protokoll": {
+  "vorlage": "druckpruefung_trinkwasser",
+  "titel": "Druckprüfung Trinkwasserinstallation",
+  "grundlage": "DIN EN 806-4 / ZVSHK-Merkblatt „Dichtheitsprüfungen von Trinkwasserinstallationen“",
+  "felder": [
+    {"k": "pruefdruck", "l": "Prüfdruck", "t": "zahl", "e": "bar", "o": null, "p": true, "wert": "10"},
+    {"k": "werkstoff", "l": "Werkstoff", "t": "auswahl", "e": null,
+     "o": ["Metall", "Kunststoff", "Mehrschichtverbund", "gemischt"], "p": true, "wert": null},
+    {"k": "dicht", "l": "Ergebnis: Anlage dicht", "t": "janein", "e": null, "o": null, "p": true, "wert": "ja"}
+  ],
+  "fehlend": ["Geprüfter Abschnitt", "Werkstoff", "Prüfmedium", "Druckabfall"]
+}
+```
+
+| Feld | Inhalt |
+|---|---|
+| `k` | Schlüssel – so in `Passt.werte` zurückschicken |
+| `l` | Beschriftung (steht so im PDF) |
+| `t` | `text` (Textfeld), `zahl` (Zahl, Einheit `e` dahinter), `janein` (Schalter ja/nein), `auswahl` (einer der Werte aus `o`) |
+| `e` | Einheit (`bar`, `mbar`, `min`, `°C`, `%`, `ppm`) oder `null` |
+| `o` | Auswahlwerte bei `auswahl`, sonst `null` |
+| `p` | Pflichtfeld |
+| `wert` | immer Text: Zahl mit Komma (`"0,2"`), `"ja"`/`"nein"`, einer der Werte aus `o`, Freitext (max. 500 Zeichen); `null` = leer |
+| `fehlend` | Beschriftungen der leeren Pflichtfelder – vor „Passt“ füllen |
+
+Die App baut die Karte **generisch aus `felder`** – keine eigene Ansicht je Vorlage; neue oder geänderte Vorlagen
+kommen so ohne App-Update.
+
+**„Passt“** (`POST /v1/monteur/eingang/{id}/passt`):
+
+```json
+{"werte": {"werkstoff": "Mehrschichtverbund", "druckabfall": "0"}, "vorlage": null,
+ "unterschrift_png": "iVBORw0…", "unterschrift_name": "Herr Müller"}
+```
+
+- `werte`: nur geänderte/ergänzte Felder `{k: wert}`; `null` leert ein Feld. Der Server normalisiert: Zahl → erste
+  Zahl im Text mit Komma („10 bar“ → `"10"`), ja/nein versteht auch `dicht`/`undicht`/`ok`/`bestanden`, Auswahl
+  ohne Groß-/Kleinschreibung und Teilwort. Was nicht passt, wird `null`. Unbekannte Schlüssel werden ignoriert.
+- `vorlage`: andere Vorlage wählen (wenn die KI danebenlag) – Werte mit gleichem Schlüssel bleiben, der Rest ist leer.
+  Unbekannte Vorlage → `422` „Unbekannte Vorlage.“
+- `nur_speichern: true` (neu in 1.25.0): `werte`/`vorlage` nur speichern, **nichts** geht nach HERO, keine Prüfung
+  auf Pflichtfelder – Antwort ist die aktualisierte Karte. Für den Vorlagenwechsel und vor der Vorschau.
+  Liste aller Vorlagen (leer): `GET /v1/monteur/protokolle/vorlagen` → `[Protokoll]`.
+- Fehlt danach noch ein Pflichtwert → **`409` „Es fehlen noch: Prüfdauer, Druckabfall“**. Die mitgeschickten Werte
+  sind trotzdem **gespeichert** (Karte neu laden: `GET /v1/monteur/eingang/{id}` zeigt sie und das neue `fehlend`).
+- Unterschrift optional (wie beim Bericht), PNG base64 oder Data-URL, max. 2 MB, sonst `422`.
+- Sonst: PDF mit Mitra-Briefkopf (Projekt, Kunde, Baustelle, Datum, „Ausgeführt von“, alle Felder mit Einheit,
+  leere als „–“, Unterschriftszeilen Ausführender/Auftraggeber, **Fotos als „Anlage 1, 2, …“** auf eigenen Seiten)
+  → als fertiges Dokument der Belegart **„Protokolle“** (HERO-Dokumenttyp 1268840) ins HERO-Projekt.
+  Dateiname `Protokoll <Titel> <Projektnr> <JJJJ-MM-TT HH-MM>.pdf`. HERO lehnt ab → `502` „HERO hat das Protokoll
+  nicht angenommen: …“ (Karte bleibt `offen`, „Passt“ einfach wiederholen).
+- `ergebnis`: `{"hero": "Protokoll im Projekt", "hero_id": <HERO-Dokument-ID>, "datei": "<Dateiname>", "hinweise": []}`.
+
+**PDF ansehen:** `GET /v1/monteur/eingang/{id}/protokoll.pdf` (Token wie immer im Header) → `application/pdf`,
+inline. Vor „Passt“ eine **Vorschau** mit dem aktuellen Stand der Karte (ohne Unterschrift), danach genau das an
+HERO geschickte PDF. Keine Protokoll-Karte → `404` „Das ist kein Protokoll.“
+
+**Vorlagen** (Startvorschlag nach gängiger Praxis/Normbezug – **vom Chef zu prüfen und zu ergänzen**; Quelle:
+`VORLAGEN` in `assistent/monteur_protokoll.py`):
+
+**`druckpruefung_trinkwasser`** – Druckprüfung Trinkwasserinstallation (Grundlage: DIN EN 806-4 / ZVSHK-Merkblatt „Dichtheitsprüfungen von Trinkwasserinstallationen“)
+
+| `k` | Beschriftung | Typ | Einheit / Auswahl | Pflicht |
+|---|---|---|---|---|
+| `abschnitt` | Geprüfter Abschnitt | Text |  | ja |
+| `werkstoff` | Werkstoff | Auswahl | Metall, Kunststoff, Mehrschichtverbund, gemischt | ja |
+| `medium` | Prüfmedium | Auswahl | Wasser, Luft, Inertgas | ja |
+| `pruefdruck` | Prüfdruck | Zahl | bar | ja |
+| `dauer` | Prüfdauer | Zahl | min | ja |
+| `druckabfall` | Druckabfall | Zahl | bar | ja |
+| `temperatur` | Temperatur Wasser/Umgebung | Zahl | °C |  |
+| `dicht` | Ergebnis: Anlage dicht | ja/nein |  | ja |
+| `bemerkung` | Bemerkung | Text |  |  |
+
+**`druckpruefung_heizung`** – Dichtheitsprüfung Heizungsanlage (Grundlage: DIN EN 14336 / VOB C DIN 18380)
+
+| `k` | Beschriftung | Typ | Einheit / Auswahl | Pflicht |
+|---|---|---|---|---|
+| `abschnitt` | Geprüfter Abschnitt | Text |  | ja |
+| `medium` | Prüfmedium | Auswahl | Wasser, Luft, Inertgas | ja |
+| `pruefdruck` | Prüfdruck | Zahl | bar | ja |
+| `dauer` | Prüfdauer | Zahl | min | ja |
+| `druckabfall` | Druckabfall | Zahl | bar | ja |
+| `dicht` | Ergebnis: Anlage dicht | ja/nein |  | ja |
+| `bemerkung` | Bemerkung | Text |  |  |
+
+**`gasleitung`** – Belastungs- und Dichtheitsprüfung Gasleitung (Grundlage: DVGW-TRGI 2018 (Arbeitsblatt G 600))
+
+| `k` | Beschriftung | Typ | Einheit / Auswahl | Pflicht |
+|---|---|---|---|---|
+| `abschnitt` | Geprüfte Leitungsanlage | Text |  | ja |
+| `belastung_druck` | Belastungsprüfung: Prüfdruck | Zahl | bar | ja |
+| `belastung_dauer` | Belastungsprüfung: Dauer | Zahl | min | ja |
+| `belastung_ok` | Belastungsprüfung bestanden | ja/nein |  | ja |
+| `dichtheit_druck` | Dichtheitsprüfung: Prüfdruck | Zahl | mbar | ja |
+| `dichtheit_dauer` | Dichtheitsprüfung: Dauer | Zahl | min | ja |
+| `dichtheit_ok` | Dichtheitsprüfung bestanden | ja/nein |  | ja |
+| `messgeraet` | Messgerät | Text |  |  |
+| `bemerkung` | Bemerkung | Text |  |  |
+
+**`inbetriebnahme_waermeerzeuger`** – Inbetriebnahme Wärmeerzeuger (Grundlage: Herstellervorgaben, DVGW-TRGI, 1. BImSchV)
+
+| `k` | Beschriftung | Typ | Einheit / Auswahl | Pflicht |
+|---|---|---|---|---|
+| `hersteller` | Hersteller | Text |  | ja |
+| `typ` | Gerätetyp | Text |  | ja |
+| `seriennummer` | Seriennummer | Text |  |  |
+| `brennstoff` | Brennstoff/Gasart | Auswahl | Erdgas E, Erdgas LL, Flüssiggas, Strom (Wärmepumpe), sonstiges | ja |
+| `anlagendruck` | Anlagendruck | Zahl | bar | ja |
+| `co2` | CO₂ (bzw. O₂) | Zahl | % |  |
+| `co` | CO unverdünnt | Zahl | ppm |  |
+| `abgastemperatur` | Abgastemperatur | Zahl | °C |  |
+| `abgasverlust` | Abgasverlust | Zahl | % |  |
+| `sicherheit_ok` | Sicherheitseinrichtungen geprüft | ja/nein |  | ja |
+| `einweisung` | Kunde eingewiesen | ja/nein |  | ja |
+| `bemerkung` | Bemerkung | Text |  |  |
+
+**`wartung_gastherme`** – Wartungsprotokoll Gas-Wärmeerzeuger (Grundlage: Herstellervorgaben / DVGW-TRGI)
+
+| `k` | Beschriftung | Typ | Einheit / Auswahl | Pflicht |
+|---|---|---|---|---|
+| `hersteller` | Hersteller | Text |  | ja |
+| `typ` | Gerätetyp | Text |  | ja |
+| `seriennummer` | Seriennummer | Text |  |  |
+| `brenner` | Brenner geprüft/gereinigt | ja/nein |  | ja |
+| `waermetauscher` | Wärmetauscher geprüft/gereinigt | ja/nein |  | ja |
+| `siphon` | Kondensat-Siphon gereinigt | ja/nein |  |  |
+| `zuendung` | Zündung/Ionisation geprüft | ja/nein |  | ja |
+| `ausdehnungsgefaess` | Vordruck Ausdehnungsgefäß | Zahl | bar |  |
+| `anlagendruck` | Anlagendruck | Zahl | bar | ja |
+| `abgasweg` | Abgasweg/Zuluft geprüft | ja/nein |  | ja |
+| `co2` | CO₂ (bzw. O₂) | Zahl | % |  |
+| `co` | CO unverdünnt | Zahl | ppm |  |
+| `abgasverlust` | Abgasverlust | Zahl | % |  |
+| `maengel` | Festgestellte Mängel | Text |  |  |
+| `bemerkung` | Bemerkung | Text |  |  |
 
 ## 5e. Monteur-App: Benachrichtigungen – neu in 1.24.0
 

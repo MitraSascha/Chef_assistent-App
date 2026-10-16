@@ -82,6 +82,15 @@ interface MonteurApi {
     @DELETE("v1/monteur/eingang/{eid}")
     suspend fun karteVerwerfen(@Path("eid") id: String): Response<Unit>
 
+    /** Protokoll als PDF: vor „Passt“ Vorschau, danach das an HERO geschickte (1.25.0). */
+    @Streaming
+    @GET("v1/monteur/eingang/{eid}/protokoll.pdf")
+    suspend fun protokollPdf(@Path("eid") id: String): Response<ResponseBody>
+
+    /** Alle Protokollvorlagen (leer) fuer den Vorlagenwechsel. */
+    @GET("v1/monteur/protokolle/vorlagen")
+    suspend fun protokollVorlagen(): List<Protokoll>
+
     /** Herstelleranleitung (PDF) aus unserer Bibliothek. */
     @Streaming
     @GET("v1/monteur/anleitung")

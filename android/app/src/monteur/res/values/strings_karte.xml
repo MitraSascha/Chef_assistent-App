@@ -29,5 +29,19 @@
     <string name="k_art_meldung">Info ans Büro</string>
     <string name="k_art_zeiten">Zeiten</string>
     <string name="k_art_urlaub">Urlaub</string>
+    <string name="k_art_protokoll">Protokoll</string>
+    <string name="k_erg_protokoll">Protokoll im Projekt</string>
+    <string name="pr_fehlen">Es fehlen noch: %1$s</string>
+    <string name="pr_alles_da">Alle Pflichtwerte sind eingetragen.</string>
+    <string name="pr_ja">ja</string>
+    <string name="pr_nein">nein</string>
+    <string name="pr_vorschau">Vorschau</string>
+    <string name="pr_pdf">PDF</string>
+    <string name="pr_vorlage_wechseln">Andere Vorlage</string>
+    <string name="pr_unterschreiben">Kunde unterschreiben lassen (optional)</string>
+    <string name="pr_unterschrift_von">Unterschrift: %1$s</string>
+    <string name="pr_unterschrift_neu">Neu</string>
+    <string name="pr_unterschrift_weg">Entfernen</string>
+    <string name="pr_pflicht">Pflichtfeld</string>
     <string name="k_offen">Noch zu bestätigen (%1$d)</string>
 </resources>

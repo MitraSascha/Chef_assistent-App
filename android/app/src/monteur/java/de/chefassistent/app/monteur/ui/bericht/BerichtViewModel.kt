@@ -114,7 +114,7 @@ class BerichtViewModel(
     val app: MonteurApp,
     val start: BerichtStart,
     private val gespeichert: SavedStateHandle = SavedStateHandle(),
-) : ViewModel() {
+) : ViewModel(), UnterschriftFlaeche {
 
     /**
      * Karte aus dem Eingang (1.23.0). Wechselt bei jeder Ergaenzung, weil der Server
@@ -146,10 +146,10 @@ class BerichtViewModel(
 
     // --- Unterschrift: Striche im ViewModel, damit sie das Drehen ueberleben -------
 
-    val striche = mutableStateListOf<List<Offset>>()
-    var zeichenflaeche by mutableStateOf(Size.Zero)
+    override val striche = mutableStateListOf<List<Offset>>()
+    override var zeichenflaeche by mutableStateOf(Size.Zero)
         private set
-    var unterschriftName by mutableStateOf(kundeAusTitel(start.titel))
+    override var unterschriftName by mutableStateOf(kundeAusTitel(start.titel))
 
     private var stundenJob: Job? = null
     private var mengenJob: Job? = null
@@ -601,16 +601,16 @@ class BerichtViewModel(
 
     // --- Unterschrift ------------------------------------------------------------------------
 
-    fun strichBeginnen(punkt: Offset) {
+    override fun strichBeginnen(punkt: Offset) {
         striche.add(listOf(punkt))
     }
 
-    fun strichWeiter(punkt: Offset) {
+    override fun strichWeiter(punkt: Offset) {
         val letzter = striche.lastOrNull() ?: return
         striche[striche.lastIndex] = letzter + punkt
     }
 
-    fun stricheLoeschen() {
+    override fun stricheLoeschen() {
         striche.clear()
     }
 
@@ -618,7 +618,7 @@ class BerichtViewModel(
      * Die Zeichenflaeche hat eine neue Groesse (Drehen): Striche gleichmaessig
      * mitskalieren, damit die Unterschrift nicht verzerrt oder aus dem Bild faellt.
      */
-    fun flaecheGeaendert(neu: Size) {
+    override fun flaecheGeaendert(neu: Size) {
         val alt = zeichenflaeche
         zeichenflaeche = neu
         if (alt == Size.Zero || alt == neu || striche.isEmpty()) return
@@ -628,7 +628,7 @@ class BerichtViewModel(
         striche.addAll(kopie)
     }
 
-    fun unterschriftSetzen(png: ByteArray, name: String) {
+    override fun unterschriftSetzen(png: ByteArray, name: String) {
         _zustand.update { it.copy(unterschrift = Unterschrift(png, name.trim())) }
     }
 

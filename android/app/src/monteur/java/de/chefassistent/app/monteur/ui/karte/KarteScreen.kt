@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Schedule
@@ -98,6 +99,7 @@ fun KarteScreen(
     app: MonteurApp,
     beiZurueck: () -> Unit,
     beiAnleitung: (AnleitungTreffer) -> Unit,
+    beiProtokollPdf: (karteId: String) -> Unit = {},
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -185,6 +187,16 @@ fun KarteScreen(
                             Karte.ART_MELDUNG -> MeldungInhalt(karte, viewModel.eingabe, zustand.kartenFotos, aktiv = karte.istOffen && !zustand.sendet)
                             Karte.ART_ZEITEN -> ZeitenInhalt(karte, viewModel.eingabe, aktiv = karte.istOffen && !zustand.sendet)
                             Karte.ART_URLAUB -> UrlaubInhalt(karte, viewModel.eingabe, aktiv = karte.istOffen && !zustand.sendet)
+                            Karte.ART_PROTOKOLL -> ProtokollInhalt(
+                                karte = karte,
+                                viewModel = viewModel,
+                                fotos = zustand.kartenFotos,
+                                vorlagen = zustand.vorlagen,
+                                springeZu = zustand.springeZu,
+                                aktiv = karte.istOffen && !zustand.sendet,
+                                sendet = zustand.sendet,
+                                beiPdf = beiProtokollPdf,
+                            )
                             else -> Text(karte.text)
                         }
                         if (karte.istErledigt && karte.art != Karte.ART_FRAGE) Ergebnis(karte)
@@ -361,6 +373,7 @@ private fun Ergebnis(karte: Karte) {
         Karte.ART_MELDUNG -> stringResource(R.string.k_erg_meldung)
         Karte.ART_ZEITEN -> karte.ergebnisText("gebucht")?.let { stringResource(R.string.k_erg_zeiten, it) }
         Karte.ART_URLAUB -> stringResource(R.string.k_erg_urlaub)
+        Karte.ART_PROTOKOLL -> karte.ergebnisText("hero") ?: stringResource(R.string.k_erg_protokoll)
         else -> karte.ergebnisText("hero")
     } ?: stringResource(R.string.k_erledigt)
     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
@@ -369,6 +382,11 @@ private fun Ergebnis(karte: Karte) {
                 Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.erfolg, modifier = Modifier.size(32.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(text, style = MaterialTheme.typography.titleMedium)
+            }
+            if (karte.art == Karte.ART_PROTOKOLL) {
+                karte.ergebnisText("datei")?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             karte.hinweise.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
         }
@@ -433,6 +451,7 @@ private fun ueberschrift(art: String): Int = when (art) {
     Karte.ART_MELDUNG -> R.string.k_art_meldung
     Karte.ART_ZEITEN -> R.string.k_art_zeiten
     Karte.ART_URLAUB -> R.string.k_art_urlaub
+    Karte.ART_PROTOKOLL -> R.string.k_art_protokoll
     else -> R.string.k_titel
 }
 
@@ -443,5 +462,6 @@ private fun symbol(art: String): ImageVector = when (art) {
     Karte.ART_MELDUNG -> Icons.Outlined.Sms
     Karte.ART_ZEITEN -> Icons.Outlined.Schedule
     Karte.ART_URLAUB -> Icons.Outlined.BeachAccess
+    Karte.ART_PROTOKOLL -> Icons.Outlined.FactCheck
     else -> Icons.Outlined.Description
 }

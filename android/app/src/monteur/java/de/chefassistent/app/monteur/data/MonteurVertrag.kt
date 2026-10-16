@@ -464,6 +464,8 @@ data class Karte(
     val meldung: Meldung? = null,
     val zeiten: List<ZeitAbschnitt>? = null,
     val abwesenheit: AbwVorschlag? = null,
+    /** Pruef-/Inbetriebnahmeprotokoll (1.25.0). */
+    val protokoll: Protokoll? = null,
     /** Frage der KI an den Monteur, gold markiert. */
     val rueckfrage: String? = null,
     /** Nach „Passt“: hero_nr / hero / gebucht / abwesenheit_id, hinweise[]. Frei geformt. */
@@ -488,8 +490,48 @@ data class Karte(
         const val ART_MELDUNG = "meldung"
         const val ART_ZEITEN = "zeiten"
         const val ART_URLAUB = "urlaub"
+        const val ART_PROTOKOLL = "protokoll"
     }
 }
+
+/**
+ * Protokoll-Karte (1.25.0, API.md 5d „Protokolle“). Die App zeichnet sie **generisch**
+ * aus [felder] - neue oder geaenderte Vorlagen kommen ohne App-Update.
+ */
+@Serializable
+data class Protokoll(
+    /** druckpruefung_trinkwasser | druckpruefung_heizung | gasleitung | … */
+    val vorlage: String,
+    val titel: String = "",
+    /** Norm/Regelwerk, steht auf dem PDF. */
+    val grundlage: String = "",
+    val felder: List<ProtokollFeld> = emptyList(),
+    /** Beschriftungen der leeren Pflichtfelder. */
+    val fehlend: List<String> = emptyList(),
+)
+
+@Serializable
+data class ProtokollFeld(
+    /** Schluessel fuer [Passt.werte]. */
+    val k: String,
+    /** Beschriftung. */
+    val l: String = "",
+    /** text | zahl | janein | auswahl - Unbekanntes zeigt die App als Text. */
+    val t: String = FELD_TEXT,
+    /** Einheit. */
+    val e: String? = null,
+    /** Auswahlwerte. */
+    val o: List<String>? = null,
+    /** Pflichtfeld. */
+    val p: Boolean = false,
+    /** Immer Text („0,2“, „ja“, ein Wert aus [o]); `null` = leer. */
+    val wert: String? = null,
+)
+
+const val FELD_TEXT = "text"
+const val FELD_ZAHL = "zahl"
+const val FELD_JANEIN = "janein"
+const val FELD_AUSWAHL = "auswahl"
 
 const val KARTE_OFFEN = "offen"
 const val KARTE_ERLEDIGT = "erledigt"
@@ -550,6 +592,12 @@ data class Passt(
     val material: kotlinx.serialization.json.JsonArray? = null,
     val zeiten: List<ZeitAbschnitt>? = null,
     val abwesenheit: AbwVorschlag? = null,
+    /** protokoll: nur geaenderte Werte `{k: wert}`, `JsonNull` leert (1.25.0). */
+    val werte: kotlinx.serialization.json.JsonObject? = null,
+    /** protokoll: andere Vorlage, Werte gleicher Schluessel bleiben. */
+    val vorlage: String? = null,
+    /** protokoll: nur speichern, nichts nach HERO, keine Pflichtpruefung. */
+    val nur_speichern: Boolean? = null,
 )
 
 /** Eintrag im HERO-Projektverlauf (Kommentare von Buero und Monteuren). */

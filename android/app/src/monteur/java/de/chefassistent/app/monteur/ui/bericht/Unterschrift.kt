@@ -58,13 +58,59 @@ import java.io.ByteArrayOutputStream
 import kotlin.math.roundToInt
 
 /**
+ * Was der Unterschrift-Dialog braucht: Striche (ueberleben das Drehen), Flaeche, Name.
+ * Bericht und Protokoll-Karte (1.25) nutzen denselben Dialog.
+ */
+interface UnterschriftFlaeche {
+    val striche: List<List<Offset>>
+    val zeichenflaeche: Size
+    var unterschriftName: String
+    fun strichBeginnen(punkt: Offset)
+    fun strichWeiter(punkt: Offset)
+    fun stricheLoeschen()
+    fun flaecheGeaendert(neu: Size)
+    fun unterschriftSetzen(png: ByteArray, name: String)
+}
+
+/** Eigenstaendige Zeichenflaeche, z. B. im `EingangViewModel` fuer Protokolle. */
+class Zeichenblock(name: String, private val beiFertig: (ByteArray, String) -> Unit) : UnterschriftFlaeche {
+    override val striche = androidx.compose.runtime.mutableStateListOf<List<Offset>>()
+    override var zeichenflaeche by mutableStateOf(Size.Zero)
+        private set
+    override var unterschriftName by mutableStateOf(name)
+
+    override fun strichBeginnen(punkt: Offset) {
+        striche.add(listOf(punkt))
+    }
+
+    override fun strichWeiter(punkt: Offset) {
+        val letzter = striche.lastOrNull() ?: return
+        striche[striche.lastIndex] = letzter + punkt
+    }
+
+    override fun stricheLoeschen() = striche.clear()
+
+    override fun flaecheGeaendert(neu: Size) {
+        val alt = zeichenflaeche
+        zeichenflaeche = neu
+        if (alt == Size.Zero || alt == neu || striche.isEmpty()) return
+        val f = minOf(neu.width / alt.width, neu.height / alt.height)
+        val kopie = striche.map { strich -> strich.map { Offset(it.x * f, it.y * f) } }
+        striche.clear()
+        striche.addAll(kopie)
+    }
+
+    override fun unterschriftSetzen(png: ByteArray, name: String) = beiFertig(png, name.trim())
+}
+
+/**
  * Kundenunterschrift vollflaechig (Auftrag 1.22, 3.). Quer halten ist erlaubt:
  * die Striche liegen im ViewModel und werden beim Drehen mitskaliert. Die
  * Zeichenflaeche ist immer weiss mit schwarzer Schrift, auch im Dunkelmodus -
  * so sieht der Kunde, was in HERO landet.
  */
 @Composable
-internal fun UnterschriftDialog(viewModel: BerichtViewModel, beiFertig: () -> Unit, beiAbbruch: () -> Unit) {
+fun UnterschriftDialog(viewModel: UnterschriftFlaeche, beiFertig: () -> Unit, beiAbbruch: () -> Unit) {
     val dichte = LocalDensity.current
     val strichBreite = with(dichte) { STRICH_DP.dp.toPx() }
     val scope = rememberCoroutineScope()
