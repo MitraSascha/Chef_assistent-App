@@ -250,6 +250,8 @@ fun ProjektScreen(
     beiVideo: (name: String) -> Unit = {},
     /** Seit 1.23.0: Mikrofon/Kamera an den Eingang, mit diesem Termin als Kontext. */
     beiEingang: (aufnahme: File?, fotos: List<File>) -> Unit = { _, _ -> },
+    /** Seit 1.28.0: im Vollbild - dieses Projektfoto geht als `foto_ids` mit. */
+    beiEingangMitFoto: (aufnahme: File?, fotos: List<File>, projektFoto: Foto) -> Unit = { a, f, _ -> beiEingang(a, f) },
     /** Lokal vorgemerkte eigene Meldungen/Bestellungen, bis sie im HERO-Verlauf stehen. */
     vorlaeufig: List<Verlaufseintrag> = emptyList(),
 ) {
@@ -432,7 +434,16 @@ fun ProjektScreen(
 
     val index = fotoIndex
     if (index != null && mappe != null && mappe.fotos.isNotEmpty()) {
-        FotoVollbild(mappe.fotos, index.coerceIn(0, mappe.fotos.lastIndex), viewModel) { fotoIndex = null }
+        FotoVollbild(
+            fotos = mappe.fotos,
+            start = index.coerceIn(0, mappe.fotos.lastIndex),
+            viewModel = viewModel,
+            aufnahme = aufnahme,
+            beiEingang = { a, f, foto ->
+                fotoIndex = null
+                beiEingangMitFoto(a, f, foto)
+            },
+        ) { fotoIndex = null }
     }
 }
 
@@ -585,7 +596,14 @@ private fun FotoKachel(foto: Foto, viewModel: ProjektViewModel, modifier: Modifi
 
 /** Vollbild, wischen zum naechsten Foto. Geladen wird das Original (ohne `vorschau`). */
 @Composable
-private fun FotoVollbild(fotos: List<Foto>, start: Int, viewModel: ProjektViewModel, beiSchliessen: () -> Unit) {
+private fun FotoVollbild(
+    fotos: List<Foto>,
+    start: Int,
+    viewModel: ProjektViewModel,
+    aufnahme: de.chefassistent.app.monteur.ui.AufnahmeSteuerung,
+    beiEingang: (aufnahme: File?, fotos: List<File>, projektFoto: Foto) -> Unit,
+    beiSchliessen: () -> Unit,
+) {
     Dialog(onDismissRequest = beiSchliessen, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val pager = rememberPagerState(initialPage = start) { fotos.size }
         Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -601,11 +619,25 @@ private fun FotoVollbild(fotos: List<Foto>, start: Int, viewModel: ProjektViewMo
             IconButton(onClick = beiSchliessen, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                 Icon(Icons.Outlined.Close, stringResource(R.string.m_zurueck), tint = Color.White)
             }
-            Text(
-                stringResource(R.string.m_foto_von, pager.currentPage + 1, fotos.size),
-                color = Color.White,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
-            )
+            // Auftrag 1.28, 1.: die bekannten Knoepfe - das gezeigte Foto geht automatisch mit.
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp),
+            ) {
+                Text(
+                    stringResource(R.string.m_foto_von, pager.currentPage + 1, fotos.size),
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                EingangKnoepfe(
+                    aufnahme = aufnahme,
+                    groesse = 64.dp,
+                    hinweis = null,
+                    beschriftung = stringResource(R.string.k_frage_zum_foto),
+                    beiAufnahme = { beiEingang(it, emptyList(), fotos[pager.currentPage]) },
+                    beiFotos = { beiEingang(null, it, fotos[pager.currentPage]) },
+                )
+            }
         }
     }
 }

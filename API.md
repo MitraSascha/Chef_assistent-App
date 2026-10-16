@@ -104,7 +104,7 @@ Token sicher speichern (EncryptedSharedPreferences / Android Keystore). Beim App
 | GET | `/v1/monteur/stundenkonto` | Soll, bestätigt, Saldo (1.22.0) |
 | GET / POST / DELETE | `/v1/monteur/abwesenheiten` | Urlaubsstand + Anträge / beantragen / zurückziehen (1.22.0) |
 | POST | `/v1/monteur/verstehen` | Sprache → Vorschläge für Zeiten oder Urlaub (bucht nichts) (1.22.0) |
-| POST | `/v1/monteur/eingang` | **Ein Eingang für alles**: Sprache/Text/Fotos → KI erkennt Bericht, Frage, Bestellung, Meldung, Protokoll (1.25.0), Zeiten, Urlaub → **eine Karte** (neu in 1.23.0) |
+| POST | `/v1/monteur/eingang` | **Ein Eingang für alles**: Sprache/Text/Fotos (auch `foto_ids` aus der Projektmappe, 1.27.0) → KI erkennt Bericht, Frage, Bestellung, Meldung, Protokoll (1.25.0), Zeiten, Urlaub → **eine Karte** (neu in 1.23.0) |
 | GET | `/v1/monteur/eingang` | Eigene Karten der letzten 7 Tage, neueste zuerst (z. B. offene nach App-Neustart) (1.23.0) |
 | GET | `/v1/monteur/eingang/{id}` | Eine Karte (1.23.0) |
 | POST | `/v1/monteur/eingang/{id}/passt` | **„Passt“** → je nach Art: Bericht nach HERO, fertiger Bestellschein, Kommentar im Projektverlauf, Prüfprotokoll als PDF nach HERO (1.25.0), Zeiten buchen, Urlaub beantragen (1.23.0) |
@@ -1201,6 +1201,14 @@ immer mit **„Passt“**.
 | `audio` | optional | Aufnahme (m4a/aac …, max. 25 MB), jede Sprache |
 | `text` | optional | Getipptes; mit `audio` zusammen wird beides aneinandergehängt |
 | `fotos` | optional, 0–5 | Feld mehrfach schicken; je max. 25 MB, nicht selbst verkleinern |
+| `foto_ids` | optional (neu in 1.27.0) | Fotos aus der Projektmappe (`uuid` aus `fotos[]`), Feld mehrfach schicken – der Server holt sie selbst aus dem HERO-Archiv (kein Umweg übers Handy). Zusammen mit `fotos` höchstens 5. Ohne `termin_id`/`projekt_nr` geht das Projekt des Fotos mit. Kein Foto → `415`, fremdes Projekt/unbekannt → `404` |
+
+**Kartenart `foto` (neu in 1.28.0):** Fotos + kurzer Titel („Zählerstand Wasser“, „Vorher Bad“) → `foto: {titel,
+abgelegt: []}`; „Passt“ (optional `{"titel": "…"}`, max. 60 Zeichen) legt die Fotos mit Titel ins HERO-Projekt
+(„<Datum Uhrzeit> <Vorname> <Titel>.jpg“ über „Nach HERO hochladen“), `foto.abgelegt` = Dateinamen,
+`ergebnis = {hero, dateien, hinweise}`. Wiederholbar (nicht doppelt). Ohne Foto `422`, ohne Projekt `422`.
+**Frage mit Fotos** hat zusätzlich `foto` (wenn ein Projekt dazugehört, auch laut Plan): „Passt“ auf der Frage-Karte
+legt die Fotos ab; Frage ohne Fotos → `409`.
 | `termin_id` | optional | Wenn der Monteur gerade in einem Termin (Projektmappe) ist |
 | `projekt_nr` | optional | Statt Termin |
 | `datum` | optional | `YYYY-MM-DD`, Standard heute (Nachträge) |

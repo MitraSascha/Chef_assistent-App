@@ -228,6 +228,7 @@ class MonteurKorb(context: Context) {
                     datum = e.datum,
                     berichtId = e.bericht_id,
                     bezugId = e.bezug_id,
+                    fotoIds = e.foto_ids,
                 )
                 return KorbMeldung(name, e.titel, "Karte ist da – bitte ansehen.", fertig = true, karteId = karte.id)
             } finally {
@@ -393,6 +394,8 @@ data class EingangAuftrag(
     /** Originalnamen der Fotos (Endung zaehlt fuer den Server). */
     val fotonamen: List<String> = emptyList(),
     val titel: String = "Eingabe",
+    /** Seit 1.27.0: Fotos aus der Projektmappe (uuid) - die holt der Server selbst. */
+    val foto_ids: List<String> = emptyList(),
 )
 
 /** Ein „Passt“, das auf Netz wartet. */

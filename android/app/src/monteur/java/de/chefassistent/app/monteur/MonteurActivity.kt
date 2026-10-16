@@ -282,6 +282,14 @@ private fun MonteurNavigation(app: MonteurApp, terminAnfrage: TerminAnfrage?, an
                     }
                     zurKarte()
                 },
+                beiEingangMitFoto = { aufnahme, fotos, foto ->
+                    val k = EingangKontext(terminId = termin, titel = a.getString("titel").leerAlsNull())
+                    eingang.beginnen(k)
+                    eingang.projektFotoHinzu(foto.uuid, foto.name, k)
+                    eingang.fotosHinzu(fotos, k)
+                    if (aufnahme != null) eingang.senden(aufnahme = aufnahme, kontext = k)
+                    zurKarte()
+                },
                 beiBericht = { berichtId, projektNr ->
                     zuBericht(
                         BerichtStart(

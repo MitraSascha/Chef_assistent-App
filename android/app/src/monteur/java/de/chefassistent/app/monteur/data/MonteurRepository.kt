@@ -208,6 +208,7 @@ class MonteurRepository(
         datum: String? = null,
         berichtId: String? = null,
         bezugId: String? = null,
+        fotoIds: List<String> = emptyList(),
     ): Karte {
         aufnahme?.let(::groessePruefenFuer)
         val fotoTeile = fotos.map { f ->
@@ -225,6 +226,7 @@ class MonteurRepository(
                 berichtId = berichtId?.toTextTeil(),
                 bezugId = bezugId?.toTextTeil(),
                 anfrageId = anfrageId.toTextTeil(),
+                fotoIds = fotoIds.map { id -> id.toTextTeil() },
             )
         }
     }

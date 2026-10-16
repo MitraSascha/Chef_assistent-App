@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FactCheck
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Schedule
@@ -182,7 +183,11 @@ fun KarteScreen(
                     ) {
                         KartenKopf(karte, zustand.passtFehler)
                         when (karte.art) {
-                            Karte.ART_FRAGE -> FrageInhalt(karte, zustand.verlauf, beiAnleitung)
+                            Karte.ART_FRAGE -> {
+                                FrageInhalt(karte, zustand.verlauf, beiAnleitung)
+                                FotoAblageZeile(karte, viewModel.eingabe, aktiv = !zustand.sendet)
+                            }
+                            Karte.ART_FOTO -> FotoInhalt(karte, viewModel.eingabe, zustand.kartenFotos, aktiv = karte.istOffen && !zustand.sendet)
                             Karte.ART_BESTELLUNG -> BestellungInhalt(karte, viewModel.eingabe, app, aktiv = karte.istOffen && !zustand.sendet)
                             Karte.ART_MELDUNG -> MeldungInhalt(karte, viewModel.eingabe, zustand.kartenFotos, aktiv = karte.istOffen && !zustand.sendet)
                             Karte.ART_ZEITEN -> ZeitenInhalt(karte, viewModel.eingabe, aktiv = karte.istOffen && !zustand.sendet)
@@ -216,12 +221,18 @@ private fun Eingabe(zustand: EingangZustand, viewModel: EingangViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         zustand.kontext.titel?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
-        if (zustand.fotos.isNotEmpty()) {
+        if (zustand.projektFotos.isNotEmpty()) {
+            Text(stringResource(R.string.k_frage_zum_foto), style = MaterialTheme.typography.labelLarge)
+        }
+        val anzahl = zustand.fotos.size + zustand.projektFotos.size
+        if (anzahl > 0) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Fotos aus der Projektmappe: gehen als foto_ids, gezeigt wird die kleine Vorschau.
+                zustand.projektFotos.forEach { r -> FotoVorschau(r.vorschau, beiEntfernen = { viewModel.projektFotoEntfernen(r.uuid) }) }
                 zustand.fotos.forEach { pfad -> FotoVorschau(pfad, beiEntfernen = { viewModel.fotoEntfernen(pfad) }) }
             }
             Text(
-                stringResource(R.string.k_fotos_hinweis, zustand.fotos.size, EingangViewModel.MAX_FOTOS),
+                stringResource(R.string.k_fotos_hinweis, anzahl, EingangViewModel.MAX_FOTOS),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -233,9 +244,10 @@ private fun Eingabe(zustand: EingangZustand, viewModel: EingangViewModel) {
             minLines = 3,
             modifier = Modifier.fillMaxWidth(),
         )
+        GalerieHinweis()
         Button(
             onClick = { viewModel.senden() },
-            enabled = zustand.text.isNotBlank() || zustand.fotos.isNotEmpty(),
+            enabled = zustand.text.isNotBlank() || zustand.fotos.isNotEmpty() || zustand.projektFotos.isNotEmpty(),
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.hauptflaeche, contentColor = Color.White),
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
@@ -243,9 +255,29 @@ private fun Eingabe(zustand: EingangZustand, viewModel: EingangViewModel) {
     }
 }
 
+/**
+ * Einmalig beim ersten Oeffnen der Eingabe: „Lange drücken: aus der Galerie“ (Auftrag 1.28, 2.).
+ * Danach nie wieder - die Galerie hat keinen eigenen Knopf.
+ */
 @Composable
-private fun FotoVorschau(pfad: String, beiEntfernen: (() -> Unit)? = null) {
+private fun GalerieHinweis() {
+    val kontext = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { kontext.getSharedPreferences("monteur_hinweise", android.content.Context.MODE_PRIVATE) }
+    val zeigen = remember { !prefs.getBoolean("galerie_hinweis", false) }
+    LaunchedEffect(Unit) { prefs.edit().putBoolean("galerie_hinweis", true).apply() }
+    if (zeigen) {
+        Text(
+            stringResource(R.string.k_galerie_hinweis),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun FotoVorschau(pfad: String?, beiEntfernen: (() -> Unit)? = null) {
     val bild by produceState<android.graphics.Bitmap?>(null, pfad) {
+        if (pfad == null) return@produceState
         value = withContext(Dispatchers.Default) {
             runCatching {
                 de.chefassistent.app.data.FotoAufbereitung.vorschau(File(pfad), 320) ?: BitmapFactory.decodeFile(pfad)
@@ -374,6 +406,7 @@ private fun Ergebnis(karte: Karte) {
         Karte.ART_ZEITEN -> karte.ergebnisText("gebucht")?.let { stringResource(R.string.k_erg_zeiten, it) }
         Karte.ART_URLAUB -> stringResource(R.string.k_erg_urlaub)
         Karte.ART_PROTOKOLL -> karte.ergebnisText("hero") ?: stringResource(R.string.k_erg_protokoll)
+        Karte.ART_FOTO -> stringResource(R.string.k_erg_foto)
         else -> karte.ergebnisText("hero")
     } ?: stringResource(R.string.k_erledigt)
     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
@@ -417,8 +450,31 @@ private fun KartenKnoepfe(
                 hinweis = null,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Button(onClick = beiFertig, shape = RoundedCornerShape(10.dp), colors = navy, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 52.dp)) {
-                Text(stringResource(R.string.k_fertig))
+            val ablegen = karte.foto != null && karte.foto.abgelegt.isEmpty()
+            if (ablegen) {
+                // Frage mit Fotos (1.28): Ablegen ist der Hauptknopf, „Fertig“ schliesst ohne.
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = beiFertig,
+                        enabled = !sendet,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    ) { Text(stringResource(R.string.k_fertig)) }
+                    Button(
+                        onClick = beiPasst,
+                        enabled = !sendet,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = navy,
+                        modifier = Modifier.weight(2f).heightIn(min = 52.dp),
+                    ) {
+                        if (sendet) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                        else Text(stringResource(R.string.k_passt_foto), maxLines = 1)
+                    }
+                }
+            } else {
+                Button(onClick = beiFertig, shape = RoundedCornerShape(10.dp), colors = navy, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 52.dp)) {
+                    Text(stringResource(R.string.k_fertig))
+                }
             }
         }
         karte.istOffen -> {
@@ -452,6 +508,7 @@ private fun ueberschrift(art: String): Int = when (art) {
     Karte.ART_ZEITEN -> R.string.k_art_zeiten
     Karte.ART_URLAUB -> R.string.k_art_urlaub
     Karte.ART_PROTOKOLL -> R.string.k_art_protokoll
+    Karte.ART_FOTO -> R.string.k_art_foto
     else -> R.string.k_titel
 }
 
@@ -463,5 +520,6 @@ private fun symbol(art: String): ImageVector = when (art) {
     Karte.ART_ZEITEN -> Icons.Outlined.Schedule
     Karte.ART_URLAUB -> Icons.Outlined.BeachAccess
     Karte.ART_PROTOKOLL -> Icons.Outlined.FactCheck
+    Karte.ART_FOTO -> Icons.Outlined.PhotoCamera
     else -> Icons.Outlined.Description
 }

@@ -68,6 +68,8 @@ interface MonteurApi {
         @Part("bericht_id") berichtId: RequestBody? = null,
         @Part("bezug_id") bezugId: RequestBody? = null,
         @Part("anfrage_id") anfrageId: RequestBody? = null,
+        /** Seit 1.27.0: Fotos aus der Projektmappe (uuid), Feld mehrfach - der Server holt sie selbst. */
+        @Part("foto_ids") fotoIds: List<@JvmSuppressWildcards RequestBody> = emptyList(),
     ): Karte
 
     @GET("v1/monteur/eingang")

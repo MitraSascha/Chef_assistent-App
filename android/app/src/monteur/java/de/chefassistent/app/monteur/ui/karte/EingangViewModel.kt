@@ -59,11 +59,16 @@ enum class EingangPhase {
     KARTE,
 }
 
+/** Foto aus der Projektmappe als Kontext (1.27.0): geht als `foto_ids`, [vorschau] = lokale Vorschau. */
+data class ProjektFotoRef(val uuid: String, val name: String = "", val vorschau: String? = null)
+
 data class EingangZustand(
     val phase: EingangPhase = EingangPhase.EINGABE,
     val kontext: EingangKontext = EingangKontext(),
     /** Gesammelte Fotos (bis 5), lokale Pfade. */
     val fotos: List<String> = emptyList(),
+    /** Fotos aus der Projektmappe - zaehlen mit [fotos] zusammen hoechstens 5. */
+    val projektFotos: List<ProjektFotoRef> = emptyList(),
     val text: String = "",
     val beginn: Long = 0L,
     val karte: Karte? = null,
@@ -102,6 +107,9 @@ class KartenEingabe {
     /** Urlaub: korrigierter Antrag. */
     var abwesenheit by mutableStateOf<AbwVorschlag?>(null)
 
+    /** Foto / Frage mit Foto: geaenderter Titel (1.28.0). */
+    var titel by mutableStateOf<String?>(null)
+
     /** Protokoll: nur geaenderte Werte `k → wert` (`null` = leeren). */
     var werte by mutableStateOf<Map<String, String?>>(emptyMap())
 
@@ -116,6 +124,7 @@ class KartenEingabe {
         werte = werteJson(werte),
         unterschrift_png = unterschrift?.let { Base64.encodeToString(it.png, Base64.NO_WRAP) },
         unterschrift_name = unterschrift?.name?.ifBlank { null },
+        titel = titel,
     )
 
     fun zuruecksetzen() {
@@ -125,6 +134,7 @@ class KartenEingabe {
         abwesenheit = null
         werte = emptyMap()
         unterschrift = null
+        titel = null
     }
 }
 
@@ -170,7 +180,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         fotosVerwerfen()
         eingabe.zuruecksetzen()
         _zustand.update {
-            it.copy(phase = EingangPhase.EINGABE, kontext = kontext, text = "", karte = null, verlauf = emptyList(), kartenFotos = emptyList(), passtFehler = null)
+            it.copy(phase = EingangPhase.EINGABE, kontext = kontext, text = "", karte = null, verlauf = emptyList(), kartenFotos = emptyList(), passtFehler = null, projektFotos = emptyList())
         }
     }
 
@@ -189,7 +199,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         var zuviel = 0
         _zustand.update { z ->
             val neu = if (z.phase == EingangPhase.EINGABE) z else z.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), text = "")
-            val frei = (MAX_FOTOS - neu.fotos.size).coerceAtLeast(0)
+            val frei = (MAX_FOTOS - neu.fotos.size - neu.projektFotos.size).coerceAtLeast(0)
             val rein = dateien.take(frei)
             zuviel = dateien.size - rein.size
             neu.copy(fotos = neu.fotos + rein.map(File::getAbsolutePath), kontext = kontext ?: neu.kontext)
@@ -199,6 +209,33 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
             _meldungen.trySend(ZU_VIELE_FOTOS.format(MAX_FOTOS, zuviel))
         }
     }
+
+    /**
+     * Foto aus der Projektmappe als Kontext (Auftrag 1.28, 1.): geht als `foto_ids` mit, der
+     * Server holt es selbst. Fuer die Anzeige laedt die App nur die kleine Vorschau.
+     */
+    fun projektFotoHinzu(uuid: String, name: String, kontext: EingangKontext? = null) {
+        val z = _zustand.value
+        if (z.projektFotos.any { it.uuid == uuid }) return
+        if (z.fotos.size + z.projektFotos.size >= MAX_FOTOS) {
+            _meldungen.trySend(ZU_VIELE_FOTOS.format(MAX_FOTOS, 1))
+            return
+        }
+        _zustand.update {
+            val neu = if (it.phase == EingangPhase.EINGABE) it else it.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), text = "")
+            neu.copy(projektFotos = neu.projektFotos + ProjektFotoRef(uuid, name), kontext = kontext ?: neu.kontext)
+        }
+        viewModelScope.launch {
+            val datei = try {
+                repository.datei(uuid, name.ifBlank { "$uuid.jpg" }, true)
+            } catch (_: ApiFehler) {
+                return@launch
+            }
+            _zustand.update { z2 -> z2.copy(projektFotos = z2.projektFotos.map { if (it.uuid == uuid) it.copy(vorschau = datei.path) else it }) }
+        }
+    }
+
+    fun projektFotoEntfernen(uuid: String) = _zustand.update { it.copy(projektFotos = it.projektFotos.filterNot { r -> r.uuid == uuid }) }
 
     fun fotoEntfernen(pfad: String) {
         File(pfad).delete()
@@ -218,7 +255,8 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         val k = kontext ?: z.kontext
         val getippt = (text ?: z.text).trim().takeIf { it.isNotEmpty() }
         val fotos = z.fotos.map(::File).filter { it.exists() }
-        if (aufnahme == null && getippt == null && fotos.isEmpty()) return
+        val fotoIds = z.projektFotos.map(ProjektFotoRef::uuid)
+        if (aufnahme == null && getippt == null && fotos.isEmpty() && fotoIds.isEmpty()) return
         val offen = z.karte?.takeIf { it.istOffen || it.art == Karte.ART_FRAGE }
         val bezug = offen?.takeIf { it.art == Karte.ART_FRAGE }?.id
         val berichtId = offen?.takeIf { it.art == Karte.ART_BERICHT }?.bericht?.id
@@ -242,12 +280,14 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
                     datum = k.datum,
                     berichtId = berichtId,
                     bezugId = bezug,
+                    fotoIds = fotoIds,
                 )
                 aufnahme?.delete()
                 // Fotos bleiben fuer die Meldungs-Vorschau, bis die Karte geschlossen wird.
                 _zustand.update {
                     it.copy(
                         fotos = emptyList(),
+                        projektFotos = emptyList(),
                         text = "",
                         // Nachfrage: vorige Antwort wandert in den Verlauf.
                         verlauf = if (bezug != null && vorherigeKarte != null) it.verlauf + vorherigeKarte else emptyList(),
@@ -257,7 +297,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
             } catch (fehler: ApiFehler) {
                 when {
                     fehler is ApiFehler.NichtAngemeldet || fehler.istVoruebergehend -> {
-                        einreihen(anfrage, aufnahme, getippt, fotos, k, berichtId, bezug)
+                        einreihen(anfrage, aufnahme, getippt, fotos, k, berichtId, bezug, fotoIds)
                         if (fehler is ApiFehler.NichtAngemeldet) abmelden()
                     }
                     else -> {
@@ -281,6 +321,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         k: EingangKontext,
         berichtId: String?,
         bezug: String?,
+        fotoIds: List<String> = emptyList(),
     ) {
         viewModelScope.launch {
             try {
@@ -290,13 +331,14 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
                             anfrage_id = anfrage, text = text, termin_id = k.terminId, projekt_nr = k.projektNr,
                             datum = k.datum, bericht_id = berichtId, bezug_id = bezug,
                             titel = k.titel ?: text?.take(40) ?: "Eingabe",
+                            foto_ids = fotoIds,
                         ),
                         aufnahme,
                         fotos,
                     )
                 }
                 MonteurVersand.anstossen(app)
-                _zustand.update { it.copy(phase = EingangPhase.WARTET, fotos = emptyList(), text = "") }
+                _zustand.update { it.copy(phase = EingangPhase.WARTET, fotos = emptyList(), projektFotos = emptyList(), text = "") }
             } catch (_: Exception) {
                 _zustand.update { it.copy(phase = EingangPhase.EINGABE) }
                 _meldungen.trySend(KORB_FEHLER)
@@ -466,7 +508,7 @@ class EingangViewModel(private val app: MonteurApp) : ViewModel() {
         _zustand.value.kartenFotos.forEach { File(it).delete() }
         fotosVerwerfen()
         eingabe.zuruecksetzen()
-        _zustand.update { it.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), kartenFotos = emptyList(), text = "", passtFehler = null) }
+        _zustand.update { it.copy(phase = EingangPhase.EINGABE, karte = null, verlauf = emptyList(), kartenFotos = emptyList(), text = "", passtFehler = null, projektFotos = emptyList()) }
         offeneLaden()
     }
 

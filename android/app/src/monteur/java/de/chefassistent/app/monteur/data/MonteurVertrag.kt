@@ -508,6 +508,8 @@ data class Karte(
     val abwesenheit: AbwVorschlag? = null,
     /** Pruef-/Inbetriebnahmeprotokoll (1.25.0). */
     val protokoll: Protokoll? = null,
+    /** Kartenart `foto` - und bei `frage` mit Fotos: Titel; „Passt“ legt die Fotos ins Projekt (1.28.0). */
+    val foto: FotoAblage? = null,
     /** Frage der KI an den Monteur, gold markiert. */
     val rueckfrage: String? = null,
     /** Nach „Passt“: hero_nr / hero / gebucht / abwesenheit_id, hinweise[]. Frei geformt. */
@@ -533,8 +535,21 @@ data class Karte(
         const val ART_ZEITEN = "zeiten"
         const val ART_URLAUB = "urlaub"
         const val ART_PROTOKOLL = "protokoll"
+        const val ART_FOTO = "foto"
     }
 }
+
+/** Fotos mit Titel ins HERO-Projekt (1.28.0). */
+@Serializable
+data class FotoAblage(
+    /** Vorschlag der KI, auf der Karte aenderbar ([Passt.titel], max. 60). */
+    val titel: String = "",
+    /** Dateinamen nach „Passt“; leer = noch nicht abgelegt. */
+    val abgelegt: List<String> = emptyList(),
+)
+
+/** So lang darf ein Fototitel sein (Vertrag). */
+const val FOTO_TITEL_MAX = 60
 
 /**
  * Protokoll-Karte (1.25.0, API.md 5d „Protokolle“). Die App zeichnet sie **generisch**
@@ -640,6 +655,8 @@ data class Passt(
     val vorlage: String? = null,
     /** protokoll: nur speichern, nichts nach HERO, keine Pflichtpruefung. */
     val nur_speichern: Boolean? = null,
+    /** foto / frage mit Fotos: geaenderter Titel (1.28.0). */
+    val titel: String? = null,
 )
 
 /** Eintrag im HERO-Projektverlauf (Kommentare von Buero und Monteuren). */

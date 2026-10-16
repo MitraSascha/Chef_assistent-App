@@ -4,7 +4,11 @@ import android.content.ActivityNotFoundException
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -57,8 +60,8 @@ fun EingangKnoepfe(
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Links die Galerie, rechts die Kamera - das Mikrofon bleibt mittig.
-            GalerieKnopf(aktiv = aktiv && !aufnahme.nimmtAuf, beiFotos = beiFotos)
+            // Platzhalter links, damit das Mikrofon mittig bleibt. Galerie = langer Druck auf die Kamera (1.28).
+            Box(Modifier.size(52.dp))
             MikrofonKnopf(
                 steuerung = aufnahme,
                 beiFertig = beiAufnahme,
@@ -67,7 +70,7 @@ fun EingangKnoepfe(
                 beschriftung = beschriftung,
                 hinweis = null,
             )
-            KameraKnopf(aktiv = aktiv && !aufnahme.nimmtAuf, beiFoto = { beiFotos(listOf(it)) })
+            KameraKnopf(aktiv = aktiv && !aufnahme.nimmtAuf, beiFoto = { beiFotos(listOf(it)) }, beiGalerie = beiFotos)
         }
         if (hinweis != null && !aufnahme.nimmtAuf) {
             Text(
@@ -81,37 +84,8 @@ fun EingangKnoepfe(
     }
 }
 
-/**
- * Fotos aus der Galerie (Android-Fotoauswahl, ohne Speicher-Berechtigung), mehrere auf
- * einmal. Sie werden in den Cache kopiert und danach wie eigene Aufnahmen behandelt.
- */
-@Composable
-fun GalerieKnopf(aktiv: Boolean, beiFotos: (List<File>) -> Unit, modifier: Modifier = Modifier) {
-    val kontext = LocalContext.current
-    val auswahl = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickMultipleVisualMedia(GALERIE_MAX)
-    ) { uris ->
-        val dateien = uris.mapIndexedNotNull { i, uri -> galerieKopieren(kontext, uri, i) }
-        if (dateien.isNotEmpty()) beiFotos(dateien)
-    }
-    FilledTonalIconButton(
-        onClick = {
-            try {
-                auswahl.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            } catch (_: ActivityNotFoundException) {
-                Toast.makeText(kontext, kontext.getString(R.string.m_keine_app), Toast.LENGTH_LONG).show()
-            }
-        },
-        enabled = aktiv,
-        shape = CircleShape,
-        modifier = modifier.size(52.dp),
-    ) {
-        Icon(Icons.Outlined.PhotoLibrary, contentDescription = stringResource(R.string.k_galerie))
-    }
-}
-
-/** So viele kann man in der Fotoauswahl auf einmal antippen; was der Eingang nicht nimmt, meldet das ViewModel. */
-const val GALERIE_MAX = 20
+/** So viele kann man in der Fotoauswahl auf einmal antippen (Auftrag 1.28: max. 5); mehr meldet das ViewModel. */
+const val GALERIE_MAX = 5
 
 /** Kopiert ein Bild aus der Fotoauswahl in den Cache (Name aus der Quelle, sonst Zeitstempel). */
 fun galerieKopieren(kontext: android.content.Context, uri: android.net.Uri, nr: Int): File? = try {
@@ -127,9 +101,18 @@ fun galerieKopieren(kontext: android.content.Context, uri: android.net.Uri, nr: 
     null
 }
 
-/** Foto mit der Kamera-App; das Ergebnis liegt im Cache und geht unveraendert an den Server. */
+/**
+ * Foto mit der Kamera-App; das Ergebnis liegt im Cache und geht unveraendert an den Server.
+ * **Langer Druck** oeffnet die Android-Fotoauswahl (Auftrag 1.28, 2.) - kein eigener Knopf.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun KameraKnopf(aktiv: Boolean, beiFoto: (File) -> Unit, modifier: Modifier = Modifier) {
+fun KameraKnopf(
+    aktiv: Boolean,
+    beiFoto: (File) -> Unit,
+    modifier: Modifier = Modifier,
+    beiGalerie: ((List<File>) -> Unit)? = null,
+) {
     val kontext = LocalContext.current
     // Ueberlebt, dass Android die App waehrend der Kamera beendet.
     var pfad by rememberSaveable { mutableStateOf<String?>(null) }
@@ -141,8 +124,11 @@ fun KameraKnopf(aktiv: Boolean, beiFoto: (File) -> Unit, modifier: Modifier = Mo
             if (ok && datei.length() > 0) beiFoto(datei) else datei.delete()
         }
     }
-    FilledTonalIconButton(
-        onClick = {
+    val galerie = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(GALERIE_MAX)) { uris ->
+        val dateien = uris.mapIndexedNotNull { i, uri -> galerieKopieren(kontext, uri, i) }
+        if (dateien.isNotEmpty()) beiGalerie?.invoke(dateien)
+    }
+    val ausloesen: () -> Unit = {
             val ordner = File(kontext.cacheDir, "fotos").apply { mkdirs() }
             val stempel = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.GERMANY).format(Date())
             val datei = File(ordner, "Foto_$stempel.jpg")
@@ -153,11 +139,35 @@ fun KameraKnopf(aktiv: Boolean, beiFoto: (File) -> Unit, modifier: Modifier = Mo
                 pfad = null
                 Toast.makeText(kontext, keineKamera, Toast.LENGTH_LONG).show()
             }
-        },
-        enabled = aktiv,
-        shape = CircleShape,
-        modifier = modifier.size(52.dp),
+    }
+    // Wie FilledTonalIconButton, aber mit langem Druck.
+    val farben = MaterialTheme.colorScheme
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .background(if (aktiv) farben.secondaryContainer else farben.onSurface.copy(alpha = 0.12f))
+            .combinedClickable(
+                enabled = aktiv,
+                onClickLabel = stringResource(R.string.k_foto),
+                onLongClickLabel = if (beiGalerie != null) stringResource(R.string.k_galerie) else null,
+                onClick = ausloesen,
+                onLongClick = if (beiGalerie == null) null else {
+                    {
+                        try {
+                            galerie.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } catch (_: ActivityNotFoundException) {
+                            Toast.makeText(kontext, keineKamera, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+            ),
     ) {
-        Icon(Icons.Outlined.PhotoCamera, contentDescription = stringResource(R.string.k_foto))
+        Icon(
+            Icons.Outlined.PhotoCamera,
+            contentDescription = stringResource(R.string.k_foto),
+            tint = if (aktiv) farben.onSecondaryContainer else farben.onSurface.copy(alpha = 0.38f),
+        )
     }
 }

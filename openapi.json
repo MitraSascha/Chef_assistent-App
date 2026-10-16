@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.26.1"
+    "version": "1.28.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -8502,6 +8502,15 @@
             "description": "0–5 Fotos (Typenschild, Schaden, Tür …)",
             "default": []
           },
+          "foto_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Foto Ids",
+            "description": "Fotos aus der Projektmappe (uuid aus fotos[]) – der Server holt sie selbst (neu in 1.27.0); zusammen mit fotos höchstens 5",
+            "default": []
+          },
           "termin_id": {
             "anyOf": [
               {
@@ -10020,6 +10029,29 @@
         ],
         "title": "Foto"
       },
+      "FotoAblage": {
+        "properties": {
+          "titel": {
+            "type": "string",
+            "title": "Titel",
+            "description": "Vorschlag der KI – auf der Karte änderbar (Passt.titel)"
+          },
+          "abgelegt": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Abgelegt",
+            "description": "Dateinamen nach „Passt“ (kommen in wenigen Minuten in HERO); leer = noch nicht"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titel",
+          "abgelegt"
+        ],
+        "title": "FotoAblage"
+      },
       "FotoAntwort": {
         "properties": {
           "foto": {
@@ -11102,6 +11134,7 @@
             "enum": [
               "bericht",
               "frage",
+              "foto",
               "bestellung",
               "meldung",
               "protokoll",
@@ -11202,6 +11235,17 @@
                 "type": "null"
               }
             ]
+          },
+          "foto": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FotoAblage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "art foto – und bei frage mit Fotos: Titel; „Passt“ legt die Fotos damit ins Projekt (1.28.0)"
           },
           "zeiten": {
             "anyOf": [
@@ -12219,6 +12263,19 @@
             ],
             "title": "Vorlage",
             "description": "protokoll: andere Vorlage wählen (Werte gleicher Schlüssel bleiben)"
+          },
+          "titel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titel",
+            "description": "foto / frage mit Fotos: geänderter Titel (1.28.0)"
           },
           "nur_speichern": {
             "type": "boolean",

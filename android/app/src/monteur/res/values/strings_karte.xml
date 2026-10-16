@@ -31,6 +31,13 @@
     <string name="k_art_zeiten">Zeiten</string>
     <string name="k_art_urlaub">Urlaub</string>
     <string name="k_art_protokoll">Protokoll</string>
+    <string name="k_art_foto">Foto ins Projekt</string>
+    <string name="k_erg_foto">Liegt im Projekt</string>
+    <string name="k_foto_titel">Titel</string>
+    <string name="k_foto_ablegen_als">Foto ins Projekt legen als:</string>
+    <string name="k_passt_foto">Passt – Foto ablegen</string>
+    <string name="k_frage_zum_foto">Frage zu diesem Foto</string>
+    <string name="k_galerie_hinweis">Tipp: Kamera lange drücken – aus der Galerie</string>
     <string name="k_erg_protokoll">Protokoll im Projekt</string>
     <string name="pr_fehlen">Es fehlen noch: %1$s</string>
     <string name="pr_alles_da">Alle Pflichtwerte sind eingetragen.</string>
