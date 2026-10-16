@@ -717,6 +717,12 @@ Zweite, schlanke App „Mitra Monteur“ (`de.mitra.monteur`, goldenes M auf Nav
 
 **Noch nicht am Gerät geprüft.** Testen mit Büro-Zugang (Sascha hat eine HERO-Zuordnung). **„Passt – nach HERO“, Zeiten und Urlaub schreiben echt in HERO:** nur nach Rückfrage, Berichte nur am Testprojekt `UNB-795`.
 
+**Fachregeln für Zeiten und Bericht (vom Nutzer, 2026-10-16), ans Backend weitergeben:**
+- Laden im Büro vor der Fahrt (z. B. 07:00–07:45) ist **Arbeitszeit ohne Projektbezug** (in HERO ohne Projekt), nicht Arbeit am Kundenprojekt. Die KI buchte im Test „07:00–07:45 · Arbeit“ ohne diese Unterscheidung.
+- Fahrt Büro → Kunde zählt als Zeit, steht aber **nicht im Bericht**: Die Anfahrt ist immer als Pauschale drin. Beladen gehört ebenfalls nicht in den Bericht.
+- Fährt der Monteur **während** des Einsatzes zum Händler und zurück, zählt diese Fahrt **für den Kunden als Arbeitszeit** und steht im Bericht.
+- Kundendienst mit mehreren Kunden am Tag: den Bericht je Termin über den Termin schreiben (automatische Zuordnung nimmt sonst den zuletzt begonnenen). Bei ganztägigen Baustellen egal. In der Einweisung der Monteure ansagen.
+
 **Offene Fragen ans Backend:**
 - Urlaub: Gilt bei einem einzelnen Tag `halber_tag_anfang` oder `_ende`? Dürfen Krankmeldungen halbe Tage haben? `verstehen` liefert keine Tage, die App schätzt Mo–Fr ohne Feiertage.
 - Zeiten: Wie entfernt man die Projekt-Nr. eines Eintrags (`projekt_nr: ""`)? Liefert `GET /v1/monteur/zeiten` für vergangene Tage `stempel`? Welche Arten kann `verstehen` liefern, die beim Anlegen nicht erlaubt sind (die App bucht Unbekanntes als `arbeit`, sichtbar vor dem Übernehmen)?
