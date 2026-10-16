@@ -1,12 +1,12 @@
-# Auftrag an den App-Agenten – Server 1.26.0: Monteur-App, Vorgeschichte
+# Auftrag an den App-Agenten – Server 1.26.1: Monteur-App, Vorgeschichte
 
 Anlass (User 16.10.2026): Bevor der Monteur losfährt, soll er wissen, was an der Baustelle schon war – welches Gerät
 verbaut ist, wann zuletzt gewartet wurde, was noch offen ist, wo der Schlüssel liegt. Bisher musste er dafür alte
 Berichte in der Projektmappe aufmachen, und ältere Projekte (z. B. die Wartung im Vorjahr) sah er gar nicht. **Keine
 neuen Knöpfe:** die Vorgeschichte steht einfach im Termin und oben in der Projektmappe.
 
-Vertrag: [`openapi.json`](openapi.json) 1.26.0 (sha256 `6105f5c0…ff2e668`), Beschreibung in
-[`API.md` 5c, Abschnitt „Vorgeschichte“](API.md#vorgeschichte--neu-in-1260). Es gibt nur Ergänzungen; alles aus
+Vertrag: [`openapi.json`](openapi.json) 1.26.1 (sha256 `cde4c659…f008f1a`), Beschreibung in
+[`API.md` 5c, Abschnitt „Vorgeschichte“](API.md#vorgeschichte--neu-in-1260). Nachtrag 1.26.1: `vorgeschichte_laeuft` (siehe 3.), schnelleres Modell, in HERO gelöschte Kommentare fallen weg. Es gibt nur Ergänzungen; alles aus
 [`AUFTRAG-APP-1.25.md`](AUFTRAG-APP-1.25.md), [`AUFTRAG-APP-1.24.md`](AUFTRAG-APP-1.24.md),
 [`AUFTRAG-APP-1.23.md`](AUFTRAG-APP-1.23.md) und [`AUFTRAG-APP-1.22.md`](AUFTRAG-APP-1.22.md) gilt weiter. Betrifft
 nur den Flavor `monteur`; die Büro-App ist nicht betroffen.
@@ -54,10 +54,11 @@ keine eigene Seite. Die Vorgeschichte erscheint von selbst – oder gar nicht.
 - `vorgeschichte: null` → **Block ganz weglassen**, keine Überschrift, kein „Keine Vorgeschichte“.
 - Unbekannte zusätzliche Felder (spätere Server-Version) ignorieren, nicht abstürzen.
 
-### 3. Nachladen, wenn noch nichts da ist
-- Ist `vorgeschichte` `null` und die Projektmappe ist noch offen, **einmal nach etwa 20 s** die Projektmappe still neu
-  laden (`GET /v1/monteur/projekte/{id}`) und den Block einblenden, wenn er jetzt kommt.
-- **Nur einmal** je Öffnen der Projektmappe; kommt wieder `null`, bleibt es dabei (es gibt dann meist keine Unterlagen).
+### 3. Nachladen, wenn noch nichts da ist (geändert in 1.26.1)
+- Die Projektmappe liefert **`vorgeschichte_laeuft`** (bool). Ist es `true` und die Projektmappe noch offen, nach
+  **etwa 8 s** still neu laden (`GET /v1/monteur/projekte/{id}`) – und das so lange wiederholen, wie
+  `vorgeschichte_laeuft` `true` ist, höchstens 60 s lang. Kommt der Block, einblenden.
+- Ist `vorgeschichte` `null` und `vorgeschichte_laeuft` `false`: nichts nachladen (es gibt keine Unterlagen).
 - Kein Spinner, kein Knopf, keine Meldung. Beim Nachladen Scrollposition und offene Eingaben nicht verlieren – am
   einfachsten nur den Vorgeschichte-Block aus der neuen Antwort übernehmen.
 - Projektmappe vorher geschlossen → Timer abbrechen. Offline → nichts tun.
@@ -70,6 +71,6 @@ bekannter Wartungskunde):
 2. Termin antippen → Block „Vorgeschichte“ ganz oben: Zusammenfassung, Gerät, letzte Wartung, letzte Einsätze, offene
    Punkte als Aufzählung, Hinweise hervorgehoben. Inhalte mit den alten Berichten in HERO vergleichen – nichts darf
    dazuerfunden sein.
-3. Projekt ohne Vorausberechnung öffnen (z. B. Termin übermorgen) → kein Block; nach ~20 s erscheint er ohne Zutun.
-4. Projekt ohne frühere Unterlagen → kein Block, auch nach 20 s nicht, keine Fehlermeldung; Termin-Karte ohne graue
+3. Projekt ohne Vorausberechnung öffnen (z. B. Termin übermorgen) → kein Block, `vorgeschichte_laeuft: true`; nach wenigen Sekunden erscheint er ohne Zutun.
+4. Projekt ohne frühere Unterlagen → kein Block, `vorgeschichte_laeuft: false`, keine Fehlermeldung; Termin-Karte ohne graue
    Zeilen.

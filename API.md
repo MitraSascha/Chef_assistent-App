@@ -1166,8 +1166,9 @@ sonst bleibt die gespeicherte Fassung. **Kosten:** ein KI-Aufruf je Projekt und 
 Denkaufwand), nicht je Abruf; gebucht im Verbrauch unter `vorgeschichte`.
 
 **Projektmappe ohne gespeicherte Vorgeschichte** (z. B. Termin übermorgen oder Projekt aus der Suche): Der Abruf
-liefert `vorgeschichte: null` und startet die Berechnung im Hintergrund; der **nächste Abruf** (meist nach 10–30 s)
-hat sie. `GET /v1/monteur/tage` startet keine Berechnung, liefert nur, was schon da ist.
+liefert `vorgeschichte: null`, **`vorgeschichte_laeuft: true`** (neu in 1.26.1) und startet die Berechnung im
+Hintergrund (schnelles Modell, meist unter 15 s). Solange `vorgeschichte_laeuft` true ist, etwa alle 8 s neu laden.
+In HERO gelöschte Kommentare fallen aus Vorgeschichte und Verlauf weg (ab 1.26.1). `GET /v1/monteur/tage` startet keine Berechnung, liefert nur, was schon da ist.
 
 **`null` heißt:**
 - es gibt keine Unterlagen (kein Bericht, Protokoll, Kommentar, keine Notiz) – dann bleibt es `null`,

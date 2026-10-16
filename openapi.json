@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.26.0"
+    "version": "1.26.1"
   },
   "paths": {
     "/v1/gesund": {
@@ -12454,6 +12454,12 @@
               }
             ],
             "description": "Vorgeschichte der Anlage/Baustelle (1.26.0): null = keine Unterlagen oder wird gerade berechnet"
+          },
+          "vorgeschichte_laeuft": {
+            "type": "boolean",
+            "title": "Vorgeschichte Laeuft",
+            "description": "true = wird gerade berechnet (meist unter 15 s) – Mappe nach ~8 s nochmal laden, solange true",
+            "default": false
           },
           "verlauf": {
             "items": {

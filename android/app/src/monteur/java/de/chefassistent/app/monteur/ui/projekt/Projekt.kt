@@ -109,8 +109,11 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 
-/** So lange wartet die Mappe, bevor sie die Vorgeschichte einmal nachfragt. */
-const val VORGESCHICHTE_WARTEN_MS = 20_000L
+/** Abstand der stillen Nachfragen, solange `vorgeschichte_laeuft` (Auftrag 1.26.1, 3.). */
+const val VORGESCHICHTE_TAKT_MS = 8_000L
+
+/** Hoechstens so lange wird nachgefragt. */
+const val VORGESCHICHTE_MAX_MS = 60_000L
 
 data class ProjektZustand(
     val mappe: Projektmappe? = null,
@@ -129,7 +132,7 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
     private val _zustand = MutableStateFlow(ProjektZustand())
     val zustand: StateFlow<ProjektZustand> = _zustand.asStateFlow()
 
-    /** Vorgeschichte noch nicht berechnet: einmal je Oeffnen still nachladen (Auftrag 1.26, 3.). */
+    /** Hoechstens ein Nachfrage-Takt je Oeffnen (Auftrag 1.26.1, 3.). */
     private var nachgeladen = false
 
     init {
@@ -142,7 +145,7 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
             try {
                 val mappe = app.repository.projekt(projektId)
                 _zustand.update { it.copy(mappe = mappe, laeuft = false) }
-                if (mappe.vorgeschichte == null) vorgeschichteNachladen()
+                if (mappe.vorgeschichte == null && mappe.vorgeschichte_laeuft) vorgeschichteNachladen()
             } catch (fehler: ApiFehler) {
                 if (fehler is ApiFehler.NichtAngemeldet) {
                     app.repository.lokalAbmelden()
@@ -154,22 +157,30 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
     }
 
     /**
-     * Der Server rechnet sie beim ersten Abruf im Hintergrund (10-30 s). Nach 20 s einmal
-     * still nachfragen und nur den Block uebernehmen - Scrollposition und Eingaben bleiben.
-     * Kein Spinner, keine Meldung; Fehler (offline) bleiben still. Schliesst die Mappe,
-     * bricht `viewModelScope` den Timer ab.
+     * Der Server rechnet sie gerade (`vorgeschichte_laeuft`). Alle 8 s still nachfragen,
+     * solange das so bleibt, hoechstens 60 s, und nur den Block uebernehmen - Scrollposition
+     * und Eingaben bleiben. Kein Spinner, keine Meldung; ein Fehler (offline) beendet es
+     * still. Schliesst die Mappe, bricht `viewModelScope` ab.
      */
     private fun vorgeschichteNachladen() {
         if (nachgeladen) return
         nachgeladen = true
         viewModelScope.launch {
-            delay(VORGESCHICHTE_WARTEN_MS)
-            val neu = try {
-                app.repository.projekt(projektId).vorgeschichte
-            } catch (_: ApiFehler) {
-                null
-            } ?: return@launch
-            _zustand.update { z -> z.copy(mappe = z.mappe?.copy(vorgeschichte = neu)) }
+            var gewartet = 0L
+            while (gewartet + VORGESCHICHTE_TAKT_MS <= VORGESCHICHTE_MAX_MS) {
+                delay(VORGESCHICHTE_TAKT_MS)
+                gewartet += VORGESCHICHTE_TAKT_MS
+                val neu = try {
+                    app.repository.projekt(projektId)
+                } catch (_: ApiFehler) {
+                    return@launch
+                }
+                neu.vorgeschichte?.let { v ->
+                    _zustand.update { z -> z.copy(mappe = z.mappe?.copy(vorgeschichte = v, vorgeschichte_laeuft = false)) }
+                    return@launch
+                }
+                if (!neu.vorgeschichte_laeuft) return@launch
+            }
         }
     }
 

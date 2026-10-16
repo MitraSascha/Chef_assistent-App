@@ -103,6 +103,8 @@ data class Projektmappe(
     val verlauf: List<Verlaufseintrag> = emptyList(),
     /** Seit 1.26.0: was an der Baustelle schon war. `null` = keine Unterlagen oder noch nicht berechnet. */
     val vorgeschichte: Vorgeschichte? = null,
+    /** Seit 1.26.1: Berechnung laeuft gerade - solange `true`, etwa alle 8 s neu laden. */
+    val vorgeschichte_laeuft: Boolean = false,
 )
 
 /** Vorgeschichte der Baustelle/Anlage (API.md 5c, 1.26.0). Die KI erfindet nichts - Fehlendes bleibt leer. */

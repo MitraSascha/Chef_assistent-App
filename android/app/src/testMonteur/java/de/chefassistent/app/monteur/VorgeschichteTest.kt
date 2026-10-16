@@ -39,6 +39,8 @@ class VorgeschichteTest {
     @Test
     fun nullUndLeerFallenWeg() {
         assertNull(json.decodeFromString(Projektmappe.serializer(), """{"id":5,"vorgeschichte":null}""").vorgeschichte)
+        assertFalse(json.decodeFromString(Projektmappe.serializer(), """{"id":5}""").vorgeschichte_laeuft)
+        assertTrue(json.decodeFromString(Projektmappe.serializer(), """{"id":5,"vorgeschichte":null,"vorgeschichte_laeuft":true}""").vorgeschichte_laeuft)
         assertNull(json.decodeFromString(TagTermin.serializer(), """{"id":"hero:1"}""").vorgeschichte)
         assertEquals("kurz", json.decodeFromString(TagTermin.serializer(), """{"id":"hero:1","vorgeschichte":"kurz"}""").vorgeschichte)
         assertNull(geraetZeile(null))
