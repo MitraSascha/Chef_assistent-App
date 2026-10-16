@@ -189,6 +189,8 @@ fun ProjektScreen(
         },
         bottomBar = {
             // Grosser Knopf unten, wie in HERO: Termin antippen, dort alles erledigen.
+            // Eigene Flaeche, sonst scheint die Liste darunter durch.
+            Surface(color = MaterialTheme.colorScheme.surface) {
             Button(
                 onClick = { beiBericht(entwurfId, mappe?.nr) },
                 shape = RoundedCornerShape(10.dp),
@@ -205,6 +207,7 @@ fun ProjektScreen(
                     stringResource(if (entwurfId != null) R.string.m_entwurf_oeffnen else R.string.m_bericht),
                     style = MaterialTheme.typography.titleMedium,
                 )
+            }
             }
         },
     ) { innen ->

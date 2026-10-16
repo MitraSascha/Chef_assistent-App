@@ -4,6 +4,10 @@
     <!-- Mikrofon -->
     <string name="m_mikro_frage">Was hast du gemacht?</string>
     <string name="m_mikro_hinweis">Was, wie lange, welches Material – in deiner Sprache, Stichworte reichen.</string>
+    <string name="m_mikro_zeiten">Zeiten sagen</string>
+    <string name="m_mikro_zeiten_hinweis">z. B. „Feierabend, halbe Stunde Pause“</string>
+    <string name="m_mikro_urlaub">Urlaub sagen</string>
+    <string name="m_mikro_urlaub_hinweis">z. B. „nächste Woche Donnerstag und Freitag frei“</string>
     <string name="m_mikro_laeuft">Aufnahme läuft – tippen zum Beenden</string>
     <string name="m_mikro_keine_erlaubnis">Ohne Mikrofon-Berechtigung geht kein Diktat. Bitte in den Einstellungen erlauben.</string>
     <string name="m_mikro_belegt">Das Mikrofon ist gerade belegt.</string>

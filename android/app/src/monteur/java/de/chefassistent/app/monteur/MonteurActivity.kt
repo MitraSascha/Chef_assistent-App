@@ -5,7 +5,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -294,6 +298,15 @@ private fun StartReiter(
                 Reiter.URLAUB -> UrlaubReiter(urlaub, inhalt)
             }
 
+            // Feste Flaeche unter der Statusleiste: gescrollter Inhalt laeuft sonst unter die Uhr.
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(innen.calculateTopPadding())
+                    .background(MaterialTheme.colorScheme.surface),
+            )
+
             // Menue oben rechts: Abmelden. Die Server-Adresse steht in der Einrichtung.
             Box(Modifier.align(Alignment.TopEnd).padding(top = innen.calculateTopPadding())) {
                 IconButton(onClick = { menue = true }) {
@@ -310,9 +323,33 @@ private fun StartReiter(
                 }
             }
 
+            // Verlauf zur Hintergrundfarbe hinter dem Mikrofon: Karten darunter blenden aus,
+            // statt mit Beschriftung und Hinweis zusammenzustossen.
+            val grund = MaterialTheme.colorScheme.surface
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(innen.calculateBottomPadding() + MIKRO_PLATZ + 24.dp)
+                    .background(Brush.verticalGradient(0f to grund.copy(alpha = 0f), 0.25f to grund, 1f to grund)),
+            )
             MikrofonKnopf(
                 steuerung = aufnahme,
-                hinweis = if (reiter == Reiter.HEUTE) stringResource(R.string.m_mikro_hinweis) else null,
+                // Je Reiter eine eigene Frage: Bericht, Zeiten oder Urlaub.
+                beschriftung = stringResource(
+                    when (reiter) {
+                        Reiter.HEUTE -> R.string.m_mikro_frage
+                        Reiter.ZEITEN -> R.string.m_mikro_zeiten
+                        Reiter.URLAUB -> R.string.m_mikro_urlaub
+                    }
+                ),
+                hinweis = stringResource(
+                    when (reiter) {
+                        Reiter.HEUTE -> R.string.m_mikro_hinweis
+                        Reiter.ZEITEN -> R.string.m_mikro_zeiten_hinweis
+                        Reiter.URLAUB -> R.string.m_mikro_urlaub_hinweis
+                    }
+                ),
                 beiFertig = { datei ->
                     when (reiter) {
                         // Ohne Termin: der Server findet ihn selbst (Uhrzeit + Plan).
