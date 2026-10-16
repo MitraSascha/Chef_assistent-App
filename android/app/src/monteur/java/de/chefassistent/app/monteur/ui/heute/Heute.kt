@@ -184,6 +184,8 @@ fun HeuteReiter(
     offene: List<Karte> = emptyList(),
     beiKarte: (Karte) -> Unit = {},
     beiKarteId: (String) -> Unit = {},
+    /** Seit 1.23.0: Tippen statt Sprechen - oeffnet die Eingabe des Eingangs. */
+    beiTippen: () -> Unit = { beiBericht(BerichtStart()) },
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val wartend by viewModel.wartend.collectAsStateWithLifecycle()
@@ -205,9 +207,7 @@ fun HeuteReiter(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(top = innen.calculateTopPadding())) {
-            Kopf(zustand, viewModel::schritt, viewModel::heute, viewModel::ansichtUmschalten) {
-                beiBericht(BerichtStart())
-            }
+            Kopf(zustand, viewModel::schritt, viewModel::heute, viewModel::ansichtUmschalten) { beiTippen() }
             if (zustand.laeuft && zustand.tage == null) LinearProgressIndicator(Modifier.fillMaxWidth())
 
             PullToRefreshBox(

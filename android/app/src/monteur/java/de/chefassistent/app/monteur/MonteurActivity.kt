@@ -391,6 +391,10 @@ private fun StartReiter(
                         eingang.oeffnen(id)
                         zurKarte()
                     },
+                    beiTippen = {
+                        eingang.beginnen(EingangKontext(datum = heute.zustand.value.anker.takeIf { it != java.time.LocalDate.now() }?.toString()))
+                        zurKarte()
+                    },
                 )
                 Reiter.ZEITEN -> ZeitenReiter(zeiten, inhalt)
                 Reiter.URLAUB -> UrlaubReiter(urlaub, inhalt)

@@ -54,7 +54,7 @@
     <string name="m_ganztaegig">ganztägig</string>
     <string name="m_wartet">%1$d warten auf Netz</string>
     <string name="m_jetzt_senden">Jetzt senden</string>
-    <string name="m_bericht_tippen">Bericht tippen</string>
+    <string name="m_bericht_tippen">Tippen</string>
     <string name="m_anrufen">%1$s anrufen</string>
     <string name="m_navigation">Navigation zu %1$s</string>
     <string name="m_keine_app">Dafür ist keine App installiert.</string>
