@@ -15,6 +15,15 @@
     <string name="z_art_buero">Büro</string>
     <string name="z_art_vor_ort">Vor Ort</string>
     <string name="z_art_sonstige">Sonstiges</string>
+    <string name="z_art_lager">Lager/Laden</string>
+
+    <!-- Hilfe je Art im Formular (Auftrag 1.23, 6.) -->
+    <string name="z_hilfe_lager">Laden, Lager, Firma – Arbeitszeit ohne Projekt.</string>
+    <string name="z_hilfe_fahrt">Fahrt zum Kunden bzw. zwischen Kunden – wird nicht berechnet (Anfahrtspauschale).</string>
+    <string name="z_hilfe_arbeit">Beim Kunden – mit Projekt, wird berechnet.</string>
+    <string name="z_hilfe_material">Während des Einsatzes zum Händler – mit Projekt, wird berechnet.</string>
+    <string name="z_hilfe_pause">Pause – zählt nicht als Arbeitszeit.</string>
+    <string name="z_hilfe_heimweg">Fahrt von zu Hause und Heimfahrt nicht eintragen.</string>
 
     <!-- Liste -->
     <string name="z_eintraege">Einträge</string>

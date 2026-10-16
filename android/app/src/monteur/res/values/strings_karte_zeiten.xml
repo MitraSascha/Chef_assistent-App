@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monteur-App: Karten „Zeiten“ und „Urlaub“ im Eingang (Auftrag 1.23, 2.). -->
+<resources>
+    <!-- Zeiten -->
+    <string name="kz_leer">Darin war keine Zeit zu erkennen.</string>
+    <string name="kz_auf_projekt">auf %1$s</string>
+    <string name="kz_ohne_projekt">ohne Projekt</string>
+    <string name="kz_summe">Arbeitszeit %1$s</string>
+    <string name="kz_summe_hinweis">ohne Pause</string>
+    <string name="kz_antippen">Zeile antippen, um Uhrzeit oder Art zu ändern.</string>
+    <string name="kz_aendern">Ändern</string>
+    <string name="kz_dialog_titel">Abschnitt ändern</string>
+    <string name="kz_uebernehmen">Übernehmen</string>
+    <string name="kz_abbrechen">Abbrechen</string>
+    <string name="kz_entfernen">Abschnitt entfernen</string>
+    <string name="kz_zeit_ungueltig">Beginn und Ende dürfen nicht gleich sein.</string>
+    <string name="kz_folgetag">Endet am nächsten Tag.</string>
+
+    <!-- Urlaub -->
+    <string name="kz_urlaub_leer">Darin war kein Zeitraum zu erkennen.</string>
+    <string name="kz_art">Art</string>
+    <string name="kz_zeitraum">Zeitraum</string>
+    <string name="kz_zeitraum_aendern">Zeitraum ändern</string>
+    <string name="kz_tage_schaetzung">etwa %1$s (Mo–Fr, Feiertage rechnet HERO)</string>
+    <string name="kz_kommentar">Kommentar (optional)</string>
+</resources>

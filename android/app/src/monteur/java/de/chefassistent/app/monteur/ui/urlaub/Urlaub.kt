@@ -734,7 +734,7 @@ private fun AntragSheet(
 }
 
 @Composable
-private fun Schalter(text: String, an: Boolean, aktiv: Boolean, beiWechsel: (Boolean) -> Unit) {
+internal fun Schalter(text: String, an: Boolean, aktiv: Boolean, beiWechsel: (Boolean) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -750,7 +750,7 @@ private fun Schalter(text: String, an: Boolean, aktiv: Boolean, beiWechsel: (Boo
 /** Datumsbereich. Ein einzelner Tag ist erlaubt: ohne Ende gilt Beginn = Ende. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ZeitraumAuswahl(
+internal fun ZeitraumAuswahl(
     von: String,
     bis: String,
     beiFertig: (String, String) -> Unit,
@@ -786,8 +786,8 @@ private fun ZeitraumAuswahl(
 // --- Texte ------------------------------------------------------------------------------
 
 @Composable
-private fun artText(art: String): String = artName(art)?.let { stringResource(it) } ?: art
+internal fun artText(art: String): String = artName(art)?.let { stringResource(it) } ?: art
 
 @Composable
-private fun tageMitEinheit(tage: Double): String =
+internal fun tageMitEinheit(tage: Double): String =
     stringResource(if (istEinTag(tage)) R.string.u_tag_eins else R.string.u_tage, tageText(tage))
