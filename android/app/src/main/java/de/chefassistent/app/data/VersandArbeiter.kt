@@ -370,6 +370,15 @@ class VersandArbeiter(
             }
 
             var auftrag = medium.auftrag
+            // Aus einem neuen Chat ohne Gespraech: hat dessen erste Nachricht inzwischen
+            // ein Gespraech angelegt, gehoert das Medium dorthin (Auftrag 1.32 A). Sonst
+            // geht es ohne raus, und der Server gibt es dem naechsten Chat-Zug mit.
+            if (auftrag.gespraech_id == null && auftrag.faden != null) {
+                ausgang.gespraechZuFaden(auftrag.faden!!)?.let { gid ->
+                    auftrag = auftrag.copy(gespraech_id = gid, faden = null)
+                    korb.auftragAendern(medium.name, auftrag)
+                }
+            }
             if (auftrag.art != MedienAuftrag.ART_FOTO) {
                 imVordergrund(if (auftrag.art == MedienAuftrag.ART_VIDEO) "Video wird hochgeladen …" else "Dokument wird hochgeladen …")
             }
@@ -428,7 +437,7 @@ class VersandArbeiter(
                         // ohne diese Angabe ablegen als die Aufnahme wegwerfen - erst
                         // das Gespraech weglassen, das schadet am wenigsten.
                         auftrag = when {
-                            auftrag.gespraech_id != null -> auftrag.copy(gespraech_id = null)
+                            auftrag.gespraech_id != null -> auftrag.copy(gespraech_id = null, faden = null)
                             auftrag.notiz != null -> auftrag.copy(notiz = null)
                             else -> throw fehler
                         }

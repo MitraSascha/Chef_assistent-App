@@ -104,6 +104,9 @@ import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.RequestQuote
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -189,6 +192,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.chefassistent.app.R
 import de.chefassistent.app.data.ERLAUBTE_STIMMEN
 import de.chefassistent.app.data.ABSCHREIBEN_WERTE
+import de.chefassistent.app.data.BEWERTUNG_GRUND_MAX
 import de.chefassistent.app.data.FotoAufbereitung
 import de.chefassistent.app.data.Rueckmeldung
 import de.chefassistent.app.data.VideoAufbereitung
@@ -236,6 +240,7 @@ fun ChatScreen(
     beiPlantafel: () -> Unit,
     beiAngebote: () -> Unit,
     beiGeraete: () -> Unit,
+    beiVorlieben: () -> Unit,
     geteilt: Geteilt? = null,
     geteiltErledigt: () -> Unit = {},
     /**
@@ -514,6 +519,10 @@ fun ChatScreen(
                     bereich.launch { schublade.close() }
                     beiGeraete()
                 },
+                beiVorlieben = {
+                    bereich.launch { schublade.close() }
+                    beiVorlieben()
+                },
             )
         },
     ) {
@@ -772,6 +781,7 @@ fun ChatScreen(
                                     modellZeile = modellZeile(eintrag, zustand.modelle),
                                     liestVor = zustand.liestVor == eintrag.schluessel,
                                     beiVorlesen = { viewModel.vorlesenUmschalten(eintrag) },
+                                    beiBewerten = { schlecht, grund -> viewModel.bewerten(eintrag, schlecht, grund) },
                                     beiDatei = beiDatei,
                                     beiOrdner = beiAblage,
                                     beiTeilen = beiTeilen,
@@ -826,6 +836,7 @@ private fun GespraechSchublade(
     /** `null` = Angebote auf diesem Server nicht eingerichtet, Eintrag fehlt. */
     beiAngebote: (() -> Unit)?,
     beiGeraete: () -> Unit,
+    beiVorlieben: () -> Unit,
 ) {
     // Aufbau wie die Samsung-Einstellungen: Gruppen als runde Karten, farbige
     // Kreise vor den Eintraegen. Alles in einer Liste, damit die Schublade auch
@@ -937,6 +948,13 @@ private fun GespraechSchublade(
                             titel = stringResource(R.string.geraete_titel),
                             beiKlick = beiGeraete,
                         )
+                        // Seit v1.32.0: was sich der Assistent dauerhaft merkt (Auftrag 1.32 B).
+                        SchubladenZeile(
+                            symbol = Icons.Default.Psychology,
+                            farbe = FARBE_VORLIEBEN,
+                            titel = stringResource(R.string.vorlieben_titel),
+                            beiKlick = beiVorlieben,
+                        )
                     }
 
                     // Beide Moeglichkeiten stehen sichtbar untereinander. Ein Schalter zeigt
@@ -984,6 +1002,7 @@ private val FARBE_ANGEBOTE = Color(0xFF3A9D5D)
 private val FARBE_AUFTRAEGE = Color(0xFF7C5CD6)
 private val FARBE_VERBRAUCH = Color(0xFF6B7785)
 private val FARBE_GERAETE = Color(0xFF4A8FC9)
+private val FARBE_VORLIEBEN = Color(0xFF8E6BBF)
 
 private class SchubladenZiel(
     val symbol: ImageVector,
@@ -1571,10 +1590,22 @@ private fun AssistentBlase(
     modellZeile: String?,
     liestVor: Boolean,
     beiVorlesen: () -> Unit,
+    /** Seit v1.34.0: 👎 setzen (`true`, mit optionalem Grund) oder zuruecknehmen. */
+    beiBewerten: (Boolean, String?) -> Unit,
     beiDatei: (String) -> Unit,
     beiOrdner: (String) -> Unit,
     beiTeilen: (String) -> Unit,
 ) {
+    var grundFragen by rememberSaveable(eintrag.schluessel) { mutableStateOf(false) }
+    if (grundFragen) {
+        BewertungDialog(
+            beiSenden = { grund ->
+                grundFragen = false
+                beiBewerten(true, grund)
+            },
+            beiAbbrechen = { grundFragen = false },
+        )
+    }
     // Seit v1.21.0 ohne Blase, mit dem M-Zeichen links (Auftrag 1.21, B3).
     AssistentZeile {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1629,6 +1660,27 @@ private fun AssistentBlase(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // 👎 nur, wenn der Server die Nachricht kennt (seit v1.34.0 `nachricht_id`).
+                if (eintrag.nachrichtId != null) {
+                    IconButton(
+                        onClick = { if (eintrag.schlecht) beiBewerten(false, null) else grundFragen = true },
+                        enabled = !eintrag.bewertet,
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (eintrag.schlecht) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
+                            contentDescription = stringResource(
+                                if (eintrag.schlecht) R.string.bewertung_zuruecknehmen else R.string.bewertung_schlecht
+                            ),
+                            modifier = Modifier.size(18.dp),
+                            tint = if (eintrag.schlecht) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
                 IconButton(onClick = beiVorlesen, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = if (liestVor) Icons.Default.Stop else Icons.AutoMirrored.Filled.VolumeUp,
@@ -1646,6 +1698,40 @@ private fun AssistentBlase(
             }
         }
     }
+}
+
+/**
+ * Nach dem 👎 (Auftrag 1.34): optional sagen, was falsch war. "Ohne Grund"
+ * bewertet trotzdem, nur Abbrechen (ausserhalb tippen, Zurueck) laesst es.
+ */
+@Composable
+private fun BewertungDialog(beiSenden: (String?) -> Unit, beiAbbrechen: () -> Unit) {
+    var grund by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = beiAbbrechen,
+        icon = { Icon(Icons.Outlined.ThumbDown, contentDescription = null) },
+        title = { Text(stringResource(R.string.bewertung_titel)) },
+        text = {
+            OutlinedTextField(
+                value = grund,
+                onValueChange = { grund = it.take(BEWERTUNG_GRUND_MAX) },
+                placeholder = { Text(stringResource(R.string.bewertung_grund)) },
+                minLines = 2,
+                maxLines = 5,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { beiSenden(grund.trim().takeIf { it.isNotEmpty() }) }, enabled = grund.isNotBlank()) {
+                Text(stringResource(R.string.bewertung_senden))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { beiSenden(null) }) {
+                Text(stringResource(R.string.bewertung_ohne_grund))
+            }
+        },
+    )
 }
 
 /**

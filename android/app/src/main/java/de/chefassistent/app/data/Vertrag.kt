@@ -3,7 +3,7 @@ package de.chefassistent.app.data
 import kotlinx.serialization.Serializable
 
 /**
- * Datentypen aus `openapi.json` (Chef-Assistent v1.20.0).
+ * Datentypen aus `openapi.json` (Chef-Assistent v1.34.0).
  *
  * Die Feldnamen sind bewusst deutsch und identisch mit dem Vertrag - hier wird
  * nichts uebersetzt und nichts umbenannt. Neue Felder darf der Server jederzeit
@@ -80,6 +80,8 @@ data class ChatAntwort(
     val fortschritt: Fortschritt? = null,
     /** Seit v1.20.0: vom Nutzer gestoppt. */
     val abgebrochen: Boolean = false,
+    /** Seit v1.34.0: ID dieser Antwort im Verlauf, fuer das 👎 (`POST /v1/nachrichten/{id}/bewertung`). */
+    val nachricht_id: Long? = null,
 )
 
 /**
@@ -592,6 +594,9 @@ data class Nachricht(
     val abgebrochen: Boolean = false,
     /** Seit v1.20.0, nur `rolle = nutzer`: als Zwischenruf waehrend einer laufenden Antwort geschickt. */
     val zwischenruf: Boolean = false,
+    /** Seit v1.34.0, nur `rolle = assistent`: [BEWERTUNG_SCHLECHT] oder `null`. */
+    val bewertung: String? = null,
+    val bewertung_grund: String? = null,
 ) {
     companion object {
         const val ROLLE_NUTZER = "nutzer"
@@ -1347,3 +1352,86 @@ fun istModellFehler(detail: String, wahl: ModellWahl?): Boolean {
     if (!festGewaehlt) return false
     return detail.contains("Modell", ignoreCase = true) || detail.contains("Denkaufwand", ignoreCase = true)
 }
+
+// --- Vorlieben (seit v1.32.0, API.md 4f) ------------------------------------
+
+/** Was sich der Assistent dauerhaft merkt, persoenlich oder fuer die ganze Firma. */
+@Serializable
+data class Vorliebe(
+    val id: Int,
+    val text: String,
+    /** [VORLIEBE_MICH] oder [VORLIEBE_FIRMA]. */
+    val fuer: String = VORLIEBE_MICH,
+    /** Benutzername, wer sie angelegt oder zuletzt geaendert hat. */
+    val von: String = "",
+    /** ISO-Zeit (UTC). */
+    val geaendert: String = "",
+)
+
+/** `GET /v1/vorlieben`. */
+@Serializable
+data class VorliebenListe(
+    val firma: List<Vorliebe> = emptyList(),
+    val eigene: List<Vorliebe> = emptyList(),
+    /** Nur die Geschaeftsfuehrung darf firmenweite Vorlieben anlegen, aendern, loeschen. */
+    val firma_aendern: Boolean = false,
+)
+
+/** `POST /v1/vorlieben`. */
+@Serializable
+data class VorliebeNeu(
+    val text: String,
+    val fuer: String = VORLIEBE_MICH,
+)
+
+/** `PATCH /v1/vorlieben/{id}`. */
+@Serializable
+data class VorliebeText(val text: String)
+
+/** Antwort auf `POST` und `PATCH /v1/vorlieben`. */
+@Serializable
+data class VorliebeAntwort(
+    val vorliebe: Vorliebe,
+    /** z. B. "War schon gespeichert." */
+    val hinweis: String? = null,
+)
+
+const val VORLIEBE_MICH = "mich"
+const val VORLIEBE_FIRMA = "firma"
+
+/** Grenze aus dem Vertrag (`maxLength`), laenger ergibt 422. */
+const val VORLIEBE_MAX_ZEICHEN = 400
+
+// --- Bewertung (seit v1.34.0, API.md 4g) ------------------------------------
+
+/** Antwort auf `POST /v1/nachrichten/{id}/bewertung`. */
+@Serializable
+data class BewertungAntwort(
+    val nachricht_id: Long,
+    val bewertung: String? = null,
+    val bewertung_grund: String? = null,
+)
+
+/** Der einzige Wert, den es gibt: 👎. Ein 👍 sieht der Vertrag nicht vor. */
+const val BEWERTUNG_SCHLECHT = "schlecht"
+
+/** Grenze aus dem Vertrag (`maxLength` von `grund`). */
+const val BEWERTUNG_GRUND_MAX = 1000
+
+/**
+ * Koerper fuer `POST /v1/nachrichten/{id}/bewertung`. Als [kotlinx.serialization.json.JsonObject],
+ * weil `wert` Pflicht ist und zum Zuruecknehmen ausdruecklich `null` sein muss -
+ * mit `explicitNulls = false` fiele ein `null`-Feld einer Datenklasse weg.
+ * Ein leerer Grund geht nicht mit.
+ */
+fun bewertungKoerper(schlecht: Boolean, grund: String?): kotlinx.serialization.json.JsonObject =
+    kotlinx.serialization.json.buildJsonObject {
+        if (schlecht) {
+            put("wert", kotlinx.serialization.json.JsonPrimitive(BEWERTUNG_SCHLECHT))
+            grund?.trim()?.take(BEWERTUNG_GRUND_MAX)?.takeIf { it.isNotEmpty() }?.let {
+                put("grund", kotlinx.serialization.json.JsonPrimitive(it))
+            }
+        } else {
+            put("wert", kotlinx.serialization.json.JsonNull)
+        }
+    }

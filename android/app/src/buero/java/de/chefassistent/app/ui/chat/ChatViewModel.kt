@@ -14,6 +14,7 @@ import de.chefassistent.app.R
 import de.chefassistent.app.data.ApiFehler
 import de.chefassistent.app.data.AssistentRepository
 import de.chefassistent.app.data.AudioAufnahme
+import de.chefassistent.app.data.BEWERTUNG_SCHLECHT
 import de.chefassistent.app.data.Fortschritt
 import de.chefassistent.app.data.istModellFehler
 import de.chefassistent.app.ChefAssistentApp
@@ -100,6 +101,12 @@ data class AssistentEintrag(
     val modellGewechselt: Boolean = false,
     /** Seit v1.20.0: Verlauf der Bearbeitung fuer "Verlauf: N Werkzeuge", `null` bei alten Nachrichten. */
     val fortschritt: Fortschritt? = null,
+    /** Seit v1.34.0: ID fuer das 👎. `null` = alter Server oder lokale Zeile, dann kein Knopf. */
+    val nachrichtId: Long? = null,
+    /** 👎 gesetzt. */
+    val schlecht: Boolean = false,
+    /** Gerade wird bewertet - Knopf gesperrt. */
+    val bewertet: Boolean = false,
 ) : ChatEintrag
 
 /**
@@ -232,12 +239,6 @@ data class ChatZustand(
      */
     val medienSerie: String? = null,
     val wartendeMedien: Int = 0,
-    /**
-     * Dokumente, die abgelegt wurden, als es noch kein Gespraech gab. Ohne
-     * `gespraech_id` erfaehrt der Assistent nichts davon - die naechste Nachricht
-     * nennt sie deshalb (wie der Projektkontext: als Satz, nicht als Feld).
-     */
-    val ungemeldeteDokumente: List<String> = emptyList(),
     /** Hintergrundauftraege, die laufen oder fertig und noch nicht angesehen sind. */
     val auftraegeOffen: Int = 0,
     /** Eigene offene Aufgaben (`offen` aus `GET /v1/aufgaben`) - Zaehler in der Schublade. */
@@ -554,6 +555,31 @@ class ChatViewModel(
                 medienSerie = if (gewechselt) null else it.medienSerie,
             )
         }
+        if (sauber != null && ordner == null) heroMappeNachholen(sauber)
+    }
+
+    /**
+     * Angeheftet ist ein Name ohne eigenen Ordner, der mit einer HERO-Nummer beginnt
+     * ("SAN-660 Mueller", getippt oder aus "zuletzt benutzt"). Dann holt die App still
+     * die HERO-Mappe, damit Fotos und Dokumente dorthin und von dort nach HERO gehen
+     * (Auftrag 1.32 A). Ohne Treffer bleibt es beim Namen in der Bezugszeile.
+     */
+    private fun heroMappeNachholen(kontext: String) {
+        val nummer = heroNummerAus(kontext) ?: return
+        viewModelScope.launch {
+            try {
+                val mappe = repository.heroMappeOeffnen(nummer)
+                _zustand.update {
+                    if (it.kontext != kontext || it.kontextZiel != null) {
+                        it
+                    } else {
+                        it.copy(kontextZiel = mappe.pfad, kontextHero = mappe.projekt, heroStand = mappe)
+                    }
+                }
+            } catch (fehler: ApiFehler) {
+                if (fehler is ApiFehler.NichtAngemeldet) behandleFehler(fehler)
+            }
+        }
     }
 
     private var heroSucheJob: Job? = null
@@ -647,7 +673,20 @@ class ChatViewModel(
         viewModelScope.launch {
             try {
                 val ziele = repository.notizen()
-                _zustand.update { it.copy(ziele = ziele) }
+                _zustand.update {
+                    // Angeheftet, bevor die Ordner da waren (z. B. aus "zuletzt benutzt"):
+                    // jetzt den gleichnamigen Ordner zuordnen, sonst gingen Fotos an "Neueste von heute".
+                    val passend = if (it.kontext != null && it.kontextZiel == null) {
+                        ziele.ordner.firstOrNull { o -> o.name.equals(it.kontext, ignoreCase = true) }
+                    } else {
+                        null
+                    }
+                    if (passend == null) {
+                        it.copy(ziele = ziele)
+                    } else {
+                        it.copy(ziele = ziele, kontextZiel = passend.pfad, kontextHero = it.kontextHero ?: passend.hero_projekt)
+                    }
+                }
             } catch (fehler: ApiFehler) {
                 behandleFehler(fehler)
             } finally {
@@ -670,7 +709,6 @@ class ChatViewModel(
         val zustand = _zustand.value
         val zeilen = buildList {
             zustand.kontext?.let { add("Bezieht sich auf Projekt $it.") }
-            zustand.ungemeldeteDokumente.forEach { add("Ich habe dir das Dokument `$it` geschickt.") }
         }
         return zeilen.takeIf { it.isNotEmpty() }?.joinToString("\n")
     }
@@ -849,10 +887,9 @@ class ChatViewModel(
                 angeboteEingerichtet = it.angeboteEingerichtet,
                 // Die Auswahl bleibt, die Wahl selbst steht wieder auf "Automatisch".
                 modelle = it.modelle,
-                // Getipptes bleibt stehen, und abgelegte Dokumente soll der
-                // Assistent mit der naechsten Nachricht trotzdem erfahren.
+                // Getipptes bleibt stehen. Fotos und Dokumente, die schon ohne
+                // Gespraech abgelegt wurden, haelt der Server fuer den naechsten Zug fest (1.30.2).
                 entwurf = it.entwurf,
-                ungemeldeteDokumente = it.ungemeldeteDokumente,
                 // Seit v1.21.0: Begruessung und Klappzustand der Gespraechsliste.
                 anzeigename = it.anzeigename,
                 umgeklappteGruppen = it.umgeklappteGruppen,
@@ -1076,7 +1113,6 @@ class ChatViewModel(
             val hier = meine == sitzung
             z.copy(
                 faden = if (hier && z.gespraechId == null) ziel.faden else z.faden,
-                ungemeldeteDokumente = if (hier && ziel.vorspann != null) emptyList() else z.ungemeldeteDokumente,
                 wartendeNotizen = z.wartendeNotizen + 1,
             )
         }
@@ -1496,11 +1532,6 @@ class ChatViewModel(
                     it.copy(
                         medium = null,
                         letzteMedienNotiz = antwort.notiz,
-                        ungemeldeteDokumente = if (gespraechId == null) {
-                            it.ungemeldeteDokumente + antwort.dokument
-                        } else {
-                            it.ungemeldeteDokumente
-                        },
                         eintraege = it.eintraege + buildList {
                             add(
                                 HinweisEintrag(
@@ -1587,6 +1618,16 @@ class ChatViewModel(
         } else {
             null
         }
+        // Neuer Chat ohne Gespraech: einen Faden festlegen, dem auch die naechsten
+        // Nachrichten folgen. So findet das Medium beim Nachsenden sein Gespraech.
+        val gespraech = _zustand.value.gespraechId
+        val faden = if (gespraech == null) {
+            _zustand.value.faden ?: UUID.randomUUID().toString().also { neu ->
+                _zustand.update { z -> if (z.gespraechId == null && z.faden == null) z.copy(faden = neu) else z }
+            }
+        } else {
+            null
+        }
         val auftrag = MedienAuftrag(
             art = when {
                 medium.istDokument -> MedienAuftrag.ART_DOKUMENT
@@ -1597,7 +1638,8 @@ class ChatViewModel(
             aufgenommen = System.currentTimeMillis(),
             notiz = medium.notiz,
             text = medium.text.trim(),
-            gespraech_id = _zustand.value.gespraechId,
+            gespraech_id = gespraech,
+            faden = faden,
             serie = serie,
             abschreiben = medium.abschreiben.takeIf { medium.istVideo },
         )
@@ -1970,6 +2012,43 @@ class ChatViewModel(
         }
     }
 
+    // --- 👎 an Antworten (seit v1.34.0) --------------------------------------
+
+    /**
+     * Setzt das 👎 ([schlecht] = true, optional mit [grund]) oder nimmt es zurueck.
+     * Mit Grund legt der Server eine Hinweiszeile ins Gespraech, die der Assistent
+     * beim naechsten Zug sieht. Hier wird sie gleich lokal eingefuegt, wie die Zeile
+     * nach dem Neuladen aussaehe.
+     */
+    fun bewerten(eintrag: AssistentEintrag, schlecht: Boolean, grund: String? = null) {
+        val id = eintrag.nachrichtId ?: return
+        if (eintrag.bewertet) return
+        fun aendern(neu: (AssistentEintrag) -> AssistentEintrag) = _zustand.update { z ->
+            z.copy(eintraege = z.eintraege.map { if (it is AssistentEintrag && it.schluessel == eintrag.schluessel) neu(it) else it })
+        }
+        aendern { it.copy(bewertet = true) }
+        viewModelScope.launch {
+            try {
+                val antwort = repository.bewerten(id, schlecht, grund)
+                aendern { it.copy(bewertet = false, schlecht = antwort.bewertung == BEWERTUNG_SCHLECHT) }
+                val zeile = antwort.bewertung_grund?.trim()?.takeIf { it.isNotEmpty() && schlecht }
+                if (zeile != null) {
+                    _zustand.update { z ->
+                        z.copy(
+                            eintraege = z.eintraege + HinweisEintrag(
+                                schluessel = naechsterSchluessel("hinweis"),
+                                text = anwendung.getString(R.string.bewertung_hinweis, zeile),
+                            )
+                        )
+                    }
+                }
+            } catch (fehler: ApiFehler) {
+                aendern { it.copy(bewertet = false) }
+                behandleFehler(fehler)
+            }
+        }
+    }
+
     /**
      * Liest eine Antwort vor, oder stoppt, wenn dieselbe gerade laeuft.
      *
@@ -2151,6 +2230,8 @@ class ChatViewModel(
                                     denkaufwandName = nachricht.denkaufwand_name ?: nachricht.denkaufwand,
                                     modellGewechselt = nachricht.modell_gewechselt,
                                     fortschritt = nachricht.fortschritt,
+                                    nachrichtId = nachricht.id.toLong(),
+                                    schlecht = nachricht.bewertung == BEWERTUNG_SCHLECHT,
                                 )
                             )
                         }
@@ -2500,9 +2581,11 @@ class ChatViewModel(
         // Einmal nachsehen, damit Zaehler und Abfrage ihn sofort kennen.
         if (auftragsAbfrage != null) viewModelScope.launch { auftraegeAbfragen() }
         viewModelScope.launch { aufgabenZaehlen() }
-        // Die Antwort kam an, also auch die Nennung der Dokumente. Ab jetzt gibt es
-        // eine gespraech_id, und weitere Dokumente meldet der Server selbst.
-        _zustand.update { it.copy(ungemeldeteDokumente = emptyList()) }
+        // Faden eines neuen Chats: ab jetzt gibt es das Gespraech. Fotos und Dokumente
+        // dieses Chats, die noch im Korb warten, finden es darueber (Auftrag 1.32 A).
+        _zustand.value.faden?.takeIf { _zustand.value.gespraechId == null }?.let { faden ->
+            viewModelScope.launch(Dispatchers.IO) { ausgangskorb.fadenFestlegen(faden, antwort.gespraech_id) }
+        }
 
         _zustand.update { alt ->
             val ausgefuehrteIds = antwort.ausgefuehrt.associateBy { it.id }
@@ -2536,6 +2619,7 @@ class ChatViewModel(
                         denkaufwandName = antwort.denkaufwand_name ?: antwort.denkaufwand,
                         modellGewechselt = antwort.modell_gewechselt,
                         fortschritt = antwort.fortschritt,
+                        nachrichtId = antwort.nachricht_id,
                     )
                 )
                 // Ausgefuehrtes ohne zugehoerige Frage in der Liste (z.B. aus einer
@@ -2629,4 +2713,17 @@ class ChatViewModel(
             }
         }
     }
+}
+
+private val HERO_NUMMER = Regex("""^([A-Za-z]{2,5})[- ]?(\d{1,6})(?!\d)""")
+
+/**
+ * HERO-Projektnummer am Anfang eines angehefteten Namens, z. B. "SAN-660" aus
+ * "SAN-660 Firma WEG" oder "san 660". `null`, wenn der Name nicht so beginnt.
+ * Die Nummer geht an `POST /v1/hero-mappe`, das auch "san 660" versteht.
+ */
+internal fun heroNummerAus(text: String): String? {
+    val treffer = HERO_NUMMER.find(text.trim()) ?: return null
+    val (kuerzel, zahl) = treffer.destructured
+    return "${kuerzel.uppercase()}-$zahl"
 }

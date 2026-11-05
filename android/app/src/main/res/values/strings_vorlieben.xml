@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Vorlieben (/v1/vorlieben, seit v1.32.0) -->
+    <string name="vorlieben_titel">Vorlieben</string>
+    <string name="vorlieben_erklaerung">Was sich der Assistent dauerhaft merkt – gilt in jedem Gespräch. Im Chat genügt „merk dir …“.</string>
+    <string name="vorlieben_eigene">Nur für mich</string>
+    <string name="vorlieben_firma">Für die ganze Firma</string>
+    <string name="vorlieben_leer">Noch nichts gemerkt.</string>
+    <string name="vorlieben_neu_hinweis">z. B. Zusammenfassungen immer als PDF</string>
+    <string name="vorlieben_fuer_firma">für die ganze Firma</string>
+    <string name="vorlieben_merken">Merken</string>
+    <string name="vorlieben_aendern">Ändern</string>
+    <string name="vorlieben_speichern">Speichern</string>
+    <string name="vorlieben_vergessen">Vergessen</string>
+    <string name="vorlieben_vergessen_titel">Vorliebe vergessen?</string>
+    <string name="vorlieben_vergessen_frage">„%1$s“ – der Assistent hält sich danach in keinem Gespräch mehr daran.</string>
+    <string name="vorlieben_nicht_verfuegbar">Der Server kennt noch keine Vorlieben (ab Version 1.32).</string>
+
+    <!-- 👎 an Antworten (/v1/nachrichten/{id}/bewertung, seit v1.34.0) -->
+    <string name="bewertung_schlecht">Schlechte Antwort markieren</string>
+    <string name="bewertung_zuruecknehmen">Markierung zurücknehmen</string>
+    <string name="bewertung_titel">Was war falsch?</string>
+    <string name="bewertung_grund">optional, z. B. falsches Gerät</string>
+    <string name="bewertung_senden">Senden</string>
+    <string name="bewertung_ohne_grund">Ohne Grund</string>
+    <string name="bewertung_hinweis">👎 Rückmeldung zur Antwort: %1$s</string>
+</resources>

@@ -907,6 +907,45 @@ unter die Position. Positionen auf dem Handy als Karten, nicht als breite Tabell
 Fehler: 404 = Angebot gibt es nicht · 502 = Angebotsgenerator nicht erreichbar („Nochmal versuchen“) ·
 503 = auf diesem Server nicht eingerichtet (Menüpunkt ausblenden).
 
+## 4f. Vorlieben – das Gedächtnis des Assistenten – neu in 1.32.0
+
+Was sich der Assistent **dauerhaft** merken soll („Zusammenfassungen immer als PDF mit Stichpunkten“, „Material bei
+Kunde Grimm immer über Richter+Frenzel“). Steht in **jedem** Gespräch in seiner Anweisung – niemand muss es zweimal
+erklären. Zwei Bereiche: **nur für mich** und **für die ganze Firma** (anlegen/ändern/löschen nur Geschäftsführung,
+sehen alle).
+
+Entstehen meist im Chat: Korrigiert der Nutzer den Assistenten oder sagt „immer/nie …“, fragt der Assistent am Ende
+„Soll ich mir das merken?“ – nach „Ja“ (oder bei „merk dir …“) speichert er. Dafür braucht die App nichts Neues.
+
+| Aufruf | Zweck |
+|---|---|
+| `GET /v1/vorlieben` | `{"firma": [Vorliebe], "eigene": [Vorliebe], "firma_aendern": bool}` |
+| `POST /v1/vorlieben` | `{"text": "…", "fuer": "mich" \| "firma"}` → `{"vorliebe": Vorliebe, "hinweis": "War schon gespeichert." \| null}`; `firma` ohne GF → 403 |
+| `PATCH /v1/vorlieben/{id}` | `{"text": "…"}` → `{"vorliebe": Vorliebe}` |
+| `DELETE /v1/vorlieben/{id}` | → `{"geloescht": id, "text": "…"}` |
+
+`Vorliebe` = `{"id": 12, "text": "…", "fuer": "mich" | "firma", "von": "sascha", "geaendert": "2026-11-05T09:12:00+00:00"}`.
+Text 1–400 Zeichen (sonst 422), höchstens 60 je Bereich (400 mit Meldung). Fremde persönliche Vorlieben → 404.
+Weboberfläche: Knopf mit Gehirn-Symbol unten links neben 🔒 Sicherheit.
+
+## 4g. 👎 Schlechte Antwort markieren – neu in 1.34.0
+
+Jede Antwort des Assistenten bekommt einen 👎-Knopf. `ChatAntwort` hat dafür `nachricht_id`, im Verlauf ist es `id`.
+
+`POST /v1/nachrichten/{id}/bewertung` mit `{"wert": "schlecht", "grund": "Falscher Nachfolger"}` (grund optional,
+max. 1000 Zeichen) → `{"nachricht_id", "bewertung": "schlecht", "bewertung_grund"}`. Zurücknehmen: `{"wert": null}`.
+Nur eigene Antworten (`rolle=assistent`), sonst 404.
+
+- Mit `grund` steht danach im Gespräch eine `hinweis`-Zeile „👎 Rückmeldung zur Antwort: …“ (App: wie andere
+  Hinweise klein/grau anzeigen bzw. lokal einfügen). Der Assistent sieht sie beim nächsten Zug.
+- Im Verlauf (`GET /v1/gespraeche/{id}`) neu je Nachricht: `bewertung` (`"schlecht"` | null) und `bewertung_grund`
+  → Knopf als „an“ zeigen.
+- `GET /v1/bewertungen?tage=30` (nur Geschäftsführung, sonst 403): alle 👎 mit Frage, Antwort und Grund – zum
+  Auswerten, wo der Assistent danebenliegt.
+
+Ablauf in der App: 👎 antippen → kleines Feld „Was war falsch? (optional)“ mit Senden/Überspringen → POST; nochmal
+antippen = zurücknehmen.
+
 ## 5. Kalender direkt
 
 `GET /v1/termine?von=2026-09-24` → Termine dieses Tages. `bis=2026-09-30` (einschließlich). `person=patrick` oder `alle=true` für andere Kalender.
@@ -1597,9 +1636,16 @@ markiert** – wie am PC im Explorer.
 - **`projekt`** (neu in 1.13.0): bei HERO-Projektordnern `{"nr", "kunde", "bauvorhaben", "titel", "status"}`, sonst
   `null`. Als Untertitel zeigen, z.B. „Grimmstraße 7, 10967 Berlin · Abgeschlossen“ – dann sieht man im HERO-Archiv
   sofort, welches Projekt welches ist.
-- Geschäftsführung und versteckte Dateien erscheinen nie. Das alte, leere Ordnergerüst `Projekte` der früheren
+- Versteckte Dateien erscheinen nie. **Geschäftsführung** (`Geschaeftsfuehrung`, z. B. Zeiterfassung) erscheint
+  **seit 1.30.1 nur für Geschäftsführer-Zugänge** (sascha, patrick, robin) – in Ordneransicht, `/v1/datei`, Suche und
+  Chat; für alle anderen weiter `403`. Die App muss dafür nichts ändern. Das alte, leere Ordnergerüst `Projekte` der früheren
   Firma-App ist seit 1.13.0 **ausgeblendet** (alte Pfade dahin funktionieren noch). `403` = gesperrt/außerhalb,
   `404` = nicht (mehr) da.
+- **Anzeigen mit Skript (neu in 1.30.2):** `/v1/datei?anzeigen=true` liefert HTML aus der Ablage weiter in einer Sandbox
+  ohne Skript. Ausnahme: die vom Server erzeugten Zeiterfassungs-Auswertungen
+  (`Geschaeftsfuehrung/Zeiterfassung/Zeiterfassung <Jahr> - Auswertung.html`) dürfen Skript ausführen
+  (`sandbox allow-scripts`, ohne Netz/Cookies) – sonst bleiben ihre Diagramme leer. Die App muss nichts ändern,
+  solange sie `anzeigen=true` in einer WebView/einem Browser mit JavaScript öffnet.
 - Markieren macht die App: den Eintrag mit `pfad ==` angetipptem Pfad hervorheben und dorthin scrollen.
 
 **Datei öffnen (Android):** `GET /v1/datei?pfad=…` in den App-Cache laden, dann `Intent.ACTION_VIEW` über einen
@@ -1622,7 +1668,7 @@ Minute erneuert, nach Änderungen über den Assistenten (Fotos, neue Dateien, Ve
 | Parameter | | |
 |---|---|---|
 | `q` | ja | Suchwörter (1–200 Zeichen) |
-| `ordner` | nein | Nur in diesem Ordner samt Unterordnern, z.B. `HERO-Archiv` oder der gerade offene Ordner. Leer = ganze Ablage |
+| `ordner` | nein | Nur in diesem Ordner samt Unterordnern, z.B. `HERO-Archiv` oder der gerade offene Ordner. Leer = ganze Ablage. Geschäftsführer finden seit 1.30.1 auch Treffer aus `Geschaeftsfuehrung` (stehen dann vorn) |
 | `typ` | nein | `alle` (Standard) · `ordner` · `datei` |
 | `max` | nein | 1–200, Standard 50 |
 

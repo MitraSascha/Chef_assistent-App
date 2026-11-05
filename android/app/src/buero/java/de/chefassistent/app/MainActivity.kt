@@ -70,6 +70,8 @@ import de.chefassistent.app.ui.freihand.FreihandScreen
 import de.chefassistent.app.ui.freihand.FreihandViewModel
 import de.chefassistent.app.ui.geraete.GeraeteScreen
 import de.chefassistent.app.ui.geraete.GeraeteViewModel
+import de.chefassistent.app.ui.vorlieben.VorliebenScreen
+import de.chefassistent.app.ui.vorlieben.VorliebenViewModel
 import de.chefassistent.app.ui.plantafel.GuProjekteScreen
 import de.chefassistent.app.ui.plantafel.PlantafelScreen
 import de.chefassistent.app.ui.plantafel.PlantafelViewModel
@@ -90,6 +92,7 @@ private const val ZIEL_AUFGABEN = "aufgaben"
 private const val ZIEL_GU_PROJEKTE = "gu"
 private const val ZIEL_PLANTAFEL = "gu/{projekt}"
 private const val ZIEL_GERAETE = "geraete"
+private const val ZIEL_VORLIEBEN = "vorlieben"
 private const val ZIEL_ANGEBOTE = "angebote"
 private const val ZIEL_ANGEBOT = "angebote/{angebot}"
 private const val ZIEL_ANSEHEN = "ansehen?pfad={pfad}"
@@ -294,11 +297,23 @@ private fun AppNavigation(
                 beiPlantafel = { navController.navigate(ZIEL_GU_PROJEKTE) },
                 beiAngebote = { navController.navigate(ZIEL_ANGEBOTE) },
                 beiGeraete = { navController.navigate(ZIEL_GERAETE) },
+                beiVorlieben = { navController.navigate(ZIEL_VORLIEBEN) },
                 geteilt = geteilt,
                 geteiltErledigt = geteiltErledigt,
                 listeOffen = listeOffen,
                 beiListeOffen = { listeOffen = it },
                 beiAnsehen = ansehen,
+            )
+        }
+
+        composable(ZIEL_VORLIEBEN) {
+            val viewModel: VorliebenViewModel = viewModel(
+                factory = VorliebenViewModel.factory(repository)
+            )
+            VorliebenScreen(
+                viewModel = viewModel,
+                beiZurueck = { navController.popBackStack() },
+                beiAbmeldung = { navController.zurueckZurAnmeldung() },
             )
         }
 

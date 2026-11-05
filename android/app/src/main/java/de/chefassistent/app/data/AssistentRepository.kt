@@ -159,6 +159,26 @@ class AssistentRepository(
         ruf { it.geraetAbmelden(id) }
     }
 
+    // --- Vorlieben (seit v1.32.0) -------------------------------------------
+
+    suspend fun vorlieben(): VorliebenListe = ruf { it.vorlieben() }
+
+    suspend fun vorliebeAnlegen(text: String, firma: Boolean): VorliebeAntwort =
+        ruf { it.vorliebeAnlegen(VorliebeNeu(text.trim(), if (firma) VORLIEBE_FIRMA else VORLIEBE_MICH)) }
+
+    suspend fun vorliebeAendern(id: Int, text: String): VorliebeAntwort =
+        ruf { it.vorliebeAendern(id, VorliebeText(text.trim())) }
+
+    suspend fun vorliebeLoeschen(id: Int) {
+        ruf { it.vorliebeLoeschen(id) }
+    }
+
+    // --- Bewertung (seit v1.34.0) -------------------------------------------
+
+    /** 👎 setzen ([schlecht] = true, optional mit [grund]) oder zuruecknehmen. */
+    suspend fun bewerten(nachrichtId: Long, schlecht: Boolean, grund: String?): BewertungAntwort =
+        ruf { it.bewerten(nachrichtId, bewertungKoerper(schlecht, grund)) }
+
     /** Ob das gespeicherte Token noch ein alter Zugangsschluessel `ca_…` ist. */
     val mitZugangsschluessel: Boolean
         get() = einstellungen.token?.startsWith(PRAEFIX_ZUGANGSSCHLUESSEL) == true

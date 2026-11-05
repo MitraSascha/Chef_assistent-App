@@ -25,6 +25,12 @@ data class MedienAuftrag(
     val serie: String? = null,
     val abschreiben: String? = null,
     val dateiname: String? = null,
+    /**
+     * Ohne [gespraech_id]: Faden des neuen Chats, in dem das Medium entstand
+     * (wie [AusgangAuftrag.faden]). Beim Senden wird daraus das Gespraech, sobald
+     * die erste Nachricht des Chats eins angelegt hat.
+     */
+    val faden: String? = null,
 ) {
     companion object {
         const val ART_FOTO = "foto"

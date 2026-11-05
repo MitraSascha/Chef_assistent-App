@@ -235,6 +235,27 @@ interface AssistentApi {
     @DELETE("v1/gespraeche/{gid}")
     suspend fun gespraechLoeschen(@Path("gid") gid: String): Response<Unit>
 
+    /** Seit v1.34.0: 👎 an einer Antwort, `{"wert": null}` nimmt es zurueck. */
+    @POST("v1/nachrichten/{nid}/bewertung")
+    suspend fun bewerten(
+        @Path("nid") nid: Long,
+        @Body koerper: kotlinx.serialization.json.JsonObject,
+    ): BewertungAntwort
+
+    /** Seit v1.32.0: dauerhafte Vorlieben, firmenweit und persoenlich. */
+    @GET("v1/vorlieben")
+    suspend fun vorlieben(): VorliebenListe
+
+    @POST("v1/vorlieben")
+    suspend fun vorliebeAnlegen(@Body neu: VorliebeNeu): VorliebeAntwort
+
+    @PATCH("v1/vorlieben/{vid}")
+    suspend fun vorliebeAendern(@Path("vid") vid: Int, @Body text: VorliebeText): VorliebeAntwort
+
+    /** Antwort `{geloescht, text}` - die App braucht davon nichts. */
+    @DELETE("v1/vorlieben/{vid}")
+    suspend fun vorliebeLoeschen(@Path("vid") vid: Int): Response<Unit>
+
     /** `von` ist Pflicht. `bis` ist einschliesslich. */
     @GET("v1/termine")
     suspend fun termine(

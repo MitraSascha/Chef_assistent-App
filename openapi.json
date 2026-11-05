@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.29.0"
+    "version": "1.34.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -1975,6 +1975,294 @@
         }
       }
     },
+    "/v1/vorlieben": {
+      "get": {
+        "tags": [
+          "Vorlieben"
+        ],
+        "summary": "Vorlieben Liste",
+        "description": "Was sich der Assistent dauerhaft gemerkt hat: firmenweit und persönlich. Gilt in jedem Gespräch.\nDie KI legt Vorlieben im Chat an („Soll ich mir das merken?“ – Ja), hier kann man sie ansehen und pflegen.",
+        "operationId": "vorlieben_liste_v1_vorlieben_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VorliebenListe"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Vorlieben"
+        ],
+        "summary": "Vorliebe Anlegen",
+        "description": "Neue Vorliebe. fuer=firma nur für die Geschäftsführung (sonst 403).",
+        "operationId": "vorliebe_anlegen_v1_vorlieben_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VorliebeNeu"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VorliebeAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/vorlieben/{vid}": {
+      "patch": {
+        "tags": [
+          "Vorlieben"
+        ],
+        "summary": "Vorliebe Aendern",
+        "description": "Text ändern – eigene immer, firmenweite nur Geschäftsführung.",
+        "operationId": "vorliebe_aendern_v1_vorlieben__vid__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VorliebeText"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VorliebeAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Vorlieben"
+        ],
+        "summary": "Vorliebe Loeschen",
+        "description": "Löschen – eigene immer, firmenweite nur Geschäftsführung. Antwort {geloescht: id, text}.",
+        "operationId": "vorliebe_loeschen_v1_vorlieben__vid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Vorliebe Loeschen V1 Vorlieben  Vid  Delete"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/bauablauf": {
       "get": {
         "tags": [
@@ -3040,6 +3328,159 @@
         ]
       }
     },
+    "/v1/nachrichten/{nid}/bewertung": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Bewerten",
+        "description": "👎 an einer Antwort des Assistenten (oder zurücknehmen mit wert=null). Mit grund steht im Gespräch eine\nhinweis-Zeile „👎 …“ – der Assistent sieht sie beim nächsten Zug. Die Geschäftsführung sieht alle 👎 unter\nGET /v1/bewertungen.",
+        "operationId": "bewerten_v1_nachrichten__nid__bewertung_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "nid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Nid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BewertungEingabe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BewertungAntwort"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bewertungen": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Bewertungen",
+        "description": "Alle 👎 der letzten `tage` Tage, neueste zuerst – nur Geschäftsführung.",
+        "operationId": "bewertungen_v1_bewertungen_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 30,
+              "title": "Tage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BewertungEintrag"
+                  },
+                  "title": "Response Bewertungen V1 Bewertungen Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/termine": {
       "get": {
         "tags": [
@@ -3508,7 +3949,7 @@
           "Dateien"
         ],
         "summary": "Datei",
-        "description": "Datei herunterladen, z.B. um ein erstelltes Dokument am Handy zu öffnen.",
+        "description": "Datei herunterladen, z.B. um ein erstelltes Dokument am Handy zu öffnen. Geschäftsführung nur für\nGeschäftsführer-Zugänge.",
         "operationId": "datei_v1_datei_get",
         "security": [
           {
@@ -3596,7 +4037,7 @@
           "Dateien"
         ],
         "summary": "Ordner",
-        "description": "Ordnerinhalt für die Ordneransicht in der App. Gesperrte und ausgeblendete Bereiche (Geschäftsführung,\naltes Ordnergerüst 'Projekte') und versteckte Dateien erscheinen nicht.",
+        "description": "Ordnerinhalt für die Ordneransicht in der App. Gesperrte und ausgeblendete Bereiche (Geschäftsführung,\naltes Ordnergerüst 'Projekte') und versteckte Dateien erscheinen nicht – 'Geschaeftsfuehrung' sehen nur\nGeschäftsführer-Zugänge (GF_BENUTZER, neu in 1.30.1).",
         "operationId": "ordner_v1_ordner_get",
         "security": [
           {
@@ -8310,6 +8751,131 @@
         ],
         "title": "Bestellung"
       },
+      "BewertungAntwort": {
+        "properties": {
+          "nachricht_id": {
+            "type": "integer",
+            "title": "Nachricht Id"
+          },
+          "bewertung": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "schlecht"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bewertung"
+          },
+          "bewertung_grund": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bewertung Grund"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nachricht_id",
+          "bewertung"
+        ],
+        "title": "BewertungAntwort"
+      },
+      "BewertungEingabe": {
+        "properties": {
+          "wert": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "schlecht"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wert",
+            "description": "schlecht = 👎; null = Bewertung zurücknehmen"
+          },
+          "grund": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grund",
+            "description": "Optional: was falsch war – die KI sieht es beim nächsten Zug und fragt ggf. „Soll ich mir das merken?“"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert"
+        ],
+        "title": "BewertungEingabe"
+      },
+      "BewertungEintrag": {
+        "properties": {
+          "nachricht_id": {
+            "type": "integer",
+            "title": "Nachricht Id"
+          },
+          "gespraech_id": {
+            "type": "string",
+            "title": "Gespraech Id"
+          },
+          "benutzer": {
+            "type": "string",
+            "title": "Benutzer"
+          },
+          "zeit": {
+            "type": "string",
+            "title": "Zeit",
+            "description": "Wann bewertet (UTC)"
+          },
+          "grund": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grund"
+          },
+          "frage": {
+            "type": "string",
+            "title": "Frage",
+            "description": "Die Nutzernachricht davor (gekürzt)"
+          },
+          "antwort": {
+            "type": "string",
+            "title": "Antwort",
+            "description": "Die bewertete Antwort (gekürzt)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nachricht_id",
+          "gespraech_id",
+          "benutzer",
+          "zeit",
+          "grund",
+          "frage",
+          "antwort"
+        ],
+        "title": "BewertungEintrag"
+      },
       "Body_bericht_diktat_v1_monteur_berichte__bid__diktat_post": {
         "properties": {
           "audio": {
@@ -9030,6 +9596,18 @@
             "title": "Abgebrochen",
             "description": "true = vom Nutzer abgebrochen (neu in 1.20.0)",
             "default": false
+          },
+          "nachricht_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nachricht Id",
+            "description": "ID dieser Antwort im Verlauf – für POST /v1/nachrichten/{id}/bewertung (neu in 1.34.0)"
           }
         },
         "type": "object",
@@ -13823,6 +14401,142 @@
         ],
         "title": "VorlesenAnfrage"
       },
+      "Vorliebe": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Die Regel, wie sie der KI in jedem Gespräch vorliegt"
+          },
+          "fuer": {
+            "type": "string",
+            "enum": [
+              "mich",
+              "firma"
+            ],
+            "title": "Fuer",
+            "description": "mich = nur für mich, firma = für alle"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von",
+            "description": "Wer sie angelegt/zuletzt geändert hat (Benutzername)"
+          },
+          "geaendert": {
+            "type": "string",
+            "title": "Geaendert",
+            "description": "ISO-Zeit (UTC)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "fuer",
+          "von",
+          "geaendert"
+        ],
+        "title": "Vorliebe"
+      },
+      "VorliebeAntwort": {
+        "properties": {
+          "vorliebe": {
+            "$ref": "#/components/schemas/Vorliebe"
+          },
+          "hinweis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hinweis",
+            "description": "z.B. „War schon gespeichert.“"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vorliebe"
+        ],
+        "title": "VorliebeAntwort"
+      },
+      "VorliebeNeu": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "fuer": {
+            "type": "string",
+            "enum": [
+              "mich",
+              "firma"
+            ],
+            "title": "Fuer",
+            "default": "mich"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "VorliebeNeu"
+      },
+      "VorliebeText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "VorliebeText"
+      },
+      "VorliebenListe": {
+        "properties": {
+          "firma": {
+            "items": {
+              "$ref": "#/components/schemas/Vorliebe"
+            },
+            "type": "array",
+            "title": "Firma",
+            "description": "Gelten für alle"
+          },
+          "eigene": {
+            "items": {
+              "$ref": "#/components/schemas/Vorliebe"
+            },
+            "type": "array",
+            "title": "Eigene",
+            "description": "Nur für mich"
+          },
+          "firma_aendern": {
+            "type": "boolean",
+            "title": "Firma Aendern",
+            "description": "true = ich darf firmenweite Vorlieben anlegen/ändern/löschen (Geschäftsführung)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firma",
+          "eigene",
+          "firma_aendern"
+        ],
+        "title": "VorliebenListe"
+      },
       "ZeitAbschnitt": {
         "properties": {
           "beginn": {
@@ -14346,6 +15060,31 @@
             "title": "Zwischenruf",
             "description": "Nur rolle=nutzer: true = als Zwischenruf während einer laufenden Antwort geschickt (neu in 1.20.0)",
             "default": false
+          },
+          "bewertung": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "schlecht"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bewertung",
+            "description": "👎 des Nutzers (nur rolle=assistent, neu in 1.34.0)"
+          },
+          "bewertung_grund": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bewertung Grund",
+            "description": "Was falsch war (optional, neu in 1.34.0)"
           }
         },
         "type": "object",
