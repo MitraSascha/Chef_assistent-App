@@ -12,6 +12,7 @@ import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -45,6 +46,24 @@ interface MonteurApi {
         @Part("text") text: RequestBody? = null,
         @Part("anfrage_id") anfrageId: RequestBody? = null,
     ): Hochgeladen
+
+    // --- Hochladen in Stuecken (1.35.0, API.md 4h), ziel "projekt" ---
+
+    @POST("v1/monteur/uploads")
+    suspend fun uploadStarten(@Body start: de.chefassistent.app.data.UploadStart): de.chefassistent.app.data.UploadStand
+
+    @PUT("v1/monteur/uploads/{id}")
+    suspend fun uploadTeil(
+        @Path("id") id: String,
+        @Query("offset") offset: Long,
+        @Body teil: RequestBody,
+    ): de.chefassistent.app.data.UploadStand
+
+    @GET("v1/monteur/uploads/{id}")
+    suspend fun uploadStand(@Path("id") id: String): de.chefassistent.app.data.UploadStand
+
+    @POST("v1/monteur/uploads/{id}/abschliessen")
+    suspend fun uploadAbschliessen(@Path("id") id: String): de.chefassistent.app.data.UploadStand
 
     @Streaming
     @GET("v1/monteur/dateien/{uuid}")

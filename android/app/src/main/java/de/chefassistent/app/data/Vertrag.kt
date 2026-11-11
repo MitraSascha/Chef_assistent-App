@@ -1,6 +1,7 @@
 package de.chefassistent.app.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Datentypen aus `openapi.json` (Chef-Assistent v1.34.0).
@@ -222,6 +223,58 @@ data class DokumentAntwort(
     val lesbar: Boolean,
     val hinweis: String = "",
 )
+
+/**
+ * `POST /v1/uploads` bzw. `/v1/monteur/uploads` (seit 1.35.0, API.md 4h): Hochladen
+ * in Stuecken, fortsetzbar. Dieselbe [upload_id] noch einmal = Stand abfragen.
+ *
+ * @property ziel Chef-Assi [ZIEL_FOTO], [ZIEL_DOKUMENT], [ZIEL_VIDEO]; Monteur-App [ZIEL_PROJEKT].
+ * @property felder dieselben Formularfelder wie beim direkten Endpunkt.
+ */
+@Serializable
+data class UploadStart(
+    val upload_id: String,
+    val ziel: String,
+    val dateiname: String,
+    val groesse: Long,
+    val felder: JsonObject = JsonObject(emptyMap()),
+) {
+    companion object {
+        const val ZIEL_FOTO = "foto"
+        const val ZIEL_DOKUMENT = "dokument"
+        const val ZIEL_VIDEO = "video"
+        const val ZIEL_PROJEKT = "projekt"
+
+        /** Vertrag: 8-64 Zeichen `A-Za-z0-9_-`. */
+        val UPLOAD_ID_MUSTER = Regex("^[A-Za-z0-9_-]{8,64}$")
+
+        /** UUID ohne Bindestriche, wie API.md 4h vorschlaegt. */
+        fun neueId(): String = java.util.UUID.randomUUID().toString().replace("-", "")
+    }
+}
+
+/** Stand eines Uploads in Stuecken (API.md 4h). */
+@Serializable
+data class UploadStand(
+    val upload_id: String,
+    val ziel: String = "",
+    val dateiname: String = "",
+    val groesse: Long = 0,
+    val empfangen: Long = 0,
+    val teil_max: Long = TEIL_MAX_VORGABE,
+    /** [STATUS_OFFEN], [STATUS_FERTIG] oder [STATUS_FEHLER]. */
+    val status: String = STATUS_OFFEN,
+    /** Nach `abschliessen`: die Antwort des direkten Endpunkts (`FotoAntwort` usw.). */
+    val ergebnis: JsonObject? = null,
+    val fehler: String? = null,
+) {
+    companion object {
+        const val STATUS_OFFEN = "offen"
+        const val STATUS_FERTIG = "fertig"
+        const val STATUS_FEHLER = "fehler"
+        const val TEIL_MAX_VORGABE = 8L * 1024 * 1024
+    }
+}
 
 /**
  * Erlaubte Werte fuer `abschreiben` bei `POST /v1/videos`, Vorgabe zuerst.

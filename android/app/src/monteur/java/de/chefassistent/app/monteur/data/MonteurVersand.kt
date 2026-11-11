@@ -36,8 +36,7 @@ class MonteurVersand(kontext: Context, parameter: WorkerParameters) : CoroutineW
         // Ohne Token waere alles 401. Es bleibt liegen bis zur naechsten Einrichtung.
         if (!app.einstellungen.istAngemeldet) return Result.failure()
         var vordergrund = false
-        val fertig = app.korb.senden(app.repository) { titel, prozent ->
-            setProgressAsync(workDataOf(TITEL to titel, FORTSCHRITT to prozent))
+        val vorne: (String) -> Unit = { titel ->
             if (!vordergrund) {
                 vordergrund = true
                 try {
@@ -47,6 +46,11 @@ class MonteurVersand(kontext: Context, parameter: WorkerParameters) : CoroutineW
                 }
             }
         }
+        val fertig = app.korb.senden(app.repository, fortschritt = { f ->
+            setProgressAsync(workDataOf(TITEL to f.titel, FORTSCHRITT to f.prozent, MEDIUM to f.name, PHASE to f.phase))
+            vorne(f.titel)
+        }, imVordergrund = vorne)
+        app.korb.neuZaehlen()
         return if (fertig) Result.success() else Result.retry()
     }
 
@@ -80,6 +84,10 @@ class MonteurVersand(kontext: Context, parameter: WorkerParameters) : CoroutineW
         const val NAME = "monteur_versand"
         const val FORTSCHRITT = "fortschritt"
         const val TITEL = "titel"
+
+        /** Seit 1.35.0: Name im Korb und Phase ([KorbFortschritt.PHASE_SENDEN] / [KorbFortschritt.PHASE_VERKLEINERN]). */
+        const val MEDIUM = "medium"
+        const val PHASE = "phase"
         private const val KANAL = "monteur_hochladen"
         private const val BENACHRICHTIGUNG = 4711
 
@@ -98,6 +106,8 @@ class MonteurVersand(kontext: Context, parameter: WorkerParameters) : CoroutineW
                 }.getOrDefault(false)
                 val auftrag = OneTimeWorkRequestBuilder<MonteurVersand>()
                     .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    // Auftrag 1.35: sofort los, sobald Netz da ist.
+                    .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     // Linear: nach vielen Fehlversuchen im Funkloch nicht stundenlang warten.
                     // Kommt das Netz zurueck, stoesst MonteurApp ohnehin sofort an.
                     .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)

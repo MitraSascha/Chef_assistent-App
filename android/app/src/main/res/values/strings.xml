@@ -328,12 +328,12 @@
         <item quantity="other">%1$d Videos abgelegt in „%2$s“ – Gesprochenes wird abgeschrieben und erscheint in der Notiz.</item>
     </plurals>
     <plurals name="dokumente_nachgesendet">
-        <item quantity="one">Dokument nachgesendet in „%2$s“</item>
-        <item quantity="other">%1$d Dokumente nachgesendet in „%2$s“</item>
+        <item quantity="one">Dokument abgelegt in „%2$s“</item>
+        <item quantity="other">%1$d Dokumente abgelegt in „%2$s“</item>
     </plurals>
     <plurals name="fotos_nachgesendet">
-        <item quantity="one">Foto nachgesendet in „%2$s“</item>
-        <item quantity="other">%1$d Fotos nachgesendet in „%2$s“</item>
+        <item quantity="one">Foto abgelegt in „%2$s“</item>
+        <item quantity="other">%1$d Fotos abgelegt in „%2$s“</item>
     </plurals>
 
     <!-- Aufgaben "Was ist offen?" (v1.7.0) -->
@@ -396,4 +396,35 @@
     <string name="modell_info_titel">Automatisch</string>
     <string name="modell_teuer_titel">Teures Modell</string>
     <string name="modell_ok">OK</string>
+
+    <!-- Ausgang (1.35.0): Fotos, Videos und Dokumente gehen im Hintergrund raus -->
+    <string name="ausgang_titel">Ausgang</string>
+    <string name="ausgang_foto_eingereiht">Foto im Ausgang – es geht im Hintergrund raus.</string>
+    <string name="ausgang_dokument_eingereiht">Dokument im Ausgang – es geht im Hintergrund raus.</string>
+    <string name="ausgang_video_eingereiht">Video im Ausgang – es wird im Hintergrund verkleinert und hochgeladen.</string>
+    <string name="ausgang_wartet_auf_foto">Wartet auf das Foto …</string>
+    <string name="ausgang_status_wartet">wartet auf Empfang</string>
+    <string name="ausgang_status_der_reihe_nach">wartet, kommt gleich dran</string>
+    <string name="ausgang_status_sendet">wird gesendet %1$d %%</string>
+    <string name="ausgang_status_verkleinert">wird verkleinert %1$d %%</string>
+    <string name="ausgang_art_foto">Foto</string>
+    <string name="ausgang_art_video">Video</string>
+    <string name="ausgang_art_dokument">Dokument</string>
+    <string name="ausgang_loeschen">Aus dem Ausgang löschen</string>
+    <string name="ausgang_loeschen_frage">„%1$s“ löschen? Es wird nicht mehr gesendet und ist danach weg.</string>
+    <string name="ausgang_loeschen_ja">Löschen</string>
+    <string name="ausgang_abbrechen">Abbrechen</string>
+    <string name="ausgang_jetzt_senden">Jetzt senden</string>
+    <string name="ausgang_fertig">Fertig</string>
+    <string name="ausgang_geloescht">Aus dem Ausgang gelöscht.</string>
+    <plurals name="ausgang_leiste_wartet">
+        <item quantity="one">%2$s wartet auf Empfang</item>
+        <item quantity="other">%1$d Dateien warten auf Empfang</item>
+    </plurals>
+    <string name="ausgang_leiste_sendet">%1$s wird gesendet %2$d %%</string>
+    <string name="ausgang_leiste_verkleinert">%1$s wird verkleinert %2$d %%</string>
+    <plurals name="ausgang_leiste_weitere">
+        <item quantity="one">+ 1 weitere</item>
+        <item quantity="other">+ %1$d weitere</item>
+    </plurals>
 </resources>

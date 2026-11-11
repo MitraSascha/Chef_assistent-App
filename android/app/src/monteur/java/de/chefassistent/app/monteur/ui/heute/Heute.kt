@@ -46,6 +46,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -128,6 +129,11 @@ class HeuteViewModel(private val app: MonteurApp) : ViewModel() {
     val abgemeldet: StateFlow<Boolean> = _abgemeldet.asStateFlow()
 
     val wartend: StateFlow<Int> = app.korb.anzahl
+
+    /** Seit 1.35.0: Dateien im Ausgang mit Stand. */
+    val ausgang = de.chefassistent.app.monteur.ui.ausgangFluss(app)
+
+    fun ausgangLoeschen(name: String) = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.korb.dateiLoeschen(name) }
     val meldungen: StateFlow<List<KorbMeldung>> = app.korb.gemeldet
 
     private var laden: Job? = null
@@ -214,6 +220,16 @@ fun HeuteReiter(
 ) {
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val wartend by viewModel.wartend.collectAsStateWithLifecycle()
+    val ausgang by viewModel.ausgang.collectAsStateWithLifecycle(emptyList())
+    var ausgangOffen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    if (ausgangOffen) {
+        de.chefassistent.app.ui.komponenten.AusgangBlatt(
+            zeilen = ausgang,
+            beiLoeschen = { viewModel.ausgangLoeschen(it.name) },
+            beiJetztSenden = viewModel::jetztSenden,
+            beiSchliessen = { ausgangOffen = false },
+        )
+    }
     val meldungen by viewModel.meldungen.collectAsStateWithLifecycle()
     val schwelle = with(LocalDensity.current) { 96.dp.toPx() }
     val snackbar = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
@@ -264,8 +280,15 @@ fun HeuteReiter(
                     if (offene.isNotEmpty()) {
                         item(key = "offene") { OffeneKarten(offene, beiKarte) }
                     }
-                    if (wartend > 0) {
-                        item(key = "wartend") { WartetKarte(wartend, viewModel::jetztSenden) }
+                    if (ausgang.isNotEmpty()) {
+                        item(key = "ausgang") {
+                            de.chefassistent.app.ui.komponenten.AusgangLeiste(ausgang, beiKlick = { ausgangOffen = true })
+                        }
+                    }
+                    // Berichte, Zeiten, Antraege usw. - die Dateien stehen in der Leiste darueber.
+                    val andere = wartend - ausgang.size
+                    if (andere > 0) {
+                        item(key = "wartend") { WartetKarte(andere, viewModel::jetztSenden) }
                     }
                     items(meldungen, key = { "meldung_${it.schluessel}" }) { m ->
                         MeldungKarte(

@@ -129,6 +129,21 @@ interface AssistentApi {
         @Part("gespraech_id") gespraechId: RequestBody? = null,
     ): DokumentAntwort
 
+    // --- Hochladen in Stuecken (1.35.0, API.md 4h) ---
+
+    @POST("v1/uploads")
+    suspend fun uploadStarten(@Body start: UploadStart): UploadStand
+
+    /** Rohdaten ab [offset]. Passt der nicht, kommt 409 mit `X-Empfangen` ([ApiFehler.Beschaeftigt.empfangen]). */
+    @PUT("v1/uploads/{id}")
+    suspend fun uploadTeil(@Path("id") id: String, @Query("offset") offset: Long, @Body teil: RequestBody): UploadStand
+
+    @GET("v1/uploads/{id}")
+    suspend fun uploadStand(@Path("id") id: String): UploadStand
+
+    @POST("v1/uploads/{id}/abschliessen")
+    suspend fun uploadAbschliessen(@Path("id") id: String): UploadStand
+
     @Streaming
     @POST("v1/vorlesen")
     suspend fun vorlesen(@Body anfrage: VorlesenAnfrage): ResponseBody

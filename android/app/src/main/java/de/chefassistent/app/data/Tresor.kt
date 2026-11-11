@@ -61,6 +61,24 @@ internal class Tresor(private val context: Context) {
     }
 
     /**
+     * Liest [quelle] entschluesselt als Strom - fuer das Hochladen in Stuecken
+     * (1.35.0), ohne Klartext-Kopie im Cache. Der Aufrufer schliesst den Strom.
+     */
+    fun lesen(quelle: File): java.io.InputStream = datei(quelle).openFileInput()
+
+    /** Groesse des Klartexts. Liest einmal ganz durch - nur fuer Eintraege, die sie nicht kennen. */
+    fun klartextGroesse(quelle: File): Long = lesen(quelle).use { ein ->
+        val puffer = ByteArray(256 * 1024)
+        var gesamt = 0L
+        while (true) {
+            val n = ein.read(puffer)
+            if (n < 0) break
+            gesamt += n
+        }
+        gesamt
+    }
+
+    /**
      * Ob [groesse] Bytes entschluesselt in den Cache passen. Ist kein Platz, ist ein
      * Fehler beim Auspacken voruebergehend und kein Grund, die Aufnahme aufzugeben.
      */

@@ -49,6 +49,12 @@ data class AusgangAuftrag(
      */
     val modell: String? = null,
     val denkaufwand: String? = null,
+    /**
+     * Seit 1.35.0: `upload_id` eines Fotos im [Medienkorb], zu dem diese Frage gehoert.
+     * Solange es nicht angekommen ist, geht die Nachricht nicht los (Auftrag 1.35, Punkt 4).
+     * Danach steht der Pfad in [bilder], und das Feld ist wieder `null`.
+     */
+    val wartet_auf_foto: String? = null,
 ) {
     /** Die Wahl von damals fuer Chat und Sprache, `null`, wenn keine gesetzt war. */
     val wahl: ModellWahl?
@@ -216,6 +222,49 @@ class Ausgangskorb(private val context: Context) {
     }
 
     /**
+     * Das Foto [uploadId] ist angekommen (1.35.0): Fragen dazu duerfen jetzt los,
+     * mit dem Pfad in `bilder`. Ohne [gespraechId] (neuer Chat) uebernehmen sie das
+     * Gespraech nicht - das legt der Chat an.
+     */
+    @Synchronized
+    fun fotoAngekommen(uploadId: String, foto: String) {
+        liste().filter { it.auftrag.wartet_auf_foto == uploadId }.forEach {
+            auftragAendern(it.name, it.auftrag.copy(wartet_auf_foto = null, bilder = (it.auftrag.bilder + foto).distinct()))
+        }
+        // Fuer eine Frage, die erst nach dem Foto im Korb landet (der Upload war schneller).
+        val bekannt = angekommeneFotos().filterKeys { it != uploadId }.entries.toList().takeLast(MAX_FOTOS - 1)
+        val neu = bekannt.associate { it.key to it.value } + (uploadId to foto)
+        tresor.fassungSchreiben(ordner, FOTOS, neu, MapSerializer(String.serializer(), String.serializer()))
+    }
+
+    /** Pfad eines angekommenen Fotos zu [uploadId], sonst `null`. */
+    @Synchronized
+    fun fotoZu(uploadId: String): String? = angekommeneFotos()[uploadId]
+
+    private fun angekommeneFotos(): Map<String, String> =
+        tresor.fassungLesen(ordner, FOTOS, MapSerializer(String.serializer(), String.serializer())).orEmpty()
+
+    /**
+     * Das Foto kommt nicht an (abgelehnt oder vom Nutzer aus dem Ausgang geloescht).
+     * Eine Frage zu einem Foto, das der Assistent nie sieht, hilft niemandem: der
+     * Text kommt als [Rueckmeldung] zurueck ins Eingabefeld.
+     */
+    @Synchronized
+    fun fotoGescheitert(uploadId: String, grund: String) {
+        liste().filter { it.auftrag.wartet_auf_foto == uploadId }.forEach {
+            rueckmelden(
+                Rueckmeldung(
+                    art = Rueckmeldung.ART_NICHT_GESENDET,
+                    zeit = it.auftrag.aufgenommen,
+                    text = it.auftrag.text.orEmpty(),
+                    detail = grund,
+                )
+            )
+            entfernen(it.name)
+        }
+    }
+
+    /**
      * Die erste Nachricht eines Fadens hat ein Gespraech angelegt: die uebrigen
      * gehen in dasselbe.
      */
@@ -286,6 +335,8 @@ class Ausgangskorb(private val context: Context) {
         const val RUECKMELDUNGEN = "rueckmeldungen"
         const val FAEDEN = "faeden"
         const val MAX_FAEDEN = 20
+        const val FOTOS = "fotos"
+        const val MAX_FOTOS = 20
 
         const val ALT_MS = 60_000L
     }

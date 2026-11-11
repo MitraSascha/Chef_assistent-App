@@ -33,7 +33,7 @@ sealed class ApiFehler(val anzeigetext: String, ursache: Throwable? = null) :
      * wurde bereits beantwortet bzw. ist nach 24 h abgelaufen.
      * Kein Fehler-Popup wert: Zustand neu laden reicht.
      */
-    class Beschaeftigt(text: String) : ApiFehler(text)
+    class Beschaeftigt(text: String, val empfangen: Long? = null) : ApiFehler(text)
 
     /** 413 - Aufnahme oder Foto groesser als 25 MB. Sollte die App vor dem Senden abfangen. */
     class ZuGross(text: String) : ApiFehler(text)
@@ -101,11 +101,12 @@ sealed class ApiFehler(val anzeigetext: String, ursache: Throwable? = null) :
         get() = this is KeineVerbindung || this is KiNichtErreichbar || (this is Server && code in 503..504)
 
     companion object {
-        fun ausStatus(code: Int, detail: String): ApiFehler = when (code) {
+        /** @param empfangen Kopf `X-Empfangen` bei 409 (Hochladen in Stuecken, 1.35.0). */
+        fun ausStatus(code: Int, detail: String, empfangen: Long? = null): ApiFehler = when (code) {
             401 -> NichtAngemeldet(detail)
             403 -> Verboten(detail)
             404 -> NichtGefunden(detail)
-            409 -> Beschaeftigt(detail)
+            409 -> Beschaeftigt(detail, empfangen)
             413 -> ZuGross(detail)
             415 -> FalscherTyp(detail)
             422 -> Ungueltig(detail)

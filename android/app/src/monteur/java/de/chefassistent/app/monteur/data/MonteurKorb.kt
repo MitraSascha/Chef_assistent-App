@@ -5,6 +5,12 @@ import de.chefassistent.app.data.ApiFehler
 import de.chefassistent.app.data.Auspacken
 import de.chefassistent.app.data.Tresor
 import de.chefassistent.app.data.auspacken
+import de.chefassistent.app.data.Netzwerk
+import de.chefassistent.app.data.StueckUpload
+import de.chefassistent.app.data.UploadAusgang
+import de.chefassistent.app.data.UploadStart
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +33,7 @@ import java.io.File
  * „fertig“, siehe [Tresor]). **Nur eine Instanz** (in `MonteurApp`), die Sperren
  * gelten pro Objekt.
  */
-class MonteurKorb(context: Context) {
+class MonteurKorb(private val context: Context) {
 
     /** Seit 1.29.0: ein Foto ist oben, seine `foto_id` geht an „gerade aufgenommen“. */
     var beiFotoId: (anfrageId: String, fotoId: String) -> Unit = { _, _ -> }
@@ -45,6 +51,11 @@ class MonteurKorb(context: Context) {
 
     /** Wartende Eintraege, fuer „Wartet auf Netz“. */
     val anzahl: StateFlow<Int> = _anzahl.asStateFlow()
+
+    private val _dateien = MutableStateFlow<List<WartendeDatei>>(emptyList())
+
+    /** Seit 1.35.0: Fotos, Videos und Dokumente im Ausgang, aeltestes zuerst - fuer die Leiste. */
+    val dateien: StateFlow<List<WartendeDatei>> = _dateien.asStateFlow()
 
     private val _gemeldet = MutableStateFlow<List<KorbMeldung>>(emptyList())
 
@@ -100,9 +111,33 @@ class MonteurKorb(context: Context) {
     @Synchronized
     fun dateiEinreihen(auftrag: DateiAuftrag, datei: File) {
         val name = DATEI_VORSATZ + auftrag.anfrage_id
-        tresor.verschluesseln(datei, inhaltDatei(name))
-        tresor.fassungSchreiben(ordner, name, KorbEintrag(datei = auftrag), KorbEintrag.serializer())
-        datei.delete()
+        if (istVideo(auftrag.dateiname)) {
+            // Seit 1.35.0: Videos nur verschieben, verkleinert wird im Hintergrund
+            // (ein 15-Minuten-Video umzurechnen dauert Minuten). Unverschluesselt wie
+            // vorher im Cache der Kamera, aber in filesDir, das Android nicht leert.
+            val roh = File(ordner, "$name$ROH.${datei.extension.filter { it.isLetterOrDigit() }.take(5).ifEmpty { "mp4" }}")
+            if (!datei.renameTo(roh)) {
+                datei.copyTo(roh, overwrite = true)
+                datei.delete()
+            }
+            tresor.fassungSchreiben(ordner, name, KorbEintrag(datei = auftrag.copy(aufbereiten = true)), KorbEintrag.serializer())
+        } else {
+            val groesse = datei.length()
+            tresor.verschluesseln(datei, inhaltDatei(name))
+            tresor.fassungSchreiben(ordner, name, KorbEintrag(datei = auftrag.copy(groesse = groesse)), KorbEintrag.serializer())
+            datei.delete()
+        }
+        zaehlen()
+    }
+
+    /**
+     * Aus dem Ausgang loeschen (Auftrag 1.35, mit Rueckfrage in der Oberflaeche). Laeuft
+     * der Upload gerade, bricht er vor dem naechsten Stueck ab und schliesst nicht ab.
+     */
+    @Synchronized
+    fun dateiLoeschen(name: String) {
+        if (!name.startsWith(DATEI_VORSATZ)) return
+        loeschen(name)
         zaehlen()
     }
 
@@ -149,14 +184,20 @@ class MonteurKorb(context: Context) {
      */
     suspend fun senden(
         repository: MonteurRepository,
-        /** Upload-Fortschritt einer Datei: Titel und Prozent, fuer Benachrichtigung und Projektmappe. */
-        fortschritt: (String, Int) -> Unit = { _, _ -> },
-    ): Boolean = sendeSperre.withLock { sendenGesperrt(repository, fortschritt) }
+        /** Fortschritt einer Datei (Verkleinern, Hochladen), fuer Benachrichtigung und Ausgang. */
+        fortschritt: (KorbFortschritt) -> Unit = {},
+        /** Grosse Datei beginnt: als Vordergrunddienst weiter (sonst endet WorkManager nach ~10 min). */
+        imVordergrund: (String) -> Unit = {},
+    ): Boolean = sendeSperre.withLock { sendenGesperrt(repository, fortschritt, imVordergrund) }
 
     /** Worker und Oberflaeche duerfen nicht gleichzeitig senden, sonst ginge ein Eintrag doppelt raus. */
     private val sendeSperre = Mutex()
 
-    private suspend fun sendenGesperrt(repository: MonteurRepository, fortschritt: (String, Int) -> Unit): Boolean {
+    private suspend fun sendenGesperrt(
+        repository: MonteurRepository,
+        fortschritt: (KorbFortschritt) -> Unit,
+        imVordergrund: (String) -> Unit,
+    ): Boolean {
         // Aeltestes zuerst: die Namen sind zufaellige IDs, also nach Dateialter.
         val namen = synchronized(this) {
             tresor.namenMitFassung(ordner).sortedBy { n -> tresor.alleDateien(ordner, n).minOfOrNull { it.lastModified() } ?: 0L }
@@ -168,7 +209,11 @@ class MonteurKorb(context: Context) {
                 continue
             }
             val ergebnis = try {
-                versenden(repository, name, eintrag, fortschritt)
+                versenden(repository, name, eintrag, fortschritt, imVordergrund)
+            } catch (_: Geloescht) {
+                // Im Ausgang geloescht, waehrend es lief: nichts mehr zu tun.
+                zaehlen()
+                continue
             } catch (fehler: ApiFehler) {
                 if (fehler.istVoruebergehend) {
                     zaehlen()
@@ -202,7 +247,8 @@ class MonteurKorb(context: Context) {
         repository: MonteurRepository,
         name: String,
         eintrag: KorbEintrag,
-        fortschritt: (String, Int) -> Unit,
+        fortschritt: (KorbFortschritt) -> Unit,
+        imVordergrund: (String) -> Unit,
     ): KorbMeldung? {
         eintrag.eingang?.let { e ->
             val klar = mutableListOf<File>()
@@ -252,14 +298,35 @@ class MonteurKorb(context: Context) {
             }
             return KorbMeldung(name, p.titel, "Erledigt.", fertig = true, karteId = karte.id)
         }
-        eintrag.datei?.let { d ->
+        eintrag.datei?.let { anfang ->
+            var d = anfang
+            if (d.aufbereiten) {
+                imVordergrund(d.dateiname)
+                d = aufbereiten(name, d) { titel, prozent ->
+                    fortschritt(KorbFortschritt(name, titel, KorbFortschritt.PHASE_VERKLEINERN, prozent))
+                } ?: throw Geloescht()
+                zaehlen()
+            }
+            val senden: (String, Int) -> Unit = { titel, prozent ->
+                fortschritt(KorbFortschritt(name, titel, KorbFortschritt.PHASE_SENDEN, prozent))
+            }
+            // Auftrag 1.35: Videos und alles ueber 5 MB in Stuecken, fortsetzbar.
+            if (istVideo(d.dateiname) || (d.groesse ?: 0) > GROSS_BYTES || d.groesse == null) {
+                inStuecken(repository, name, d, senden, imVordergrund)?.let { antwort ->
+                    antwort.foto_id?.let { beiFotoId(d.anfrage_id, it) }
+                    return KorbMeldung(
+                        name, antwort.name.ifBlank { d.dateiname }, antwort.hinweis, fertig = true, projektId = d.projekt_id,
+                        still = d.still,
+                    )
+                }
+            }
             val klar = when (val aus = tresor.auspacken(inhaltDatei(name), File(cache, d.dateiname.substringAfterLast('/')))) {
                 is Auspacken.Fertig -> aus.datei
                 Auspacken.KeinPlatz -> return null
                 is Auspacken.Defekt -> throw ApiFehler.UnlesbareAntwort(aus.ursache)
             }
             try {
-                val antwort = repository.hochladen(d.projekt_id, klar, d.text, d.anfrage_id) { fortschritt(d.dateiname, it) }
+                val antwort = repository.hochladen(d.projekt_id, klar, d.text, d.anfrage_id) { senden(d.dateiname, it) }
                 antwort.foto_id?.let { beiFotoId(d.anfrage_id, it) }
                 return KorbMeldung(
                     name, antwort.name.ifBlank { d.dateiname }, antwort.hinweis, fertig = true, projektId = d.projekt_id,
@@ -337,10 +404,120 @@ class MonteurKorb(context: Context) {
 
     @Synchronized
     private fun zaehlen() {
-        _anzahl.value = tresor.namenMitFassung(ordner).size
+        val namen = tresor.namenMitFassung(ordner)
+        _anzahl.value = namen.size
+        _dateien.value = namen.filter { it.startsWith(DATEI_VORSATZ) }
+            .mapNotNull { n ->
+                val d = tresor.fassungLesen(ordner, n, KorbEintrag.serializer())?.datei ?: return@mapNotNull null
+                WartendeDatei(n, d, tresor.alleDateien(ordner, n).minOfOrNull { it.lastModified() } ?: 0L)
+            }
+            .sortedBy { it.seit }
     }
 
-    private companion object {
+    /** Nach dem Senden eines Stuecks etc. - fuer die Leiste. */
+    fun neuZaehlen() = zaehlen()
+
+    /**
+     * Video aus dem Ausgang auf 720p verkleinern, verschluesselt ablegen und das Original
+     * loeschen. Scheitert die Umrechnung, geht das Original raus. `null` = Original fehlt.
+     */
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    private suspend fun aufbereiten(name: String, d: DateiAuftrag, fortschritt: (String, Int) -> Unit): DateiAuftrag? {
+        val roh = ordner.listFiles { f -> f.name.startsWith("$name$ROH.") }?.firstOrNull() ?: return null
+        val klein = try {
+            de.chefassistent.app.data.VideoAufbereitung.verkleinern(context, roh) { fortschritt(d.dateiname, it) }
+        } catch (abbruch: kotlinx.coroutines.CancellationException) {
+            throw abbruch
+        } catch (_: Exception) {
+            roh
+        }
+        try {
+            if (!synchronized(this) { tresor.hatFassung(ordner, name) }) return null
+            val neu = d.copy(aufbereiten = false, groesse = klein.length())
+            synchronized(this) {
+                tresor.verschluesseln(klein, inhaltDatei(name))
+                tresor.fassungSchreiben(ordner, name, KorbEintrag(datei = neu), KorbEintrag.serializer())
+                roh.delete()
+            }
+            return neu
+        } finally {
+            if (klein != roh) klein.delete()
+        }
+    }
+
+    /**
+     * Seit 1.35.0: grosse Dateien (Videos, alles ueber 5 MB) in Stuecken ueber
+     * `/v1/monteur/uploads`, fortsetzbar nach einem Abbruch. `null` = alter Server,
+     * direkt wie bisher.
+     */
+    private suspend fun inStuecken(
+        repository: MonteurRepository,
+        name: String,
+        anfang: DateiAuftrag,
+        fortschritt: (String, Int) -> Unit,
+        imVordergrund: (String) -> Unit,
+    ): Hochgeladen? {
+        var d = anfang
+        if (d.upload_id == null || d.groesse == null) {
+            d = d.copy(
+                upload_id = d.upload_id ?: UploadStart.neueId(),
+                groesse = d.groesse ?: tresor.klartextGroesse(inhaltDatei(name)),
+            )
+            synchronized(this) { tresor.fassungSchreiben(ordner, name, KorbEintrag(datei = d), KorbEintrag.serializer()) }
+        }
+        imVordergrund(d.dateiname)
+        var neueIds = 0
+        var zuletzt = -1
+        while (true) {
+            val start = UploadStart(
+                upload_id = d.upload_id!!,
+                ziel = UploadStart.ZIEL_PROJEKT,
+                dateiname = d.dateiname.substringAfterLast('/').take(200),
+                groesse = d.groesse!!,
+                felder = buildJsonObject {
+                    put("pid", d.projekt_id)
+                    d.text.trim().take(200).takeIf { it.isNotEmpty() }?.let { put("text", it) }
+                    put("anfrage_id", d.anfrage_id)
+                },
+            )
+            val ergebnis = StueckUpload.hochladen(
+                weg = repository.uploadWeg,
+                start = start,
+                oeffnen = { tresor.lesen(inhaltDatei(name)) },
+                teilGroesse = { StueckUpload.teilGroesse(context, it) },
+                fortschritt = { gesendet, gesamt ->
+                    val prozent = (gesendet * 100 / gesamt.coerceAtLeast(1)).toInt()
+                    if (prozent != zuletzt) {
+                        zuletzt = prozent
+                        fortschritt(d.dateiname, prozent)
+                    }
+                },
+                nochGewollt = { synchronized(this) { tresor.hatFassung(ordner, name) } },
+            )
+            when (ergebnis) {
+                is UploadAusgang.Fertig -> return try {
+                    Netzwerk.json.decodeFromJsonElement(Hochgeladen.serializer(), ergebnis.ergebnis)
+                } catch (_: Exception) {
+                    Hochgeladen(name = d.dateiname)
+                }
+                UploadAusgang.AlterServer -> return null
+                UploadAusgang.Abgebrochen -> throw Geloescht()
+                is UploadAusgang.Defekt -> throw ApiFehler.UnlesbareAntwort(ergebnis.ursache)
+                is UploadAusgang.Abgelehnt -> throw ergebnis.fehler
+                UploadAusgang.NeueIdNoetig -> {
+                    if (++neueIds > 2) throw ApiFehler.Server(500, "Hochladen klappt gerade nicht.")
+                    d = d.copy(upload_id = UploadStart.neueId())
+                    synchronized(this) { tresor.fassungSchreiben(ordner, name, KorbEintrag(datei = d), KorbEintrag.serializer()) }
+                    zuletzt = -1
+                }
+            }
+        }
+    }
+
+    /** Vom Nutzer aus dem Ausgang geloescht, waehrend der Upload lief. */
+    private class Geloescht : Exception()
+
+    companion object {
         /** Eigener Name je Abschluss, damit er nie mit dem Bericht-Eintrag gleicher ID zusammenfaellt. */
         const val ABSCHLUSS_VORSATZ = "abschluss_"
 
@@ -349,6 +526,16 @@ class MonteurKorb(context: Context) {
         const val EINGANG_VORSATZ = "eingang_"
 
         const val PASST_VORSATZ = "passt_"
+
+        /** Unverkleinertes Video: `<name>.roh.<endung>`. */
+        const val ROH = ".roh"
+
+        /** Ab hier in Stuecken ueber `/v1/monteur/uploads` (Auftrag 1.35). */
+        const val GROSS_BYTES = 5L * 1024 * 1024
+
+        private val VIDEO_ENDUNGEN = setOf("mp4", "mov", "3gp", "mkv", "webm", "m4v")
+
+        fun istVideo(dateiname: String): Boolean = dateiname.substringAfterLast('.', "").lowercase() in VIDEO_ENDUNGEN
     }
 }
 
@@ -432,7 +619,24 @@ data class DateiAuftrag(
     val text: String = "",
     /** Seit 1.29.0: Foto aus Kamera/Galerie - Erfolg nicht einzeln melden (8 Fotos = 8 Meldungen). */
     val still: Boolean = false,
+    /** Seit 1.35.0: Kennung beim Hochladen in Stuecken, bleibt ueber alle Versuche gleich. */
+    val upload_id: String? = null,
+    /** Klartextgroesse; `null` bei Eintraegen aus aelteren Versionen. */
+    val groesse: Long? = null,
+    /** Video, das noch verkleinert wird (Original liegt als `.roh.<endung>` daneben). */
+    val aufbereiten: Boolean = false,
 )
+
+/** Eine Datei im Ausgang, fuer die Leiste (1.35.0). [seit] = Zeit des Einreihens. */
+data class WartendeDatei(val name: String, val auftrag: DateiAuftrag, val seit: Long)
+
+/** Was der Versand gerade mit einer Datei tut. */
+data class KorbFortschritt(val name: String, val titel: String, val phase: String, val prozent: Int) {
+    companion object {
+        const val PHASE_VERKLEINERN = "verkleinern"
+        const val PHASE_SENDEN = "senden"
+    }
+}
 
 /** Rueckmeldung vom Nachsenden. [berichtId] fuehrt zum fertigen Entwurf, [projektId] zur Mappe. */
 data class KorbMeldung(

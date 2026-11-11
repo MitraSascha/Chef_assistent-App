@@ -33,6 +33,9 @@ import de.chefassistent.app.data.ABSCHREIBEN_WERTE
 import de.chefassistent.app.data.FotoAufbereitung
 import de.chefassistent.app.data.MedienAuftrag
 import de.chefassistent.app.data.Medienkorb
+import de.chefassistent.app.data.WartendesMedium
+import de.chefassistent.app.data.UploadStart
+import de.chefassistent.app.ui.komponenten.AusgangZeile
 import de.chefassistent.app.data.VideoAufbereitung
 import de.chefassistent.app.data.GespraechKurz
 import de.chefassistent.app.data.MODELL_AUTO
@@ -86,6 +89,8 @@ data class NutzerEintrag(
     val wartet: String? = null,
     /** Seit v1.20.0: waehrend einer laufenden Antwort geschickt, mit Marke "Zwischenruf". */
     val zwischenruf: Boolean = false,
+    /** Seit 1.35.0: Frage zu einem Foto, das noch im Ausgang liegt - geht erst danach los. */
+    val wartetAufFoto: Boolean = false,
 ) : ChatEintrag
 
 data class AssistentEintrag(
@@ -247,6 +252,8 @@ data class ChatZustand(
     val angeboteEingerichtet: Boolean = true,
     /** Fortschritt des laufenden Video-Uploads im Hintergrund, `null` = keiner. */
     val hochladen: Int? = null,
+    /** Seit 1.35.0: was im Ausgang liegt, mit Stand - Leiste oben im Chat. */
+    val ausgang: List<AusgangZeile> = emptyList(),
     /**
      * Ohne [gespraechId]: Kennung fuer Nachrichten, die in diesem neuen Chat ohne
      * Netz entstanden. Die erste legt beim Nachsenden das Gespraech an, die
@@ -785,17 +792,28 @@ class ChatViewModel(
      */
     private suspend fun ausgangAbgleichen() {
         val (wartend, medien, rueckmeldungen) = withContext(Dispatchers.IO) {
-            Triple(ausgangskorb.liste(), medienkorb.anzahl(), ausgangskorb.rueckmeldungen())
+            Triple(ausgangskorb.liste(), medienkorb.liste(), ausgangskorb.rueckmeldungen())
         }
         val noch = wartend.map { it.name }.toSet()
+        val wartenAufFoto = wartend.filter { it.auftrag.wartet_auf_foto != null }.map { it.name }.toSet()
         val faden = _zustand.value.faden
         val fadenGespraech = faden?.let { withContext(Dispatchers.IO) { ausgangskorb.gespraechZuFaden(it) } }
+        val zeilen = ausgangZeilen(medien, laufendesMedium, hatNetz())
 
         _zustand.update {
             it.copy(
                 wartendeNotizen = wartend.size,
-                wartendeMedien = medien,
+                wartendeMedien = medien.size,
+                ausgang = zeilen,
                 rueckmeldungen = rueckmeldungen,
+                // Foto angekommen: aus "wartet auf das Foto" wird "wartet" bzw. gleich die Antwort.
+                eintraege = it.eintraege.map { e ->
+                    if (e is NutzerEintrag && e.wartetAufFoto && e.wartet != null && e.wartet !in wartenAufFoto) {
+                        e.copy(wartetAufFoto = false)
+                    } else {
+                        e
+                    }
+                },
             )
         }
 
@@ -822,6 +840,63 @@ class ChatViewModel(
     fun wartendeNotizenSenden() {
         VersandArbeiter.anstossen(anwendung)
         _zustand.update { it.copy(fehler = anwendung.getString(R.string.ausgang_angestossen)) }
+    }
+
+    // --- Ausgang (1.35.0) ------------------------------------------------------
+
+    /** Was der [VersandArbeiter] gerade bearbeitet: Name im [Medienkorb], Phase, Prozent. */
+    private data class Lauf(val name: String, val phase: String, val prozent: Int)
+
+    private var laufendesMedium: Lauf? = null
+
+    private fun ausgangZeilen(medien: List<WartendesMedium>, lauf: Lauf?, netz: Boolean): List<AusgangZeile> =
+        medien.map { m ->
+            val a = m.auftrag
+            val laeuft = lauf?.name == m.name
+            AusgangZeile(
+                name = m.name,
+                art = a.art,
+                titel = when (a.art) {
+                    MedienAuftrag.ART_DOKUMENT -> a.dateiname ?: anwendung.getString(R.string.ausgang_art_dokument)
+                    MedienAuftrag.ART_VIDEO -> anwendung.getString(R.string.ausgang_art_video)
+                    else -> anwendung.getString(R.string.ausgang_art_foto)
+                },
+                aufgenommen = a.aufgenommen,
+                status = when {
+                    laeuft && lauf?.phase == VersandArbeiter.PHASE_VERKLEINERN -> AusgangZeile.Status.VERKLEINERT
+                    laeuft -> AusgangZeile.Status.SENDET
+                    // Auch das Verkleinern laeuft erst mit Netz (im selben Auftrag wie das Senden).
+                    netz -> AusgangZeile.Status.DRAN
+                    else -> AusgangZeile.Status.WARTET
+                },
+                prozent = lauf?.prozent?.takeIf { laeuft },
+            )
+        }
+
+    /** Validiertes Netz: die Bedingung von WorkManager sagt nur "irgendeine Verbindung". */
+    private fun hatNetz(): Boolean = runCatching {
+        val manager = anwendung.getSystemService(android.net.ConnectivityManager::class.java)
+        manager.getNetworkCapabilities(manager.activeNetwork)
+            ?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+    }.getOrDefault(false)
+
+    /**
+     * Aus dem Ausgang loeschen (der Dialog fragt vorher). Laeuft der Upload gerade,
+     * bricht der [VersandArbeiter] vor dem naechsten Stueck ab und schliesst nicht ab.
+     * Eine Frage zu diesem Foto kommt zurueck ins Eingabefeld.
+     */
+    fun ausgangLoeschen(name: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val medium = medienkorb.liste().firstOrNull { it.name == name }
+                medienkorb.entfernen(name)
+                medium?.auftrag?.upload_id?.let {
+                    ausgangskorb.fotoGescheitert(it, anwendung.getString(R.string.ausgang_geloescht))
+                }
+            }
+            fehlerZeigen(R.string.ausgang_geloescht)
+            ausgangAbgleichen()
+        }
     }
 
     // --- Rueckmeldungen aus dem Versand ---------------------------------------
@@ -880,6 +955,7 @@ class ChatViewModel(
                 wartendeNotizen = it.wartendeNotizen,
                 wartendeMedien = it.wartendeMedien,
                 hochladen = it.hochladen,
+                ausgang = it.ausgang,
                 rueckmeldungen = it.rueckmeldungen,
                 ziele = it.ziele,
                 auftraegeOffen = it.auftraegeOffen,
@@ -1358,223 +1434,92 @@ class ChatViewModel(
         _zustand.update { it.copy(medium = null, entwurf = medium.text) }
     }
 
+    /**
+     * Seit 1.35.0 geht alles ueber den Ausgang: der Dialog ist sofort zu, hochgeladen
+     * wird im Hintergrund (Auftrag 1.35, „Im Keller muss ich jedes Mal raus“).
+     */
     fun medienAblegen() {
         val medium = _zustand.value.medium ?: return
         if (medium.arbeitet) return
         when {
-            medium.istDokument -> dokumentAblegen(medium)
             medium.istVideo -> videoAblegen(medium)
             medium.fragen -> fotoFragen(medium)
-            else -> fotoAblegen(medium)
+            else -> {
+                _zustand.update { it.copy(medium = medium.copy(arbeitet = true, fehler = null)) }
+                viewModelScope.launch {
+                    einreihen(
+                        medium,
+                        if (medium.istDokument) R.string.ausgang_dokument_eingereiht else R.string.ausgang_foto_eingereiht,
+                    )
+                }
+            }
         }
     }
 
     /**
-     * Foto an den Assistenten (`API.md` 4a): erst ablegen, dann mit dem Pfad in
-     * `bilder` fragen. Das Foto landet also immer auch in der Notiz.
-     *
-     * Anders als beim reinen Ablegen gibt es hier keinen Korb: eine Frage, die
-     * erst Stunden spaeter beantwortet wird, hilft vor dem Heizkessel niemandem.
-     * Ohne Netz bleibt der Dialog offen, "Nur ablegen" reiht das Foto ein.
-     * Aus demselben Grund stellt sich das Foto nicht hinter wartende Aufnahmen.
+     * Foto an den Assistenten (`API.md` 4a), seit 1.35.0 ueber den Ausgang: das Foto
+     * geht in den [Medienkorb], die Frage in den [Ausgangskorb] mit `wartet_auf_foto`.
+     * Der [VersandArbeiter] schickt erst das Foto und dann die Frage mit dessen Pfad in
+     * `bilder` - auch ohne Netz, sobald welches da ist. Die Antwort kommt in den Chat,
+     * wenn die Frage angekommen ist (wie jede Nachricht aus dem Korb).
      */
     private fun fotoFragen(foto: MedienEntwurf) {
         val frage = foto.text.trim().ifBlank { anwendung.getString(R.string.foto_frage_vorgabe) }
-        _zustand.update { it.copy(medium = foto.copy(arbeitet = true, fehler = null), laeuft = true) }
+        _zustand.update { it.copy(medium = foto.copy(arbeitet = true, fehler = null)) }
 
         viewModelScope.launch {
-            val abgelegt = try {
-                repository.foto(
-                    bild = foto.datei,
-                    notiz = foto.notiz,
-                    // Die Frage ist keine Bildunterschrift - sie gehoert in den Chat.
-                    text = "",
-                    gespraechId = _zustand.value.gespraechId,
-                )
-            } catch (fehler: ApiFehler) {
-                when (fehler) {
-                    is ApiFehler.NichtAngemeldet -> behandleFehler(fehler)
-                    is ApiFehler.KeineVerbindung -> mediumFehler(anwendung.getString(R.string.foto_frage_kein_netz))
-                    else -> mediumFehler(fehler.anzeigetext)
-                }
-                _zustand.update { it.copy(laeuft = false) }
-                return@launch
-            }
+            val uploadId = UploadStart.neueId()
+            // Die Frage ist keine Bildunterschrift - sie gehoert in den Chat.
+            if (!einreihen(foto.copy(text = ""), meldung = null, uploadId = uploadId)) return@launch
 
-            foto.datei.delete()
             val schluessel = naechsterSchluessel("nutzer")
             val meine = sitzung
-            val ziel = ziel(vorspann()).copy(bilder = listOf(abgelegt.foto))
+            val ziel = ziel(vorspann())
             _zustand.update {
-                it.copy(
-                    medium = null,
-                    letzteMedienNotiz = abgelegt.notiz,
-                    eintraege = it.eintraege +
-                        HinweisEintrag(
-                            schluessel = naechsterSchluessel("hinweis"),
-                            text = anwendung.getString(R.string.foto_abgelegt, notizname(abgelegt.notiz)),
-                        ) +
-                        NutzerEintrag(
-                            schluessel = schluessel,
-                            text = frage,
-                            dateien = listOf(abgelegt.foto),
-                        ),
-                )
+                it.copy(eintraege = it.eintraege + NutzerEintrag(schluessel, frage, wartetAufFoto = true))
             }
-
-            try {
-                val antwort = mitFortschritt(ziel.anfrageId, meine) {
-                    repository.chatSicher(ziel.mitVorspann(frage), ziel.gespraechId, ziel.anfrageId, ziel.bilder, ziel.wahl)
-                }
-                if (meine == sitzung) verarbeiteAntwort(antwort)
-                gespraecheLaden()
-            } catch (abbruch: CancellationException) {
-                withContext(NonCancellable) { textEinreihen(schluessel, frage, ziel, meine) }
-                throw abbruch
-            } catch (fehler: ApiFehler) {
-                // Das Foto liegt schon in der Notiz. Die Frage geht ohne Netz in den
-                // Korb (mit dem Foto in `bilder`), sonst bleibt sie als Meldung stehen.
-                if (fehler is ApiFehler.KeineVerbindung || fehler is ApiFehler.NichtAngemeldet) {
-                    textEinreihen(schluessel, frage, ziel, meine)
-                } else if (modellZuruecksetzen(fehler, ziel.wahl, meine)) {
-                    // Das Foto liegt schon in der Notiz, die Frage kommt zum erneuten Senden ins Feld.
-                    zurueckInsFeld(schluessel, frage, meine)
-                }
-                if (fehler !is ApiFehler.KeineVerbindung) behandleFehler(fehler)
-            } finally {
-                if (meine == sitzung) _zustand.update { it.copy(laeuft = false) }
-            }
-        }
-    }
-
-    /**
-     * Fotos gehen direkt raus, wenn Netz da ist - das Ergebnis sieht man sofort.
-     * Ohne Netz, oder wenn schon etwas wartet, wandern sie in den [Medienkorb].
-     */
-    private fun fotoAblegen(foto: MedienEntwurf) {
-        _zustand.update { it.copy(medium = foto.copy(arbeitet = true, fehler = null), laeuft = true) }
-
-        viewModelScope.launch {
-            try {
-                // Warten schon Aufnahmen, stellt sich das Foto hinten an. Direkt
-                // gesendet kaeme es vor den aelteren an, und die Reihenfolge in
-                // der Notiz stimmte nicht.
-                if (withContext(Dispatchers.IO) { medienkorb.anzahl() } > 0) {
-                    einreihen(foto, R.string.foto_hinten_an)
-                    return@launch
-                }
-                val antwort = repository.foto(
-                    bild = foto.datei,
-                    notiz = foto.notiz,
-                    text = foto.text,
-                    gespraechId = _zustand.value.gespraechId,
-                )
-                foto.datei.delete()
-                val name = notizname(antwort.notiz)
-                val text = anwendung.getString(
-                    if (antwort.notiz_neu) R.string.foto_abgelegt_neu else R.string.foto_abgelegt,
-                    name,
-                )
-                _zustand.update {
-                    it.copy(
-                        medium = null,
-                        letzteMedienNotiz = antwort.notiz,
-                        eintraege = it.eintraege + HinweisEintrag(
-                            schluessel = naechsterSchluessel("hinweis"),
-                            text = text,
-                            dateien = listOf(antwort.foto),
-                        ),
+            val name = withContext(Dispatchers.IO) {
+                ausgangskorb.ablegenText(
+                    AusgangAuftrag(
+                        art = AusgangAuftrag.ART_TEXT,
+                        aufgenommen = System.currentTimeMillis(),
+                        gespraech_id = ziel.gespraechId,
+                        faden = ziel.faden,
+                        vorspann = ziel.vorspann,
+                        text = frage,
+                        anfrage_id = ziel.anfrageId,
+                        modell = ziel.wahl?.modell,
+                        denkaufwand = ziel.wahl?.denkaufwand,
+                        wartet_auf_foto = uploadId,
                     )
-                }
-            } catch (fehler: ApiFehler.NichtAngemeldet) {
-                behandleFehler(fehler)
-            } catch (_: ApiFehler.KeineVerbindung) {
-                einreihen(foto, R.string.foto_wartet)
-            } catch (fehler: ApiFehler) {
-                // Dialog bleibt offen: das Foto ist noch da, "Ablegen" versucht es erneut.
-                mediumFehler(fehler.anzeigetext)
-            } finally {
-                _zustand.update { it.copy(laeuft = false) }
+                )
             }
-        }
-    }
-
-    /**
-     * Dokumente gehen wie Fotos direkt raus, wenn Netz da ist: ob der Server den
-     * Text lesen kann (`lesbar`), soll man sofort sehen - und gleich danach
-     * "Mach mir daraus ein Angebot" schreiben koennen. Ohne Netz, oder wenn schon
-     * etwas wartet, wandern sie in den [Medienkorb].
-     */
-    private fun dokumentAblegen(dokument: MedienEntwurf) {
-        val dateiname = dokument.dokument ?: return
-        _zustand.update { it.copy(medium = dokument.copy(arbeitet = true, fortschritt = 0, fehler = null), laeuft = true) }
-
-        viewModelScope.launch {
-            try {
-                if (withContext(Dispatchers.IO) { medienkorb.anzahl() } > 0) {
-                    einreihen(dokument, R.string.dokument_hinten_an)
-                    return@launch
-                }
-                val gespraechId = _zustand.value.gespraechId
-                val antwort = repository.dokument(
-                    datei = dokument.datei,
-                    dateiname = dateiname,
-                    notiz = dokument.notiz,
-                    text = dokument.text,
-                    gespraechId = gespraechId,
-                    fortschritt = { prozent ->
-                        _zustand.update { it.copy(medium = it.medium?.copy(fortschritt = prozent)) }
+            if (name == null) {
+                // Das Foto ist im Ausgang, nur die Frage nicht: zurueck ins Feld.
+                zurueckInsFeld(schluessel, frage, meine)
+                fehlerZeigen(R.string.ausgang_nicht_gespeichert)
+                return@launch
+            }
+            VersandArbeiter.anstossen(anwendung)
+            eingereiht(meine, ziel)
+            _zustand.update { z ->
+                z.copy(
+                    eintraege = z.eintraege.map {
+                        if (it.schluessel == schluessel && it is NutzerEintrag) it.copy(wartet = name) else it
                     },
                 )
-                dokument.datei.delete()
-                val name = notizname(antwort.notiz)
-                _zustand.update {
-                    it.copy(
-                        medium = null,
-                        letzteMedienNotiz = antwort.notiz,
-                        eintraege = it.eintraege + buildList {
-                            add(
-                                HinweisEintrag(
-                                    schluessel = naechsterSchluessel("hinweis"),
-                                    text = anwendung.getString(
-                                        if (antwort.notiz_neu) R.string.dokument_abgelegt_neu else R.string.dokument_abgelegt,
-                                        name,
-                                    ),
-                                    dateien = listOf(antwort.dokument),
-                                )
-                            )
-                            if (!antwort.lesbar) {
-                                add(
-                                    HinweisEintrag(
-                                        schluessel = naechsterSchluessel("hinweis"),
-                                        text = antwort.hinweis.ifBlank { anwendung.getString(R.string.dokument_nicht_lesbar) },
-                                    )
-                                )
-                            }
-                        },
-                    )
-                }
-            } catch (fehler: ApiFehler.NichtAngemeldet) {
-                behandleFehler(fehler)
-            } catch (_: ApiFehler.KeineVerbindung) {
-                einreihen(dokument, R.string.dokument_wartet)
-            } catch (fehler: ApiFehler) {
-                // 415 sagt im detail schon, was zu tun ist ("bitte als PDF speichern").
-                mediumFehler(fehler.anzeigetext)
-            } finally {
-                _zustand.update { it.copy(laeuft = false) }
             }
         }
     }
 
     /**
-     * Videos werden erst auf 720p verkleinert und dann **immer** eingereiht.
-     * Den Upload uebernimmt der [VersandArbeiter] - bei 50-100 MB soll niemand
-     * mit offener App warten muessen.
+     * Videos gehen **sofort** in den Ausgang, unverkleinert. Umgerechnet auf 720p wird
+     * im [VersandArbeiter] - bei einem 15-Minuten-Video dauert das Minuten, und die App
+     * soll in der Zeit bedienbar bleiben (Auftrag 1.35).
      */
     @androidx.annotation.OptIn(UnstableApi::class)
     private fun videoAblegen(video: MedienEntwurf) {
-        _zustand.update { it.copy(medium = video.copy(arbeitet = true, fortschritt = 0, fehler = null)) }
+        _zustand.update { it.copy(medium = video.copy(arbeitet = true, fortschritt = null, fehler = null)) }
 
         viewModelScope.launch {
             val masse = withContext(Dispatchers.IO) { VideoAufbereitung.masse(video.datei) }
@@ -1582,28 +1527,7 @@ class ChatViewModel(
                 mediumFehler(anwendung.getString(R.string.video_zu_lang))
                 return@launch
             }
-
-            val klein = try {
-                VideoAufbereitung.verkleinern(anwendung, video.datei) { prozent ->
-                    _zustand.update { it.copy(medium = it.medium?.copy(fortschritt = prozent)) }
-                }
-            } catch (abbruch: CancellationException) {
-                throw abbruch
-            } catch (_: Exception) {
-                // Manche Geraete koennen bestimmte Formate nicht umrechnen. Dann
-                // geht das Original raus - groesser, aber besser als gar nicht.
-                video.datei
-            }
-
-            if (klein.length() > AssistentRepository.MAX_VIDEO_BYTES) {
-                if (klein != video.datei) klein.delete()
-                mediumFehler(anwendung.getString(R.string.video_zu_gross))
-                return@launch
-            }
-
-            val eingereiht = einreihen(video.copy(datei = klein), R.string.video_eingereiht)
-            // Das Original braucht es nur, solange der Dialog noch offen ist.
-            if (klein != video.datei) (if (eingereiht) video.datei else klein).delete()
+            einreihen(video, R.string.ausgang_video_eingereiht)
         }
     }
 
@@ -1611,8 +1535,11 @@ class ChatViewModel(
      * Legt die Aufnahme in den [Medienkorb] und schliesst den Dialog. Ohne feste
      * Notiz bekommt sie die laufende Serie, damit alles aus einer Begehung in
      * derselben Notiz landet - auch wenn es erst am naechsten Morgen rausgeht.
+     *
+     * @param meldung Hinweiszeile im Chat, `null` = keine (die Frage zum Foto zeigt sich selbst).
+     * @param uploadId fest vorgegeben, wenn eine Frage auf das Foto wartet.
      */
-    private suspend fun einreihen(medium: MedienEntwurf, meldung: Int): Boolean {
+    private suspend fun einreihen(medium: MedienEntwurf, meldung: Int?, uploadId: String? = null): Boolean {
         val serie = if (medium.notiz == null) {
             _zustand.value.medienSerie ?: UUID.randomUUID().toString()
         } else {
@@ -1642,20 +1569,25 @@ class ChatViewModel(
             faden = faden,
             serie = serie,
             abschreiben = medium.abschreiben.takeIf { medium.istVideo },
+            upload_id = uploadId ?: UploadStart.neueId(),
         )
 
         val (abgelegt, wartend) = withContext(Dispatchers.IO) {
-            // Fotos werden vor dem Ablegen verkleinert - im Korb liegt nur, was
-            // spaeter genau so hochgeladen wird.
-            val datei = if (medium.istVideo || medium.istDokument) {
-                medium.datei
-            } else {
-                FotoAufbereitung.verkleinern(medium.datei)
+            val ok = when {
+                // Videos: nur verschieben, umgerechnet wird im Hintergrund.
+                medium.istVideo -> medienkorb.ablegenRoh(medium.datei, auftrag)
+                medium.istDokument -> medienkorb.ablegen(medium.datei, auftrag)
+                else -> {
+                    // Fotos werden vor dem Ablegen verkleinert - im Korb liegt nur, was
+                    // spaeter genau so hochgeladen wird.
+                    val datei = FotoAufbereitung.verkleinern(medium.datei)
+                    val ok = medienkorb.ablegen(datei, auftrag)
+                    // Gescheitert: die verkleinerte Kopie weg, das Original bleibt im Dialog.
+                    if (datei != medium.datei) (if (ok) medium.datei else datei).delete()
+                    ok
+                }
             }
-            val ok = medienkorb.ablegen(datei, auftrag)
-            // Gescheitert: die verkleinerte Kopie weg, das Original bleibt im Dialog.
-            if (datei != medium.datei) (if (ok) medium.datei else datei).delete()
-            ok to medienkorb.anzahl()
+            ok to medienkorb.liste()
         }
         if (!abgelegt) {
             mediumFehler(anwendung.getString(R.string.medium_nicht_gespeichert))
@@ -1667,11 +1599,16 @@ class ChatViewModel(
             it.copy(
                 medium = null,
                 medienSerie = serie ?: it.medienSerie,
-                wartendeMedien = wartend,
-                eintraege = it.eintraege + HinweisEintrag(
-                    schluessel = naechsterSchluessel("hinweis"),
-                    text = anwendung.getString(meldung),
-                ),
+                wartendeMedien = wartend.size,
+                ausgang = ausgangZeilen(wartend, laufendesMedium, hatNetz()),
+                eintraege = if (meldung == null) {
+                    it.eintraege
+                } else {
+                    it.eintraege + HinweisEintrag(
+                        schluessel = naechsterSchluessel("hinweis"),
+                        text = anwendung.getString(meldung),
+                    )
+                },
             )
         }
         return true
@@ -1690,6 +1627,8 @@ class ChatViewModel(
     private fun versandBeobachten() {
         val erledigt = mutableSetOf<UUID>()
         var erstesMal = true
+        var vorigeZustaende: List<Pair<UUID, WorkInfo.State>> = emptyList()
+        var vorigerLauf: String? = null
 
         viewModelScope.launch {
             WorkManager.getInstance(anwendung)
@@ -1699,6 +1638,46 @@ class ChatViewModel(
                     val prozent = laufend?.progress
                         ?.getInt(VersandArbeiter.FORTSCHRITT_PROZENT, -1)
                         ?.takeIf { it >= 0 }
+                    laufendesMedium = laufend?.progress?.let { p ->
+                        p.getString(VersandArbeiter.FORTSCHRITT_MEDIUM)?.let { name ->
+                            Lauf(name, p.getString(VersandArbeiter.FORTSCHRITT_PHASE) ?: VersandArbeiter.PHASE_SENDEN, prozent ?: 0)
+                        }
+                    }
+
+                    // Nur der Fortschritt hat sich bewegt: die Zeilen im Speicher nachziehen,
+                    // statt bei jedem Prozent beide Koerbe zu entschluesseln.
+                    val zustaende = infos.map { it.id to it.state }
+                    if (zustaende == vorigeZustaende) {
+                        val lauf = laufendesMedium
+                        _zustand.update { z ->
+                            z.copy(
+                                hochladen = prozent,
+                                ausgang = z.ausgang.map { zeile ->
+                                    when {
+                                        lauf != null && zeile.name == lauf.name -> zeile.copy(
+                                            status = if (lauf.phase == VersandArbeiter.PHASE_VERKLEINERN) {
+                                                AusgangZeile.Status.VERKLEINERT
+                                            } else {
+                                                AusgangZeile.Status.SENDET
+                                            },
+                                            prozent = lauf.prozent,
+                                        )
+                                        // Das vorige ist fertig, steht aber noch in der Liste: gleich weg.
+                                        zeile.laeuft -> zeile.copy(status = AusgangZeile.Status.DRAN, prozent = null)
+                                        else -> zeile
+                                    }
+                                },
+                            )
+                        }
+                        // Ein anderes Medium ist dran: das vorige ist durch, Liste neu.
+                        if (lauf?.name != vorigerLauf) {
+                            vorigerLauf = lauf?.name
+                            ausgangAbgleichen()
+                        }
+                        return@collect
+                    }
+                    vorigeZustaende = zustaende
+                    vorigerLauf = laufendesMedium?.name
 
                     val neu = infos.filter { it.state == WorkInfo.State.SUCCEEDED && it.id !in erledigt }
                     erledigt += neu.map { it.id }

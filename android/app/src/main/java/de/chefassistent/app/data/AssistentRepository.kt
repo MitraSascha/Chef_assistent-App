@@ -432,6 +432,15 @@ class AssistentRepository(
         }
     }
 
+    /** Hochladen in Stuecken ueber `/v1/uploads` (1.35.0, API.md 4h), siehe [StueckUpload]. */
+    val uploadWeg: UploadWeg = object : UploadWeg {
+        override suspend fun starten(start: UploadStart) = ruf { it.uploadStarten(start) }
+        override suspend fun teil(id: String, offset: Long, daten: ByteArray) =
+            ruf { it.uploadTeil(id, offset, daten.toRequestBody(ROHDATEN)) }
+        override suspend fun stand(id: String) = ruf { it.uploadStand(id) }
+        override suspend fun abschliessen(id: String) = ruf { it.uploadAbschliessen(id) }
+    }
+
     /**
      * Haengt ein Dokument an eine Notiz (`POST /v1/dokumente`, seit v1.12.0).
      *
@@ -797,6 +806,9 @@ class AssistentRepository(
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() && it != "." && it != ".." }
         }
+
+        /** Koerper eines Stuecks beim Hochladen in Stuecken (API.md 4h). */
+        val ROHDATEN = "application/octet-stream".toMediaType()
 
         /** Grenzen aus `API.md`. */
         private const val MAX_AUFNAHME_BYTES = 25L * 1024 * 1024

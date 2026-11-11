@@ -213,11 +213,11 @@ GET /v1/modelle
   "modelle": [
     {"wert": "gpt-5.6-luna", "name": "gpt-5.6-luna", "teuer": false, "hinweis": null},
     {"wert": "gpt-5.6-sol", "name": "gpt-5.6-sol", "teuer": false, "hinweis": null},
-    {"wert": "gpt-5.6-astra", "name": "gpt-5.6-astra", "teuer": true,
+    {"wert": "gpt-6-astra", "name": "gpt-6-astra", "teuer": true,
      "hinweis": "Deutlich teurer pro Anfrage – nur für besonders schwierige Aufgaben"}
   ],
   "denkstufen": [{"wert": "low", "name": "niedrig"}, {"wert": "medium", "name": "mittel"}, {"wert": "high", "name": "hoch"}],
-  "automatisch": "Automatisch: Der Server wählt je Nachricht. Alltag mit gpt-5.6-luna (Denkaufwand niedrig); bei großen Aufgaben (Angebote, Auswertungen, feste Abläufe, viele Schritte) Wechsel auf gpt-5.6-sol (Denkaufwand mittel). Teure Modelle (gpt-5.6-astra) nimmt die Automatik nie.",
+  "automatisch": "Automatisch: Der Server wählt je Nachricht. Alltag mit gpt-5.6-luna (Denkaufwand niedrig); bei großen Aufgaben (Angebote, Auswertungen, feste Abläufe, viele Schritte) Wechsel auf gpt-5.6-sol (Denkaufwand mittel). Teure Modelle (gpt-6-astra) nimmt die Automatik nie.",
   "standard_modell": "gpt-5.6-luna", "arbeits_modell": "gpt-5.6-sol",
   "standard_denkaufwand": {"wert": "low", "name": "niedrig"}, "arbeits_denkaufwand": {"wert": "medium", "name": "mittel"}
 }
@@ -227,7 +227,7 @@ App fest einbauen. An die API geht immer `wert`.
 
 **Teure Modelle** (`teuer: true`, derzeit Astra): kosten pro Anfrage deutlich mehr. Die Automatik nimmt sie **nie**,
 nur auf ausdrückliche Wahl. Darstellung: in der Liste **abgesetzt** (eigener Abschnitt/Trennlinie unter den normalen
-Modellen) und mit „teuer“ in **Warnfarbe** gekennzeichnet; beim Auswählen **einmal bestätigen** lassen („gpt-5.6-astra
+Modellen) und mit „teuer“ in **Warnfarbe** gekennzeichnet; beim Auswählen **einmal bestätigen** lassen („gpt-6-astra
 ist deutlich teurer pro Anfrage. Für diesen Chat verwenden?“ – Nein = alte Auswahl bleibt); solange es im Gespräch
 eingestellt ist, das Auswahlfeld in Warnfarbe und daneben „⚠ teuer pro Anfrage“ (`hinweis` als Info). `"auto"` ist immer zusätzlich erlaubt und steht nicht in den Listen. Mögliche Denkstufen-Namen:
 minimal, niedrig, mittel, hoch, „sehr hoch“ (xhigh).
@@ -257,7 +257,7 @@ bleiben davon unberührt. Steht ein gespeicherter Wert nicht mehr in der Auswahl
 er als `auto`.
 
 **Modell beim Anbieter nicht verfügbar** (OpenAI kennt die ID nicht bzw. gibt sie nicht frei): Es kommt `200` mit
-`antwort` „⚠️ Modell gpt-5.6-astra ist beim Anbieter nicht verfügbar – bitte anderes Modell wählen. Es wurde nichts
+`antwort` „⚠️ Modell gpt-6-astra ist beim Anbieter nicht verfügbar – bitte anderes Modell wählen. Es wurde nichts
 ausgeführt …“. Normal anzeigen; der Nutzer stellt um und sendet erneut.
 
 **Anzeige:** `GET /v1/gespraeche` liefert je Gespräch `modell` und `denkaufwand` (gewählt, `auto` oder Wert).
@@ -1909,3 +1909,38 @@ Alternativ Klassen generieren: `openapi-generator-cli generate -i openapi.json -
 ## Verbindlichkeit
 
 Alles unter `/v1/` bleibt rückwärtskompatibel: Neue Felder können dazukommen (Parser mit `ignoreUnknownKeys = true` konfigurieren), bestehende werden nicht umbenannt oder entfernt. Brechende Änderungen kommen unter `/v2/`.
+
+## 4h. Hochladen in Stücken (fortsetzbar) – neu in 1.35.0
+
+Für Fotos, Videos und Dokumente bei schlechtem Netz (Keller, Baustelle). Die App legt die Datei in einen Ausgang,
+schickt sie im Hintergrund in Stücken und setzt nach einem Abbruch an der letzten Stelle fort. Verarbeitet wird genau
+wie bei den direkten Endpunkten; nichts entsteht doppelt.
+
+| Schritt | Chef-Assi | Monteur-App |
+|---|---|---|
+| anmelden / Stand nach Neustart | `POST /v1/uploads` | `POST /v1/monteur/uploads` |
+| ein Stück senden | `PUT /v1/uploads/{upload_id}?offset=N` (Rohdaten, `application/octet-stream`) | `PUT /v1/monteur/uploads/{upload_id}?offset=N` |
+| Stand | `GET /v1/uploads/{upload_id}` | `GET /v1/monteur/uploads/{upload_id}` |
+| verarbeiten | `POST /v1/uploads/{upload_id}/abschliessen` | `POST /v1/monteur/uploads/{upload_id}/abschliessen` |
+
+```json
+POST /v1/uploads
+{"upload_id": "a1b2c3d4e5f6a7b8", "ziel": "video", "dateiname": "VID_20261111.mp4", "groesse": 734003200,
+ "felder": {"notiz": "Notizen/Sascha/Keller Grünberger", "text": "Strang", "gespraech_id": "…", "abschreiben": "auto"}}
+-> {"upload_id": "…", "ziel": "video", "dateiname": "…", "groesse": 734003200, "empfangen": 0, "teil_max": 8388608,
+    "status": "offen", "ergebnis": null, "fehler": null}
+```
+
+- `upload_id` erzeugt die App (8–64 Zeichen `A-Za-z0-9_-`, z. B. UUID ohne Bindestriche) und speichert sie mit der Datei.
+  Dieselbe `upload_id` noch einmal anmelden = Stand abfragen (nach App-Neustart).
+- `ziel`: Chef-Assi `foto` (max. 25 MB) | `dokument` (50 MB) | `video` (1 GB); Monteur-App `projekt` (1 GB).
+- `felder`: wie die Formularfelder des direkten Endpunkts. Chef-Assi: `notiz`, `text`, `gespraech_id`, bei Video
+  `abschreiben`. Monteur-App: `pid` (Pflicht), `text`, `anfrage_id`.
+- Stücke höchstens `teil_max` Bytes (8 MB), Empfehlung 2–4 MB im Mobilnetz. `offset` = bisher `empfangen`.
+  Passt `offset` nicht -> **409**, Header `X-Empfangen` = Stand -> dort weitermachen.
+- `abschliessen` erst, wenn `empfangen == groesse` (sonst 409). Antwort `status: "fertig"`, `ergebnis` = Antwort des
+  direkten Endpunkts (`FotoAntwort`, `DokumentAntwort`, `VideoAntwort` bzw. `Hochgeladen`). Mehrfach aufrufbar,
+  liefert dann dieselbe Antwort.
+- Fachlicher Fehler beim Verarbeiten (z. B. 415 kein Bild) -> `status: "fehler"` mit `fehler`; nicht wiederholen,
+  dem Nutzer zeigen. 5xx -> bleibt `offen`, später noch einmal `abschliessen`.
+- Unfertige Uploads verfallen nach 7 Tagen, fertige Einträge nach 30.

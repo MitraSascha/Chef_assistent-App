@@ -208,6 +208,13 @@ class ProjektViewModel(val app: MonteurApp, val projektId: Int) : ViewModel() {
     }
 
     /** Laufender Upload: Titel und Prozent aus dem Versand-Arbeiter. */
+    /** Seit 1.35.0: Dateien dieses Projekts im Ausgang, mit Stand. */
+    val ausgang = de.chefassistent.app.monteur.ui.ausgangFluss(app, projektId)
+
+    fun ausgangLoeschen(name: String) = viewModelScope.launch(Dispatchers.IO) { app.korb.dateiLoeschen(name) }
+
+    fun jetztSenden() = MonteurVersand.anstossen(app)
+
     val hochladenStand = WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(MonteurVersand.NAME).map { infos ->
         infos.firstOrNull { it.state == WorkInfo.State.RUNNING }?.progress?.let { p ->
             p.getString(MonteurVersand.TITEL)?.let { it to p.getInt(MonteurVersand.FORTSCHRITT, 0) }
@@ -263,6 +270,16 @@ fun ProjektScreen(
     val zustand by viewModel.zustand.collectAsStateWithLifecycle()
     val meldungen by viewModel.meldungen.collectAsStateWithLifecycle(emptyList())
     val hochladen by viewModel.hochladenStand.collectAsStateWithLifecycle(null)
+    val ausgang by viewModel.ausgang.collectAsStateWithLifecycle(emptyList())
+    var ausgangOffen by rememberSaveable { mutableStateOf(false) }
+    if (ausgangOffen) {
+        de.chefassistent.app.ui.komponenten.AusgangBlatt(
+            zeilen = ausgang,
+            beiLoeschen = { viewModel.ausgangLoeschen(it.name) },
+            beiJetztSenden = { viewModel.jetztSenden() },
+            beiSchliessen = { ausgangOffen = false },
+        )
+    }
     val snackbar = remember { SnackbarHostState() }
     val vorbereitet = stringResource(R.string.m_hochladen_gestartet)
     LaunchedEffect(meldungen) {
@@ -317,15 +334,24 @@ fun ProjektScreen(
             // Eigene Flaeche, sonst scheint die Liste darunter durch.
             Surface(color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp)) {
-            hochladen?.let { (titel, prozent) ->
-                Text(
-                    stringResource(R.string.m_hochladen_laeuft, titel, prozent),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            // Seit 1.35.0: Ausgang dieses Projekts, antippen zeigt die Liste (Loeschen, Jetzt senden).
+            if (ausgang.isNotEmpty()) {
+                de.chefassistent.app.ui.komponenten.AusgangLeiste(
+                    ausgang,
+                    beiKlick = { ausgangOffen = true },
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
-                LinearProgressIndicator(progress = { prozent / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp))
+            } else {
+                hochladen?.let { (titel, prozent) ->
+                    Text(
+                        stringResource(R.string.m_hochladen_laeuft, titel, prozent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    LinearProgressIndicator(progress = { prozent / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp))
+                }
             }
             // Ein offener Entwurf bleibt erreichbar; alles Neue geht ueber den einen Eingang (1.23.0).
             if (entwurfId != null) {

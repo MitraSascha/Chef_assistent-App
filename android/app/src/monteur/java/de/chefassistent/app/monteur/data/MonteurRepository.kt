@@ -143,6 +143,15 @@ class MonteurRepository(
         }
     }
 
+    /** Hochladen in Stuecken ueber `/v1/monteur/uploads` (1.35.0, API.md 4h), ziel `projekt`. */
+    val uploadWeg: de.chefassistent.app.data.UploadWeg = object : de.chefassistent.app.data.UploadWeg {
+        override suspend fun starten(start: de.chefassistent.app.data.UploadStart) = ruf { it.uploadStarten(start) }
+        override suspend fun teil(id: String, offset: Long, daten: ByteArray) =
+            ruf { it.uploadTeil(id, offset, daten.toRequestBody(AssistentRepository.ROHDATEN)) }
+        override suspend fun stand(id: String) = ruf { it.uploadStand(id) }
+        override suspend fun abschliessen(id: String) = ruf { it.uploadAbschliessen(id) }
+    }
+
     /** Adresse zum Abspielen eines Projektvideos; Spulen geht (Range). Token kommt als Kopfzeile dazu, siehe [token]. */
     fun videoAdresse(projektId: Int, name: String): String =
         Netzwerk.normalisiereUrl(einstellungen.basisUrl) + "v1/monteur/projekte/$projektId/videos/" + android.net.Uri.encode(name)

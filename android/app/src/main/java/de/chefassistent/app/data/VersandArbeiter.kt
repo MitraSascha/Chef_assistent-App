@@ -14,10 +14,15 @@ import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -65,8 +70,10 @@ class VersandArbeiter(
         }
 
         kopienAufraeumen()
-        nachrichtenSenden(repository, anwendung.ausgangskorb)?.let { return it }
-        return medienSenden(repository, anwendung.medienkorb, anwendung.ausgangskorb)
+        nachrichtenSenden(repository, anwendung.ausgangskorb, anwendung.medienkorb)?.let { return it }
+        val medien = medienSenden(repository, anwendung.medienkorb, anwendung.ausgangskorb)
+        // Fragen zu Fotos, die gerade angekommen sind (1.35.0): erst das Foto, dann die Frage.
+        return nachrichtenSenden(repository, anwendung.ausgangskorb, anwendung.medienkorb) ?: medien
     }
 
     /**
@@ -127,11 +134,38 @@ class VersandArbeiter(
      * gelesen, weil eine angekommene Nachricht das Gespraech der folgenden
      * festlegt. `null` heisst: fertig, weiter mit den Medien.
      */
-    private suspend fun nachrichtenSenden(repository: AssistentRepository, korb: Ausgangskorb): Result? {
+    private suspend fun nachrichtenSenden(repository: AssistentRepository, korb: Ausgangskorb, medien: Medienkorb): Result? {
         val erledigt = mutableSetOf<String>()
+        // Gespraeche bzw. Faeden, in denen eine Frage auf ihr Foto wartet: was danach
+        // kam, wartet mit, sonst stimmte die Reihenfolge im Gespraech nicht.
+        val gesperrt = mutableSetOf<String>()
 
         while (true) {
-            var notiz = korb.liste().firstOrNull { it.name !in erledigt } ?: return null
+            val offen = korb.liste().filter { it.name !in erledigt }
+            var notiz = offen.firstOrNull() ?: return null
+            val schluessel = notiz.auftrag.gespraech_id ?: notiz.auftrag.faden
+            if (schluessel != null && schluessel in gesperrt) {
+                erledigt += notiz.name
+                continue
+            }
+            val fotoId = notiz.auftrag.wartet_auf_foto
+            if (fotoId != null) {
+                val pfad = korb.fotoZu(fotoId)
+                if (pfad != null) {
+                    // Schon angekommen, bevor die Frage im Korb lag.
+                    korb.auftragAendern(
+                        notiz.name,
+                        notiz.auftrag.copy(wartet_auf_foto = null, bilder = (notiz.auftrag.bilder + pfad).distinct()),
+                    )
+                } else if (medien.liste().any { it.auftrag.upload_id == fotoId }) {
+                    erledigt += notiz.name
+                    schluessel?.let { gesperrt += it }
+                } else {
+                    // Das Foto ist weder unterwegs noch angekommen (verworfen, geloescht).
+                    korb.fotoGescheitert(fotoId, "Das Foto zu dieser Frage wurde nicht abgelegt.")
+                }
+                continue
+            }
 
             try {
                 // Was an den Assistenten geht, bekommt vor dem ersten Versuch eine
@@ -330,10 +364,22 @@ class VersandArbeiter(
         }
     }
 
+    /** Was ein angekommenes Medium fuer die Hinweise im Chat bedeutet. */
+    private data class Angekommen(
+        val notiz: String?,
+        val schreibtAb: Boolean = false,
+        val unlesbar: String? = null,
+        val foto: String? = null,
+    )
+
     /**
      * Fotos, Videos und Dokumente der Reihe nach, immer das aelteste zuerst. Die Liste wird
      * jedes Mal neu gelesen, weil ein angekommenes Medium die Notiz der folgenden
      * festlegt.
+     *
+     * Seit 1.35.0 in Stuecken ueber `/v1/uploads` (API.md 4h): nach einem Abbruch geht es an
+     * der letzten Stelle weiter, nie wieder bei 0 %. Ein alter Server ohne diese Route
+     * bekommt die Datei wie bisher am Stueck.
      */
     private suspend fun medienSenden(
         repository: AssistentRepository,
@@ -352,22 +398,6 @@ class VersandArbeiter(
         while (true) {
             val medium = korb.liste().firstOrNull { it.name !in erledigt } ?: break
             erledigt += medium.name
-            val datei = when (val ausgepackt = korb.auspacken(medium)) {
-                is Auspacken.Fertig -> ausgepackt.datei
-                Auspacken.KeinPlatz -> return Result.retry()
-                is Auspacken.Defekt -> {
-                    korb.beiseitelegen(medium.name)
-                    ausgang.rueckmelden(
-                        Rueckmeldung(
-                            art = Rueckmeldung.ART_HINWEIS,
-                            zeit = medium.auftrag.aufgenommen,
-                            text = "${artName(medium.auftrag)} von ${uhrzeit(medium.auftrag.aufgenommen)} ließ sich " +
-                                "nicht mehr entschlüsseln und wurde nicht gesendet. Es bleibt auf dem Gerät.",
-                        )
-                    )
-                    continue
-                }
-            }
 
             var auftrag = medium.auftrag
             // Aus einem neuen Chat ohne Gespraech: hat dessen erste Nachricht inzwischen
@@ -379,87 +409,50 @@ class VersandArbeiter(
                     korb.auftragAendern(medium.name, auftrag)
                 }
             }
-            if (auftrag.art != MedienAuftrag.ART_FOTO) {
-                imVordergrund(if (auftrag.art == MedienAuftrag.ART_VIDEO) "Video wird hochgeladen …" else "Dokument wird hochgeladen …")
-            }
-            val melden: (Int) -> Unit = { prozent ->
-                setProgressAsync(workDataOf(FORTSCHRITT_PROZENT to prozent))
-            }
+
             try {
-                while (true) {
-                    try {
-                        val notiz = when (auftrag.art) {
-                            MedienAuftrag.ART_VIDEO -> {
-                                val antwort = repository.video(
-                                    datei = datei,
-                                    notiz = auftrag.notiz,
-                                    text = auftrag.text,
-                                    abschreiben = auftrag.abschreiben,
-                                    gespraechId = auftrag.gespraech_id,
-                                    fortschritt = melden,
-                                )
-                                videos++
-                                if (antwort.schreibtAb) abschriften++
-                                antwort.notiz
-                            }
-                            MedienAuftrag.ART_DOKUMENT -> {
-                                val antwort = repository.dokument(
-                                    datei = datei,
-                                    dateiname = auftrag.dateiname ?: datei.name,
-                                    notiz = auftrag.notiz,
-                                    text = auftrag.text,
-                                    gespraechId = auftrag.gespraech_id,
-                                    fortschritt = melden,
-                                )
-                                dokumente++
-                                if (!antwort.lesbar) unlesbar = antwort.hinweis
-                                antwort.notiz
-                            }
-                            else -> {
-                                val notiz = repository.foto(
-                                    bild = datei,
-                                    notiz = auftrag.notiz,
-                                    text = auftrag.text,
-                                    gespraechId = auftrag.gespraech_id,
-                                    aufbereiten = false,
-                                ).notiz
-                                fotos++
-                                notiz
-                            }
-                        }
-                        korb.entfernen(medium.name)
-                        auftrag.serie?.let { korb.serieFestlegen(it, notiz) }
-                        letzteNotiz = notiz
-                        break
-                    } catch (fehler: ApiFehler) {
-                        if (fehler !is ApiFehler.NichtGefunden && fehler !is ApiFehler.Verboten) throw fehler
-                        // Gespraech inzwischen geloescht oder Notiz weg/fremd. Lieber
-                        // ohne diese Angabe ablegen als die Aufnahme wegwerfen - erst
-                        // das Gespraech weglassen, das schadet am wenigsten.
-                        auftrag = when {
-                            auftrag.gespraech_id != null -> auftrag.copy(gespraech_id = null, faden = null)
-                            auftrag.notiz != null -> auftrag.copy(notiz = null)
-                            else -> throw fehler
-                        }
-                        korb.auftragAendern(medium.name, auftrag)
+                if (auftrag.aufbereiten) {
+                    auftrag = videoAufbereiten(korb, ausgang, medium.name, auftrag) ?: continue
+                }
+                if (auftrag.upload_id == null || auftrag.groesse == null) {
+                    auftrag = auftrag.copy(
+                        upload_id = auftrag.upload_id ?: UploadStart.neueId(),
+                        groesse = auftrag.groesse ?: korb.groesse(medium.name),
+                    )
+                    korb.auftragAendern(medium.name, auftrag)
+                }
+                if (auftrag.art != MedienAuftrag.ART_FOTO || (auftrag.groesse ?: 0) > GROSS_BYTES) {
+                    imVordergrund(
+                        if (auftrag.art == MedienAuftrag.ART_VIDEO) "Video wird hochgeladen …" else "Wird hochgeladen …"
+                    )
+                }
+
+                val angekommen = hochladen(repository, korb, ausgang, medium.name, auftrag) ?: continue
+                when (auftrag.art) {
+                    MedienAuftrag.ART_VIDEO -> {
+                        videos++
+                        if (angekommen.schreibtAb) abschriften++
                     }
+                    MedienAuftrag.ART_DOKUMENT -> {
+                        dokumente++
+                        angekommen.unlesbar?.let { unlesbar = it }
+                    }
+                    else -> fotos++
+                }
+                // Die upload_id kann sich unterwegs geaendert haben (neue ID), die Frage
+                // haengt aber an der urspruenglichen.
+                val fragenId = medium.auftrag.upload_id
+                korb.entfernen(medium.name)
+                if (angekommen.foto != null) {
+                    listOfNotNull(fragenId, auftrag.upload_id).distinct().forEach { ausgang.fotoAngekommen(it, angekommen.foto) }
+                }
+                angekommen.notiz?.let { notiz ->
+                    auftrag.serie?.let { korb.serieFestlegen(it, notiz) }
+                    letzteNotiz = notiz
                 }
             } catch (fehler: ApiFehler) {
                 if (fehler.istVoruebergehend) return Result.retry()
-                // 413/415/422 wiederholen sich bei jedem Versuch und wuerden den Korb
-                // blockieren. Geloescht wird trotzdem nicht: auf dem Handy gibt es
-                // oft keine andere Kopie mehr.
-                korb.beiseitelegen(medium.name)
-                ausgang.rueckmelden(
-                    Rueckmeldung(
-                        art = Rueckmeldung.ART_HINWEIS,
-                        zeit = auftrag.aufgenommen,
-                        text = "${artName(auftrag)} von ${uhrzeit(auftrag.aufgenommen)} nicht abgelegt: " +
-                            "${fehler.anzeigetext} Es bleibt auf dem Gerät.",
-                    )
-                )
-            } finally {
-                datei.delete()
+                abgelehnt(korb, ausgang, medium.name, medium.auftrag, fehler.anzeigetext)
             }
         }
 
@@ -471,6 +464,234 @@ class VersandArbeiter(
                 ERGEBNIS_DOKUMENTE to dokumente,
                 ERGEBNIS_UNLESBAR to unlesbar,
                 ERGEBNIS_NOTIZ to letzteNotiz,
+            )
+        )
+    }
+
+    /**
+     * Rechnet ein Video aus dem Ausgang auf 720p um (wie bisher im Dialog, seit 1.35.0
+     * hier, damit die App sofort wieder bedienbar ist). Scheitert die Umrechnung, geht
+     * das Original raus. `null` = beiseitegelegt bzw. weg, weiter mit dem naechsten.
+     */
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    private suspend fun videoAufbereiten(
+        korb: Medienkorb,
+        ausgang: Ausgangskorb,
+        name: String,
+        auftrag: MedienAuftrag,
+    ): MedienAuftrag? {
+        val roh = korb.rohDatei(name) ?: run {
+            abgelehnt(korb, ausgang, name, auftrag, "Das Original des Videos fehlt.")
+            return null
+        }
+        imVordergrund("Video wird verkleinert …")
+        var zuletzt = -1
+        val klein = try {
+            VideoAufbereitung.verkleinern(applicationContext, roh) { prozent ->
+                if (prozent != zuletzt) {
+                    zuletzt = prozent
+                    setProgressAsync(
+                        workDataOf(
+                            FORTSCHRITT_PROZENT to prozent,
+                            FORTSCHRITT_MEDIUM to name,
+                            FORTSCHRITT_PHASE to PHASE_VERKLEINERN,
+                        )
+                    )
+                }
+            }
+        } catch (abbruch: CancellationException) {
+            throw abbruch
+        } catch (_: Exception) {
+            // Manche Geraete koennen bestimmte Formate nicht umrechnen.
+            roh
+        }
+        if (!korb.existiert(name)) {
+            // Waehrend des Umrechnens aus dem Ausgang geloescht.
+            if (klein != roh) klein.delete()
+            return null
+        }
+        if (klein.length() > AssistentRepository.MAX_VIDEO_BYTES) {
+            if (klein != roh) klein.delete()
+            abgelehnt(korb, ausgang, name, auftrag, "Das Video ist zu groß (maximal 1 GB).")
+            return null
+        }
+        return try {
+            korb.aufbereitet(name, klein, auftrag)
+        } finally {
+            if (klein != roh) klein.delete()
+        }
+    }
+
+    /**
+     * Ein Medium hochladen, in Stuecken oder (alter Server) am Stueck. `null` = nicht
+     * angekommen und schon erledigt (abgelehnt, geloescht, defekt).
+     */
+    private suspend fun hochladen(
+        repository: AssistentRepository,
+        korb: Medienkorb,
+        ausgang: Ausgangskorb,
+        name: String,
+        anfang: MedienAuftrag,
+    ): Angekommen? {
+        var auftrag = anfang
+        var neueIds = 0
+        var zuletzt = -1
+        while (true) {
+            val start = UploadStart(
+                upload_id = auftrag.upload_id!!,
+                ziel = when (auftrag.art) {
+                    MedienAuftrag.ART_VIDEO -> UploadStart.ZIEL_VIDEO
+                    MedienAuftrag.ART_DOKUMENT -> UploadStart.ZIEL_DOKUMENT
+                    else -> UploadStart.ZIEL_FOTO
+                },
+                dateiname = auftrag.serverDateiname.take(200),
+                groesse = auftrag.groesse!!,
+                felder = buildJsonObject {
+                    auftrag.notiz?.let { put("notiz", it) }
+                    auftrag.text.trim().take(MAX_TEXT).takeIf { it.isNotEmpty() }?.let { put("text", it) }
+                    auftrag.gespraech_id?.let { put("gespraech_id", it) }
+                    if (auftrag.art == MedienAuftrag.ART_VIDEO) auftrag.abschreiben?.let { put("abschreiben", it) }
+                },
+            )
+            val ergebnis = StueckUpload.hochladen(
+                weg = repository.uploadWeg,
+                start = start,
+                oeffnen = { korb.lesen(name) },
+                teilGroesse = { StueckUpload.teilGroesse(applicationContext, it) },
+                fortschritt = { gesendet, gesamt ->
+                    val prozent = (gesendet * 100 / gesamt.coerceAtLeast(1)).toInt()
+                    if (prozent != zuletzt) {
+                        zuletzt = prozent
+                        setProgressAsync(
+                            workDataOf(
+                                FORTSCHRITT_PROZENT to prozent,
+                                FORTSCHRITT_MEDIUM to name,
+                                FORTSCHRITT_PHASE to PHASE_SENDEN,
+                            )
+                        )
+                    }
+                },
+                nochGewollt = { korb.existiert(name) },
+            )
+            when (ergebnis) {
+                is UploadAusgang.Fertig -> return auswerten(auftrag.art, ergebnis.ergebnis)
+                UploadAusgang.AlterServer -> return direktSenden(repository, korb, name, auftrag)
+                UploadAusgang.Abgebrochen -> {
+                    listOfNotNull(anfang.upload_id, auftrag.upload_id).distinct()
+                        .forEach { ausgang.fotoGescheitert(it, "Das Foto wurde aus dem Ausgang gelöscht.") }
+                    return null
+                }
+                is UploadAusgang.Defekt -> {
+                    abgelehnt(korb, ausgang, name, anfang, "Die Datei ließ sich nicht mehr lesen.")
+                    return null
+                }
+                UploadAusgang.NeueIdNoetig -> {
+                    if (++neueIds > 2) throw ApiFehler.Server(500, "Hochladen klappt gerade nicht.")
+                    auftrag = auftrag.copy(upload_id = UploadStart.neueId())
+                    korb.auftragAendern(name, auftrag)
+                    zuletzt = -1
+                }
+                is UploadAusgang.Abgelehnt -> {
+                    val fehler = ergebnis.fehler
+                    // Gespraech inzwischen geloescht oder Notiz weg/fremd. Lieber ohne diese
+                    // Angabe ablegen als die Aufnahme wegwerfen - erst das Gespraech weglassen,
+                    // das schadet am wenigsten. Die Felder haengen an der upload_id: neue ID.
+                    val ohne = if (fehler is ApiFehler.NichtGefunden || fehler is ApiFehler.Verboten) {
+                        when {
+                            auftrag.gespraech_id != null -> auftrag.copy(gespraech_id = null, faden = null)
+                            auftrag.notiz != null -> auftrag.copy(notiz = null)
+                            else -> null
+                        }
+                    } else {
+                        null
+                    }
+                    if (ohne == null) throw fehler
+                    auftrag = ohne.copy(upload_id = UploadStart.neueId())
+                    korb.auftragAendern(name, auftrag)
+                    zuletzt = -1
+                }
+            }
+        }
+    }
+
+    /** `ergebnis` ist die Antwort des direkten Endpunkts. Unlesbar heisst nur: kein Hinweis. */
+    private fun auswerten(art: String, ergebnis: JsonObject): Angekommen = try {
+        when (art) {
+            MedienAuftrag.ART_VIDEO -> Netzwerk.json.decodeFromJsonElement(VideoAntwort.serializer(), ergebnis)
+                .let { Angekommen(it.notiz, schreibtAb = it.schreibtAb) }
+            MedienAuftrag.ART_DOKUMENT -> Netzwerk.json.decodeFromJsonElement(DokumentAntwort.serializer(), ergebnis)
+                .let { Angekommen(it.notiz, unlesbar = if (it.lesbar) null else it.hinweis) }
+            else -> Netzwerk.json.decodeFromJsonElement(FotoAntwort.serializer(), ergebnis)
+                .let { Angekommen(it.notiz, foto = it.foto) }
+        }
+    } catch (_: Exception) {
+        Angekommen(notiz = null)
+    }
+
+    /** Wie vor 1.35.0: die ganze Datei auf einmal an den direkten Endpunkt. */
+    private suspend fun direktSenden(
+        repository: AssistentRepository,
+        korb: Medienkorb,
+        name: String,
+        anfang: MedienAuftrag,
+    ): Angekommen {
+        val datei = when (val ausgepackt = korb.auspacken(WartendesMedium(name, anfang))) {
+            is Auspacken.Fertig -> ausgepackt.datei
+            // Voruebergehend: spaeter noch einmal.
+            Auspacken.KeinPlatz -> throw ApiFehler.Server(507, "Kein Platz zum Auspacken.")
+            is Auspacken.Defekt -> throw ApiFehler.Ungueltig("Die Datei ließ sich nicht mehr entschlüsseln.")
+        }
+        val melden: (Int) -> Unit = { prozent ->
+            setProgressAsync(
+                workDataOf(FORTSCHRITT_PROZENT to prozent, FORTSCHRITT_MEDIUM to name, FORTSCHRITT_PHASE to PHASE_SENDEN)
+            )
+        }
+        var auftrag = anfang
+        try {
+            while (true) {
+                try {
+                    return when (auftrag.art) {
+                        MedienAuftrag.ART_VIDEO -> repository.video(
+                            datei = datei, notiz = auftrag.notiz, text = auftrag.text,
+                            abschreiben = auftrag.abschreiben, gespraechId = auftrag.gespraech_id, fortschritt = melden,
+                        ).let { Angekommen(it.notiz, schreibtAb = it.schreibtAb) }
+                        MedienAuftrag.ART_DOKUMENT -> repository.dokument(
+                            datei = datei, dateiname = auftrag.dateiname ?: datei.name, notiz = auftrag.notiz,
+                            text = auftrag.text, gespraechId = auftrag.gespraech_id, fortschritt = melden,
+                        ).let { Angekommen(it.notiz, unlesbar = if (it.lesbar) null else it.hinweis) }
+                        else -> repository.foto(
+                            bild = datei, notiz = auftrag.notiz, text = auftrag.text,
+                            gespraechId = auftrag.gespraech_id, aufbereiten = false,
+                        ).let { Angekommen(it.notiz, foto = it.foto) }
+                    }
+                } catch (fehler: ApiFehler) {
+                    if (fehler !is ApiFehler.NichtGefunden && fehler !is ApiFehler.Verboten) throw fehler
+                    auftrag = when {
+                        auftrag.gespraech_id != null -> auftrag.copy(gespraech_id = null, faden = null)
+                        auftrag.notiz != null -> auftrag.copy(notiz = null)
+                        else -> throw fehler
+                    }
+                    korb.auftragAendern(name, auftrag)
+                }
+            }
+        } finally {
+            datei.delete()
+        }
+    }
+
+    /**
+     * 413/415/422 und Co. wiederholen sich bei jedem Versuch und wuerden den Korb
+     * blockieren. Geloescht wird trotzdem nicht: auf dem Handy gibt es oft keine
+     * andere Kopie mehr. Eine Frage, die auf dieses Foto wartet, kommt zurueck ins Feld.
+     */
+    private fun abgelehnt(korb: Medienkorb, ausgang: Ausgangskorb, name: String, auftrag: MedienAuftrag, grund: String) {
+        korb.beiseitelegen(name)
+        auftrag.upload_id?.let { ausgang.fotoGescheitert(it, grund) }
+        ausgang.rueckmelden(
+            Rueckmeldung(
+                art = Rueckmeldung.ART_HINWEIS,
+                zeit = auftrag.aufgenommen,
+                text = "${artName(auftrag)} von ${uhrzeit(auftrag.aufgenommen)} nicht abgelegt: $grund Es bleibt auf dem Gerät.",
             )
         )
     }
@@ -492,6 +713,20 @@ class VersandArbeiter(
         private const val KOPIE_ALT_MS = 60 * 60_000L
 
         const val FORTSCHRITT_PROZENT = "prozent"
+
+        /** Name des Eintrags im [Medienkorb], zu dem [FORTSCHRITT_PROZENT] gehoert (1.35.0). */
+        const val FORTSCHRITT_MEDIUM = "medium"
+
+        /** [PHASE_VERKLEINERN] oder [PHASE_SENDEN]. */
+        const val FORTSCHRITT_PHASE = "phase"
+        const val PHASE_VERKLEINERN = "verkleinern"
+        const val PHASE_SENDEN = "senden"
+
+        /** Ab hier laeuft auch ein Foto als Vordergrunddienst mit Benachrichtigung. */
+        private const val GROSS_BYTES = 5L * 1024 * 1024
+
+        /** Wie bei den direkten Endpunkten. */
+        private const val MAX_TEXT = 4000
         const val ERGEBNIS_FOTOS = "fotos"
         const val ERGEBNIS_VIDEOS = "videos"
         const val ERGEBNIS_ABSCHRIFTEN = "abschriften"
@@ -515,7 +750,12 @@ class VersandArbeiter(
                         .setRequiredNetworkType(NetworkType.CONNECTED)
                         .build()
                 )
-                .setBackoffCriteria(BackoffPolicy.LINEAR, 60, TimeUnit.SECONDS)
+                // Linear statt exponentiell (Vorgabe des Nutzers: nie lange warten). Kommt das
+                // Netz zurueck, stoesst ChefAssistentApp ohnehin sofort an.
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
+                // Auftrag 1.35: sofort los, sobald Netz da ist. Ist das Kontingent fuer
+                // Eilauftraege aufgebraucht, laeuft er als normaler Auftrag.
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
 
             val manager = WorkManager.getInstance(kontext)

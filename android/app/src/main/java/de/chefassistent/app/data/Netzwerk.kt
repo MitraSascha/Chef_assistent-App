@@ -155,6 +155,7 @@ private class FehlerInterceptor(private val json: Json) : Interceptor {
         // Der Koerper wird hier verbraucht - die Antwort wird ohnehin verworfen.
         val koerper = antwort.use { it.body?.string() }
         val detail = ApiFehler.detailAusKoerper(json, koerper, antwort.code)
-        throw ApiFehler.ausStatus(antwort.code, detail)
+        // Hochladen in Stuecken (1.35.0): bei 409 steht der Stand des Servers im Kopf.
+        throw ApiFehler.ausStatus(antwort.code, detail, antwort.header("X-Empfangen")?.trim()?.toLongOrNull())
     }
 }

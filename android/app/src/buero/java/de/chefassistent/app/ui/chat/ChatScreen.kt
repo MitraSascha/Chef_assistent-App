@@ -64,6 +64,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import de.chefassistent.app.ui.komponenten.AusgangBlatt
+import de.chefassistent.app.ui.komponenten.AusgangLeiste
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -710,18 +712,16 @@ fun ChatScreen(
                 if (zustand.laeuft && zustand.eintraege.isEmpty()) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
-                zustand.hochladen?.let { prozent ->
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-                        Text(
-                            text = stringResource(R.string.video_laedt_hoch, prozent),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        LinearProgressIndicator(
-                            progress = { prozent / 100f },
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                        )
-                    }
+                // Seit 1.35.0: Fotos, Videos und Dokumente im Ausgang, mit Stand. Antippen zeigt die Liste.
+                var ausgangOffen by rememberSaveable { mutableStateOf(false) }
+                AusgangLeiste(zeilen = zustand.ausgang, beiKlick = { ausgangOffen = true })
+                if (ausgangOffen) {
+                    AusgangBlatt(
+                        zeilen = zustand.ausgang,
+                        beiLoeschen = { viewModel.ausgangLoeschen(it.name) },
+                        beiJetztSenden = viewModel::wartendeNotizenSenden,
+                        beiSchliessen = { ausgangOffen = false },
+                    )
                 }
 
                 if (zustand.rueckmeldungen.isNotEmpty()) {
@@ -1460,7 +1460,9 @@ private fun NutzerBlase(
                             tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                         )
                         Text(
-                            text = stringResource(R.string.ausgang_wartet_marke),
+                            text = stringResource(
+                                if (eintrag.wartetAufFoto) R.string.ausgang_wartet_auf_foto else R.string.ausgang_wartet_marke
+                            ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                             modifier = Modifier.padding(start = 4.dp),

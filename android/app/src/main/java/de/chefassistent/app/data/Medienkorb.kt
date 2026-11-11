@@ -31,7 +31,28 @@ data class MedienAuftrag(
      * die erste Nachricht des Chats eins angelegt hat.
      */
     val faden: String? = null,
+    /**
+     * Seit 1.35.0: Kennung beim Hochladen in Stuecken (API.md 4h). Bleibt ueber alle
+     * Versuche gleich, damit es nach einem Abbruch an der letzten Stelle weitergeht.
+     */
+    val upload_id: String? = null,
+    /** Groesse des Klartexts in Bytes. `null` bei Eintraegen aus aelteren Versionen. */
+    val groesse: Long? = null,
+    /**
+     * Video, das noch verkleinert werden muss. Das Original liegt dann als
+     * `<name>.roh.<endung>` daneben (Auftrag 1.35: Senden darf die App nicht blockieren,
+     * ein 15-Minuten-Video umzurechnen dauert Minuten).
+     */
+    val aufbereiten: Boolean = false,
 ) {
+    /** Dateiname fuer den Server. Bei Dokumenten der Originalname, sonst nach der Art. */
+    val serverDateiname: String
+        get() = when (art) {
+            ART_DOKUMENT -> dateiname ?: "Dokument"
+            ART_VIDEO -> "Video_$aufgenommen.mp4"
+            else -> "Foto_$aufgenommen.jpg"
+        }
+
     companion object {
         const val ART_FOTO = "foto"
         const val ART_VIDEO = "video"
@@ -89,7 +110,8 @@ class Medienkorb(private val context: Context) {
             tresor.verschluesseln(datei, medium)
             // Zuletzt: die Begleitdaten machen den Eintrag sichtbar. Bis dahin
             // laesst [liste] das halb geschriebene Medium in Ruhe.
-            tresor.fassungSchreiben(ordner, name, auftrag, MedienAuftrag.serializer())
+            val mitStand = auftrag.copy(groesse = datei.length(), upload_id = auftrag.upload_id ?: UploadStart.neueId())
+            tresor.fassungSchreiben(ordner, name, mitStand, MedienAuftrag.serializer())
             datei.delete()
             true
         } catch (_: Exception) {
@@ -98,6 +120,67 @@ class Medienkorb(private val context: Context) {
             false
         }
     }
+
+    /**
+     * Video, das erst noch verkleinert wird (1.35.0): das Original wird nur
+     * verschoben, nicht verschluesselt - der [VersandArbeiter] rechnet es spaeter um
+     * und legt erst das Ergebnis verschluesselt ab. So ist der Dialog sofort zu,
+     * auch bei einem Video von 2 GB. Das Original lag vorher genauso unverschluesselt
+     * im Cache der Kamera, liegt jetzt aber in `filesDir`, das Android nicht leert.
+     */
+    @Synchronized
+    fun ablegenRoh(datei: File, auftrag: MedienAuftrag): Boolean {
+        var zahl = auftrag.aufgenommen
+        while (tresor.alleDateien(ordner, zahl.toString()).isNotEmpty()) zahl++
+        val name = zahl.toString()
+        val endung = datei.extension.filter { it.isLetterOrDigit() }.take(5).ifEmpty { "mp4" }
+        val roh = File(ordner, "$name$ROH.$endung")
+        return try {
+            if (!datei.renameTo(roh)) {
+                datei.copyTo(roh, overwrite = true)
+                datei.delete()
+            }
+            tresor.fassungSchreiben(
+                ordner, name,
+                auftrag.copy(aufbereiten = true, upload_id = auftrag.upload_id ?: UploadStart.neueId()),
+                MedienAuftrag.serializer(),
+            )
+            true
+        } catch (_: Exception) {
+            // Zurueck, wo es herkam: der Dialog haelt die Datei noch.
+            if (roh.exists() && !datei.exists()) roh.renameTo(datei)
+            roh.delete()
+            tresor.fassungenLoeschen(ordner, name)
+            false
+        }
+    }
+
+    /** Das noch nicht verkleinerte Original eines Videos, sonst `null`. */
+    fun rohDatei(name: String): File? =
+        ordner.listFiles { d -> d.name.startsWith("$name$ROH.") }?.firstOrNull()
+
+    /**
+     * Das Video ist verkleinert: [klein] verschluesselt ablegen, neue Begleitdaten,
+     * dann das Original weg. Stirbt die App dazwischen, gilt der Eintrag weiter als
+     * unverkleinert und wird beim naechsten Mal neu umgerechnet.
+     */
+    @Synchronized
+    fun aufbereitet(name: String, klein: File, auftrag: MedienAuftrag): MedienAuftrag {
+        val neu = auftrag.copy(aufbereiten = false, groesse = klein.length())
+        tresor.verschluesseln(klein, File(ordner, "$name$MEDIUM"))
+        tresor.fassungSchreiben(ordner, name, neu, MedienAuftrag.serializer())
+        rohDatei(name)?.delete()
+        return neu
+    }
+
+    /** Ob der Eintrag noch da ist - der Nutzer kann ihn im Ausgang loeschen. */
+    fun existiert(name: String): Boolean = tresor.hatFassung(ordner, name)
+
+    /** Die Datei entschluesselt als Strom, fuers Hochladen in Stuecken. */
+    internal fun lesen(name: String): java.io.InputStream = tresor.lesen(File(ordner, "$name$MEDIUM"))
+
+    /** Klartextgroesse, fuer Eintraege ohne [MedienAuftrag.groesse]. */
+    internal fun groesse(name: String): Long = tresor.klartextGroesse(File(ordner, "$name$MEDIUM"))
 
     /**
      * Aelteste zuerst, nur fertig abgelegte Eintraege.
@@ -110,7 +193,7 @@ class Medienkorb(private val context: Context) {
     @Synchronized
     fun liste(): List<WartendesMedium> =
         tresor.namenMitFassung(ordner)
-            .filter { name -> File(ordner, "$name$MEDIUM").exists() }
+            .filter { name -> File(ordner, "$name$MEDIUM").exists() || rohDatei(name) != null }
             .sortedBy { it.toLongOrNull() ?: 0L }
             .mapNotNull { name ->
                 val auftrag = tresor.fassungLesen(ordner, name, MedienAuftrag.serializer())
@@ -160,8 +243,10 @@ class Medienkorb(private val context: Context) {
 
     @Synchronized
     fun entfernen(name: String) {
-        File(ordner, "$name$MEDIUM").delete()
+        // Begleitdaten zuerst: ab da gilt der Eintrag als weg (auch fuer einen laufenden Upload).
         tresor.fassungenLoeschen(ordner, name)
+        // Dann alles andere, auch ein noch unverkleinertes Original (`.roh.mp4`).
+        tresor.alleDateien(ordner, name).forEach { it.delete() }
     }
 
     /** Siehe [Ausgangskorb.beiseitelegen]. */
@@ -172,5 +257,6 @@ class Medienkorb(private val context: Context) {
 
     private companion object {
         const val MEDIUM = ".medium.enc"
+        const val ROH = ".roh"
     }
 }

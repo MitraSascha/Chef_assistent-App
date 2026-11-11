@@ -3,7 +3,7 @@
   "info": {
     "title": "Chef-Assistent",
     "description": "Schnittstelle für die Android-App. Anmeldung: `Authorization: Bearer <token>`.",
-    "version": "1.34.0"
+    "version": "1.35.0"
   },
   "paths": {
     "/v1/gesund": {
@@ -1234,6 +1234,247 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/v1/uploads": {
+      "post": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Upload Starten",
+        "description": "Fotos/Videos/Dokumente in Stücken hochladen, fortsetzbar bei Verbindungsabbruch. ziel: foto | dokument | video; felder wie beim direkten Endpunkt (notiz, text, gespraech_id, bei video abschreiben).",
+        "operationId": "upload_starten_v1_uploads_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/uploads/{upload_id}": {
+      "put": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Upload Teil",
+        "description": "Ein Teil der Datei als Rohdaten (Content-Type: application/octet-stream).",
+        "operationId": "upload_teil_v1_uploads__upload_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Id"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Byte-Position dieses Teils = bisher empfangen",
+              "title": "Offset"
+            },
+            "description": "Byte-Position dieses Teils = bisher empfangen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Upload Stand",
+        "description": "Stand eines Uploads – nach Verbindungsabbruch: ab `empfangen` weiterschicken.",
+        "operationId": "upload_stand_v1_uploads__upload_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/uploads/{upload_id}/abschliessen": {
+      "post": {
+        "tags": [
+          "Fotos"
+        ],
+        "summary": "Upload Abschliessen",
+        "description": "Datei verarbeiten wie der direkte Endpunkt; `ergebnis` ist dessen Antwort. Mehrfach aufrufbar.",
+        "operationId": "upload_abschliessen_v1_uploads__upload_id__abschliessen_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/angebote": {
@@ -6464,6 +6705,247 @@
               }
             },
             "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/monteur/uploads": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Upload Starten",
+        "description": "Wie POST /v1/monteur/projekte/{pid}/dateien, aber in Stücken und fortsetzbar. ziel: projekt; felder: pid, text, anfrage_id.",
+        "operationId": "upload_starten_v1_monteur_uploads_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/monteur/uploads/{upload_id}": {
+      "put": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Upload Teil",
+        "description": "Ein Teil der Datei als Rohdaten (Content-Type: application/octet-stream).",
+        "operationId": "upload_teil_v1_monteur_uploads__upload_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Id"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Byte-Position dieses Teils = bisher empfangen",
+              "title": "Offset"
+            },
+            "description": "Byte-Position dieses Teils = bisher empfangen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Upload Stand",
+        "description": "Stand eines Uploads – nach Verbindungsabbruch: ab `empfangen` weiterschicken.",
+        "operationId": "upload_stand_v1_monteur_uploads__upload_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monteur/uploads/{upload_id}/abschliessen": {
+      "post": {
+        "tags": [
+          "Monteur-App"
+        ],
+        "summary": "Upload Abschliessen",
+        "description": "Datei verarbeiten wie der direkte Endpunkt; `ergebnis` ist dessen Antwort. Mehrfach aufrufbar.",
+        "operationId": "upload_abschliessen_v1_monteur_uploads__upload_id__abschliessen_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStand"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -14038,6 +14520,115 @@
           "status"
         ],
         "title": "Unterlage"
+      },
+      "UploadStand": {
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "title": "Upload Id"
+          },
+          "ziel": {
+            "type": "string",
+            "title": "Ziel"
+          },
+          "dateiname": {
+            "type": "string",
+            "title": "Dateiname"
+          },
+          "groesse": {
+            "type": "integer",
+            "title": "Groesse"
+          },
+          "empfangen": {
+            "type": "integer",
+            "title": "Empfangen"
+          },
+          "teil_max": {
+            "type": "integer",
+            "title": "Teil Max",
+            "default": 8388608
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "offen | fertig | fehler"
+          },
+          "ergebnis": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ergebnis",
+            "description": "Antwort des Ziel-Endpunkts (nach abschliessen)"
+          },
+          "fehler": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fehler"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upload_id",
+          "ziel",
+          "dateiname",
+          "groesse",
+          "empfangen",
+          "status"
+        ],
+        "title": "UploadStand"
+      },
+      "UploadStart": {
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Upload Id",
+            "description": "Von der App erzeugt (z. B. UUID ohne Bindestriche); bleibt über Neustarts der App gleich"
+          },
+          "ziel": {
+            "type": "string",
+            "title": "Ziel",
+            "description": "Wohin die Datei soll – siehe Beschreibung des Endpunkts"
+          },
+          "dateiname": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Dateiname"
+          },
+          "groesse": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Groesse",
+            "description": "Gesamtgröße in Bytes"
+          },
+          "felder": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Felder",
+            "description": "Dieselben Formularfelder wie beim direkten Endpunkt (z. B. notiz, text, gespraech_id)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upload_id",
+          "ziel",
+          "dateiname",
+          "groesse"
+        ],
+        "title": "UploadStart"
       },
       "Urlaubsstand": {
         "properties": {
